@@ -1,0 +1,15 @@
+Report of the training
+---------------------------------------
+Paths being used: ['f3_fold_0', 'f3_fold_0_cropped', 'f3_fold_0_il', 'f3_fold_0_xl', 'f3_random_3']
+Node: f3_folds_tesst_130]
+---------------------------------------
+------------------ Training on ../../shared_data/seismic_vinicius/f3_fold_0 ------------------
+------------------ Saving: f3_fold_0 ------------------
+------------------ Training on ../../shared_data/seismic_vinicius/f3_fold_0_cropped ------------------
+------------------ Saving: f3_fold_0_cropped ------------------
+------------------ Training on ../../shared_data/seismic_vinicius/f3_fold_0_il ------------------
+------------------ Saving: f3_fold_0_il ------------------
+------------------ Training on ../../shared_data/seismic_vinicius/f3_fold_0_xl ------------------
+------------------ Saving: f3_fold_0_xl ------------------
+------------------ Training on ../../shared_data/seismic_vinicius/f3_random_3 ------------------
+------------------ Saving: f3_random_3 ------------------

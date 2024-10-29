@@ -113,8 +113,10 @@ def eval_func(import_name:str,
     # import_name = 'pretreino_COCO_seam_ai_1s%'
     
     # Load the pretrained model
-    # downstream_model = load_downstream_model(f'../saves/models/{repetition}/{import_name}.ckpt', mode=mode)
     downstream_model = load_downstream_model(f'../saves/models/{repetition}/{import_name}.ckpt', mode=mode)
+    
+    # For evaluating the 20 reps of seg pretrain
+    # downstream_model = load_downstream_model(f'../saves/models/V_0.01/{import_name}.ckpt', mode=mode)
 
     # Retrieve the train, validation and test sets.
     downstream_datamodule = build_downstream_datamodule(data=dataset, root_dir=root_dir)

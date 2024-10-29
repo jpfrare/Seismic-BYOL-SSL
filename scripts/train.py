@@ -114,7 +114,7 @@ def build_lightning_trainer(save_name:str, supervised:bool, epocas, reps) -> L.T
     checkpoint_callback = ModelCheckpoint(
         monitor='val_IoU',
         # dirpath=f'../saves/models/{reps}/',
-        dirpath=f'../saves/models/V_0.01/',
+        dirpath=f'../saves/models/V_0.04/',
         filename=f'{save_name}',
         save_top_k=1,
         mode='max',
@@ -132,7 +132,7 @@ def build_lightning_trainer(save_name:str, supervised:bool, epocas, reps) -> L.T
         logger=CSVLogger("logs", name="Supervised" if supervised else "Pretrained", version=save_name),
         callbacks=[checkpoint_callback],
         # strategy='ddp_find_unused_parameters_true',
-        devices=[1]
+        devices=[0]
         )
     
 ### --------------- Main -----------------------------------------------------------------
@@ -148,12 +148,14 @@ def train_func(epocas:int,
                mode:str = 'byol',
                repetition:str = 'Vx',
                seed:int = 42,
-               root_dir:str = '../data/f3/'
+               root_dir:str = '../data/f3/',
+               aux:str = 'Vx'
                ):
 
     # Load the pretrained backbone
     if mode == 'seg':
-        pretrained_backbone_checkpoint_filename = f"../saves/models/{repetition}/{import_name}.ckpt"
+        # pretrained_backbone_checkpoint_filename = f"../saves/models/{repetition}/{import_name}.ckpt"
+        pretrained_backbone_checkpoint_filename = f"../saves/models/{aux}/{import_name}.ckpt"
     else:
         pretrained_backbone_checkpoint_filename = f"../saves/backbones/{repetition}/{import_name}.pth"
     print(f'Loading pretrained backbone from {pretrained_backbone_checkpoint_filename}')
@@ -172,13 +174,15 @@ if __name__ == "__main__":
                batch_size=8,
                cap=1.0,
                import_name='V1_E300_B32_S256_f3',
-               save_name='window_1',
+            #    save_name='uniform',
+               save_name='high_mse',
                supervised=True,
                freeze=False,
                downstream_data='f3',
                mode='supervised',
-               repetition='Vx',
+               repetition='V_0.04',
                seed=42,
-               root_dir='../../shared_data/seismic_vinicius/f3_segmentation_dataset_window/'
+            #    root_dir='../../shared_data/seismic_vinicius/f3_uniform_split'
+               root_dir='../../shared_data/seismic_vinicius/f3_highest_mse'
             #    root_dir='../data/f3/'
                )

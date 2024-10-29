@@ -16,7 +16,7 @@ cap e flag do treinamento supervisionado
 def main():
     
     NODE = 'node13[0]'
-    REPORT_NAME = f'pretrain_{NODE}_run'W
+    REPORT_NAME = f'pretrain_{NODE}_run'
 
     report_path = 'reports/'
 

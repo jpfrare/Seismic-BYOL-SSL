@@ -118,5 +118,5 @@ def pretrain_func(epocas:int = 300,
 
 
 
-# if __name__ == "__main__":
-#     pretrain_func('Byol')
+if __name__ == "__main__":
+    pretrain_func()

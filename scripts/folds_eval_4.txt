@@ -1,0 +1,10 @@
+---------------------------------------
+Partitions: ['f3_fold_0', 'f3_fold_1', 'f3_fold_2', 'f3_fold_3', 'f3_fold_4', 'f3_random_0', 'f3_random_1', 'f3_random_2', 'f3_random_3', 'f3_random_4', 'f3_uniform_split', 'f3_highest_mse']
+Models: ['split_0', 'split_1', 'split_2', 'split_3', 'split_4', 'random_0', 'random_1', 'random_2', 'random_3', 'random_4', 'uniform', 'high_mse']
+---------------------------------------
+------------------ f3_fold_0 ------------------
+------------------------------------------------------------
+split_0
+iou = 0.7872
+f1 = 0.9682
+------------------ f3_fold_1 ------------------
