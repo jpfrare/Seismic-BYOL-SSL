@@ -29,7 +29,7 @@ def num_files(path):
 
 # This function must instantiate and configure the datamodule for the pretext task
 
-def build_pretext_datamodule(batch, input_size, data:str = 'both') -> L.LightningDataModule:
+def build_pretext_datamodule(batch, input_size, data:str = 'both', path:str = '') -> L.LightningDataModule:
     # Build the transform object
     transform = BYOLTransform(input_size=input_size,
                             min_scale=0,
@@ -43,14 +43,14 @@ def build_pretext_datamodule(batch, input_size, data:str = 'both') -> L.Lightnin
                             solarize_prob=0.0
                             )
     
-    assert data in ['both', 'seam_ai', 'f3'], f"Data {data} not found. Must be one of 'both', 'seam_ai' or 'f3'"
+    # assert data in ['both', 'seam_ai', 'f3'], f"Data {data} not found. Must be one of 'both', 'seam_ai' or 'f3'"
     
-    num_of_files = num_files(f"../data/{data}/images/train/")
-    
+    # num_of_files = num_files(f"../data/{data}/images/train/")
+    num_of_files = num_files(f'{path}/train/')
     # Create the datamodule
     print("Number of files in the pretext dataset: ", num_of_files)
     
-    path = f'../data/{data}/images/'
+    # path = f'../data/{data}/images/'
     # The selection of path/train is inside of the datamodule
     
     print(f'******* Data Loaded: {data} *******')
@@ -85,7 +85,7 @@ def build_lightning_trainer(save_name:str, epocas:int) -> L.Trainer:
         enable_checkpointing=False, 
         logger=CSVLogger("logs", name="Byol", version=save_name),
         # strategy='ddp_find_unused_parameters_true',
-        devices=[0],
+        devices=[2],
         )
     
 ### --------------- Main -----------------------------------------------------------------
@@ -95,11 +95,12 @@ def pretrain_func(epocas:int = 300,
                  input_size:int = 256,
                  repetition:str = 'V1',
                  save_name:str = 'byol',
-                 data:str = 'both'
+                 data:str = 'both',
+                 path:str = '',
                  ):
         
     # Build the pretext model, the pretext datamodule, and the trainer
-    pretext_datamodule, num_of_files = build_pretext_datamodule(batch_size, input_size, data)
+    pretext_datamodule, num_of_files = build_pretext_datamodule(batch_size, input_size, data, path=path)
     
     schedule = int((num_of_files // batch_size) * epocas) 
     # Used to determine the cossine schedule in the pretext model
