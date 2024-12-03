@@ -29,11 +29,14 @@ def plot_metrics(data_file, output_file, metric="iou", selected_backbones=None, 
     grouped = grouped.fillna(0)
 
     # Get the unique values of cap, backbones, and downstream in the filtered dataset
-    caps = sorted(grouped["cap"].unique())
-    backbones = sorted(grouped["backbone"].unique())
+    # caps = sorted(grouped["cap"].unique())
+    # backbones = sorted(grouped["backbone"].unique())
+
+    caps = grouped["cap"].unique()
+    backbones = grouped["backbone"].unique()
 
     # Create the bar plot
-    bar_width = 0.12  # Width of individual bars
+    bar_width = 0.08  # Width of individual bars
     x_positions = np.arange(len(caps))  # Positions for the caps on the x-axis
 
     plt.figure(figsize=(10, 6))
@@ -59,7 +62,7 @@ def plot_metrics(data_file, output_file, metric="iou", selected_backbones=None, 
     plt.xticks(x_positions + (len(backbones) - 1) * bar_width / 2, [f"{cap}" for cap in caps])
     plt.xlabel("Fraction of Data (cap)", fontsize=12)
     plt.ylabel(f"Mean {metric.upper()} with Std Dev", fontsize=12)
-    plt.title(f"{metric.upper()} vs Fraction of Data for Selected Backbones", fontsize=14)
+    plt.title(f"{metric.upper()} vs Fraction of Data for Selected Backbones on {selected_data}", fontsize=14)
     plt.legend(title="Backbone", fontsize=10, loc="best")
     plt.grid(axis="y", linestyle="--", alpha=0.7)
     plt.tight_layout()
@@ -72,8 +75,29 @@ def plot_metrics(data_file, output_file, metric="iou", selected_backbones=None, 
 # Example usage:
 plot_metrics(
     data_file="evaluation_results.csv",  # CSV file with evaluation results
-    output_file="grouped_bar_plot.png",  # Output file for the plot
+    output_file="donstream_f3.png",  # Output file for the plot
     metric="iou",  # Metric to plot: "iou" or "f1"
-    selected_backbones=["f3", "seam_ai", "both", "imagenet", "COCO"],  # Backbones to display
-    selected_data="f3_norm"  # Data to filter by (set to None for all data)
+    selected_backbones=["f3", 'f3_norm', "seam_ai", 'seam_ai_norm', "both", 'both_N', 'COCO', 'imagenet'],  # Backbones to display
+    selected_data="f3"  # Data to filter by (set to None for all data)
+)
+plot_metrics(
+    data_file="evaluation_results.csv",  # CSV file with evaluation results
+    output_file="downstream_f3_N.png",  # Output file for the plot
+    metric="iou",  # Metric to plot: "iou" or "f1"
+    selected_backbones=["f3", 'f3_norm', "seam_ai", 'seam_ai_norm', "both", 'both_N'],  # Backbones to display
+    selected_data="f3_N"  # Data to filter by (set to None for all data)
+)
+plot_metrics(
+    data_file="evaluation_results.csv",  # CSV file with evaluation results
+    output_file="downstream_seam_ai.png",  # Output file for the plot
+    metric="iou",  # Metric to plot: "iou" or "f1"
+    selected_backbones=["f3", 'f3_norm', "seam_ai", 'seam_ai_norm', "both", 'both_N'],  # Backbones to display
+    selected_data="seam_ai"  # Data to filter by (set to None for all data)
+)
+plot_metrics(
+    data_file="evaluation_results.csv",  # CSV file with evaluation results
+    output_file="downstream_seam_ai_N.png",  # Output file for the plot
+    metric="iou",  # Metric to plot: "iou" or "f1"
+    selected_backbones=["f3", 'f3_norm', "seam_ai", 'seam_ai_norm', "both", 'both_N'],  # Backbones to display
+    selected_data="seam_ai_N"  # Data to filter by (set to None for all data)
 )

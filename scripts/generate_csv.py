@@ -21,45 +21,40 @@ def generate_csv_from_models(models_folder, output_csv="evaluation_results.csv")
     else:
         df = pd.DataFrame()
 
-    # Create a dictionary for quick look-up of existing hashes
+    # Create a dictionary for quick look-up of existing hashes (ids)
     existing_hashes = {} if df.empty else dict(zip(df['id'], df.index))
 
     # Walk through the models folder and its subfolders
-    # for repetition in [f'V{i}' for i in range(1, 2)]:  # For repetitions V1 to V10
-    for repetition in ['V1', 'V2']:
+    for repetition in [f'V{i}' for i in range(2, 9)]:  # Example with repetitions V1 and V2
         repetition_folder = f'{models_folder}/{repetition}'
 
         if not os.path.exists(repetition_folder):
             continue
         
         for pretrain in ["f3", "f3_norm", "seam_ai", "seam_ai_norm", "both", "both_N", "COCO", "IMAGENET", "sup", "seg"]:
-        # for pretrain in ['f3']:
             for data in ["f3", "f3_N", "seam_ai", "seam_ai_N"]:
-            # for data in ['seam_ai']:
                 for cap in [0.01, 0.1, 0.5, 1]:
 
+                    # Determine model name based on pretrain and other parameters
                     if pretrain in ['f3', 'seam_ai', 'both', 'f3_norm', 'seam_ai_norm', 'both_N']:
                         mode = 'byol'
                         model_name = f'{repetition}_pre_{pretrain}_train_{data}_cap_{cap*100:.0f}%'
-                    
                     elif pretrain == 'seg':
                         mode = 'seg'
                         model_name = f'{repetition}_pre_{pretrain}_train_{data}_cap_{cap*100:.0f}%'
-                        
                     elif pretrain == 'COCO':
                         mode = 'coco'
                         model_name = f'{repetition}_pre_COCO_train_{data}_cap_{cap*100:.0f}%'
-                    
                     elif pretrain == 'IMAGENET':
                         mode = 'imagenet'
                         model_name = f'{repetition}_pre_IMAGENET_train_{data}_cap_{cap*100:.0f}%'
-                    
                     elif pretrain == 'sup':
                         mode = 'supervised'
                         model_name = f'{repetition}_sup_{data}_cap_{cap*100:.0f}%'
                         
                     file_path = f'{repetition_folder}/{model_name}'
                     
+                    # Map data to the correct root directory
                     if data == 'f3':
                         root_dir = '../../asml/datasets/tiff_data/f3_segmentation'
                     elif data == 'seam_ai':
@@ -74,7 +69,7 @@ def generate_csv_from_models(models_folder, output_csv="evaluation_results.csv")
                     # Generate a hash ID for the model
                     file_id = hashlib.md5(model_name.encode()).hexdigest()
 
-                    # Call eval_func to get IoU and F1
+                    # Call eval_func to get IoU and F1 values
                     output = eval_func(
                         import_name=model_name,
                         mode=mode,
@@ -102,10 +97,12 @@ def generate_csv_from_models(models_folder, output_csv="evaluation_results.csv")
                             "f1": f1_value
                         }
 
-                        # Overwrite if the hash exists, otherwise append as a new row
+                        # Overwrite if the hash exists (update the existing row), otherwise append as a new row
                         if file_id in existing_hashes:
+                            # Update the row in the DataFrame
                             df.loc[existing_hashes[file_id]] = row
                         else:
+                            # Add the new row to the list of rows to append
                             rows.append(row)
 
     # Convert the new rows to a DataFrame and append them to the existing DataFrame
