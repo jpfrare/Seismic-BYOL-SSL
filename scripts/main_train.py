@@ -22,25 +22,25 @@ def main():
     NODE = 'fuck'
     REPORT_NAME = f'{NODE}_run'
     
-    list_of_pretrains = ['sup', 'seg']
+    # list_of_pretrains = ['sup', 'seg']
     # list_of_pretrains = ['seam_ai', 'seam_ai_norm']
-    # list_of_pretrains = ['both_N']
+    list_of_pretrains = ['f3_norm']
     # list_of_pretrains = ['both', 'both_N']
     # list_of_pretrains = ['COCO']
     # list_of_pretrains = ['sup', 'seg']
 
     list_of_datas = ['f3', 'seam_ai', 'f3_N', 'seam_ai_N']    
     
-    list_of_repets = ['V10']
+    list_of_repets = ['V9']
     
-    list_of_seeds = list(range(49, 50))
+    list_of_seeds = list(range(48, 50))
     
     # list_of_repets = ['V1', 'V2', 'V3', 'V4', 'V5', 'V6', 'V7', 'V8', 'V9', 'V10']
     # list_of_seeds = list(range(40, 60))   
     
     # list_of_caps = [0.01, 0.1, 0.5]
-    # list_of_caps = [1.0]
-    list_of_caps = [0.01, 0.1, 0.5, 1.0]
+    list_of_caps = [1.0]
+    # list_of_caps = [0.01, 0.1, 0.5, 1.0]
     
     with open(report_path + f'{REPORT_NAME}.txt', 'w') as f:
         f.write('Report of the training\n')
