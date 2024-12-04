@@ -24,22 +24,28 @@ def main():
     
     # list_of_pretrains = ['sup', 'seg']
     # list_of_pretrains = ['seam_ai', 'seam_ai_norm']
-    list_of_pretrains = ['f3_norm']
     # list_of_pretrains = ['both', 'both_N']
     # list_of_pretrains = ['COCO']
     # list_of_pretrains = ['sup', 'seg']
+    list_of_pretrains = ['f3', 'f3_norm', 'seam_ai', 'seam_ai_norm', 'both', 'both_N', 'COCO', 'IMAGENET', 'sup', 'seg']
 
-    list_of_datas = ['f3', 'seam_ai', 'f3_N', 'seam_ai_N']    
+    # list_of_datas = ['f3', 'seam_ai', 'f3_N', 'seam_ai_N']    
+    list_of_datas = ['f3_N']
+    # list_of_datas = ['f3_N']
+    # list_of_datas = ['seam_ai']
+    # list_of_datas = ['seam_ai_N']
     
-    list_of_repets = ['V9']
+    repetition_aux = ['V1', 'V2', 'V3', 'V4', 'V5', 'V6', 'V7', 'V8', 'V9', 'V10']
     
-    list_of_seeds = list(range(48, 50))
+    list_of_repets = [f'V{i}' for i in range(11, 21)]
+    
+    list_of_seeds = list(range(50, 61))
     
     # list_of_repets = ['V1', 'V2', 'V3', 'V4', 'V5', 'V6', 'V7', 'V8', 'V9', 'V10']
     # list_of_seeds = list(range(40, 60))   
     
     # list_of_caps = [0.01, 0.1, 0.5]
-    list_of_caps = [1.0]
+    list_of_caps = [0.01]
     # list_of_caps = [0.01, 0.1, 0.5, 1.0]
     
     with open(report_path + f'{REPORT_NAME}.txt', 'w') as f:
@@ -77,41 +83,41 @@ def main():
                     if pretrain  in ['f3', 'seam_ai', 'both', 'f3_norm', 'seam_ai_norm', 'both_N']:
                         mode = 'byol'
                         supervised = False
-                        import_name = f'{repetition}_E300_B32_S256_{pretrain}'
+                        import_name = f'{repetition_aux[num]}_E300_B32_S256_{pretrain}'
                         save_name = f'{repetition}_pre_{pretrain}_train_{data}_cap_{cap*100:.0f}%'
                     
                     elif pretrain == 'seg':
                         mode = 'seg'
                         supervised = False
                         if data == 'f3':
-                            import_name = f'{repetition}_sup_seam_ai_cap_100%'
+                            import_name = f'{repetition_aux[num]}_sup_seam_ai_cap_100%'
                         elif data == 'seam_ai':
-                            import_name = f'{repetition}_sup_f3_cap_100%'
+                            import_name = f'{repetition_aux[num]}_sup_f3_cap_100%'
                         elif data == 'f3_N':
-                            import_name = f'{repetition}_sup_seam_ai_N_cap_100%'
+                            import_name = f'{repetition_aux[num]}_sup_seam_ai_N_cap_100%'
                         elif data == 'seam_ai_N':
-                            import_name = f'{repetition}_sup_f3_N_cap_100%'
+                            import_name = f'{repetition_aux[num]}_sup_f3_N_cap_100%'
                         save_name = f'{repetition}_pre_{pretrain}_train_{data}_cap_{cap*100:.0f}%'
                         
                     elif pretrain == 'COCO':
                         mode = 'coco'
                         supervised = False
                         # Não importa, não será usado. Deve ser um import válido
-                        import_name = f'{repetition}_E300_B32_S256_f3'         
+                        import_name = f'{repetition_aux[num]}_E300_B32_S256_f3'         
                         save_name = f'{repetition}_pre_COCO_train_{data}_cap_{cap*100:.0f}%'
                     
                     elif pretrain == 'IMAGENET':
                         mode = 'imagenet'
                         supervised = False
                         # Não importa, não será usado. Deve ser um import válido
-                        import_name = f'{repetition}_E300_B32_S256_f3'
+                        import_name = f'{repetition_aux[num]}_E300_B32_S256_f3'
                         save_name = f'{repetition}_pre_IMAGENET_train_{data}_cap_{cap*100:.0f}%'
                     
                     elif pretrain == 'sup':
                         mode = 'supervised'
                         supervised = True
                         # Não importa, não será usado. Deve ser um import válido
-                        import_name = f'{repetition}_E300_B32_S256_f3'
+                        import_name = f'{repetition_aux[num]}_E300_B32_S256_f3'
                         save_name = f'{repetition}_sup_{data}_cap_{cap*100:.0f}%'
 
                     with open(report_path + f'{REPORT_NAME}.txt', 'a') as f:

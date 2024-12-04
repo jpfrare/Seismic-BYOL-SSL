@@ -25,7 +25,8 @@ def generate_csv_from_models(models_folder, output_csv="evaluation_results.csv")
     existing_hashes = {} if df.empty else dict(zip(df['id'], df.index))
 
     # Walk through the models folder and its subfolders
-    for repetition in [f'V{i}' for i in range(2, 9)]:  # Example with repetitions V1 and V2
+    # for repetition in [f'V{i}' for i in range(2, 9)]:  # Example with repetitions V1 and V2
+    for repetition in ['V9', 'V10']:
         repetition_folder = f'{models_folder}/{repetition}'
 
         if not os.path.exists(repetition_folder):
