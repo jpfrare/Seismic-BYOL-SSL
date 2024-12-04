@@ -30,8 +30,8 @@ def main():
     list_of_pretrains = ['f3', 'f3_norm', 'seam_ai', 'seam_ai_norm', 'both', 'both_N', 'COCO', 'IMAGENET', 'sup', 'seg']
 
     # list_of_datas = ['f3', 'seam_ai', 'f3_N', 'seam_ai_N']    
-    list_of_datas = ['f3_N']
-    # list_of_datas = ['f3_N']
+    list_of_datas = ['seam_ai_N']
+    # list_of_datas = ['f3_N']  
     # list_of_datas = ['seam_ai']
     # list_of_datas = ['seam_ai_N']
     
@@ -139,7 +139,7 @@ def main():
                         repetition=repetition,
                         seed=list_of_seeds[num],
                         root_dir=root_dir,
-                        # aux=list_of_repets_aux[num]
+                        aux=repetition_aux[num]
                     )
                         
                     with open(report_path + f'{REPORT_NAME}.txt', 'a') as f:

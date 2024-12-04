@@ -131,7 +131,7 @@ def build_lightning_trainer(save_name:str, supervised:bool, epocas, reps) -> L.T
         max_epochs=epocas,
         logger=CSVLogger("logs", name="Supervised" if supervised else "Pretrained", version=save_name),
         callbacks=[checkpoint_callback],
-        devices=[1]
+        devices=[3]
         )
     
 ### --------------- Main -----------------------------------------------------------------
@@ -153,10 +153,11 @@ def train_func(epocas:int,
 
     # Load the pretrained backbone
     if mode == 'seg':
-        pretrained_backbone_checkpoint_filename = f"../saves/models/{repetition}/{import_name}.ckpt"
-        # pretrained_backbone_checkpoint_filename = f"../saves/models/{aux}/{import_name}.ckpt"
+        # pretrained_backbone_checkpoint_filename = f"../saves/models/{repetition}/{import_name}.ckpt"
+        pretrained_backbone_checkpoint_filename = f"../saves/models/{aux}/{import_name}.ckpt"
     else:
-        pretrained_backbone_checkpoint_filename = f"../saves/backbones/{repetition}/{import_name}.pth"
+        # pretrained_backbone_checkpoint_filename = f"../saves/backbones/{repetition}/{import_name}.pth"
+        pretrained_backbone_checkpoint_filename = f"../saves/backbones/{aux}/{import_name}.pth"
     print(f'Loading pretrained backbone from {pretrained_backbone_checkpoint_filename}')
     backbone = load_pretrained_backbone(pretrained_backbone_checkpoint_filename, mode=mode)
 

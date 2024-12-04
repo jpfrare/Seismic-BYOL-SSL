@@ -103,29 +103,29 @@ plot_metrics(
 )
 plot_metrics(
     data_file="evaluation_results.csv",  # CSV file with evaluation results
-    output_file="outputs/donstream_f3_full.png",  # Output file for the plot
+    output_file="outputs/downstream_f3_full.png",  # Output file for the plot
     metric="iou",  # Metric to plot: "iou" or "f1"
-    selected_backbones=["f3", 'f3_norm', "seam_ai", 'seam_ai_norm', "both", 'both_N', 'COCO', 'imagenet '],  # Backbones to display
+    selected_backbones=["f3", 'f3_norm', "seam_ai", 'seam_ai_norm', "both", 'both_N', 'COCO', 'imagenet', 'seg', 'sup'],  # Backbones to display
     selected_data="f3"  # Data to filter by (set to None for all data)
 )
 plot_metrics(
     data_file="evaluation_results.csv",  # CSV file with evaluation results
     output_file="outputs/downstream_f3_N_full.png",  # Output file for the plot
     metric="iou",  # Metric to plot: "iou" or "f1"
-    selected_backbones=["f3", 'f3_norm', "seam_ai", 'seam_ai_norm', "both", 'both_N', 'COCO', 'imagenet '],  # Backbones to display
+    selected_backbones=["f3", 'f3_norm', "seam_ai", 'seam_ai_norm', "both", 'both_N', 'COCO', 'imagenet', 'seg', 'sup'],  # Backbones to display
     selected_data="f3_N"  # Data to filter by (set to None for all data)
 )
 plot_metrics(
     data_file="evaluation_results.csv",  # CSV file with evaluation results
     output_file="outputs/downstream_seam_ai_full.png",  # Output file for the plot
     metric="iou",  # Metric to plot: "iou" or "f1"
-    selected_backbones=["f3", 'f3_norm', "seam_ai", 'seam_ai_norm', "both", 'both_N', 'COCO', 'imagenet '],  # Backbones to display
+    selected_backbones=["f3", 'f3_norm', "seam_ai", 'seam_ai_norm', "both", 'both_N', 'COCO', 'imagenet', 'seg', 'sup'],  # Backbones to display
     selected_data="seam_ai"  # Data to filter by (set to None for all data)
 )
 plot_metrics(
     data_file="evaluation_results.csv",  # CSV file with evaluation results
     output_file="outputs/downstream_seam_ai_N_full.png",  # Output file for the plot
     metric="iou",  # Metric to plot: "iou" or "f1"
-    selected_backbones=["f3", 'f3_norm', "seam_ai", 'seam_ai_norm', "both", 'both_N', 'COCO', 'imagenet '],  # Backbones to display
+    selected_backbones=["f3", 'f3_norm', "seam_ai", 'seam_ai_norm', "both", 'both_N', 'COCO', 'imagenet', 'seg', 'sup'],  # Backbones to display
     selected_data="seam_ai_N"  # Data to filter by (set to None for all data)
 )
