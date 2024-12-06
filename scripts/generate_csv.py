@@ -25,8 +25,9 @@ def generate_csv_from_models(models_folder, output_csv="evaluation_results.csv")
     existing_hashes = {} if df.empty else dict(zip(df['id'], df.index))
 
     # Walk through the models folder and its subfolders
-    # for repetition in [f'V{i}' for i in range(2, 9)]:  # Example with repetitions V1 and V2
-    for repetition in ['V9', 'V10']:
+    # repetition_aux = [f'V{i}' for i in range(1, 11)]
+    for repetition in [f'V{i}' for i in range(11, 21)]:  # Example with repetitions V1 and V2
+    # for repetition in ['V9', 'V10']:
         repetition_folder = f'{models_folder}/{repetition}'
 
         if not os.path.exists(repetition_folder):
@@ -34,7 +35,8 @@ def generate_csv_from_models(models_folder, output_csv="evaluation_results.csv")
         
         for pretrain in ["f3", "f3_norm", "seam_ai", "seam_ai_norm", "both", "both_N", "COCO", "IMAGENET", "sup", "seg"]:
             for data in ["f3", "f3_N", "seam_ai", "seam_ai_N"]:
-                for cap in [0.01, 0.1, 0.5, 1]:
+                # for cap in [0.01, 0.1, 0.5, 1]:
+                for cap in [0.01]:
 
                     # Determine model name based on pretrain and other parameters
                     if pretrain in ['f3', 'seam_ai', 'both', 'f3_norm', 'seam_ai_norm', 'both_N']:
