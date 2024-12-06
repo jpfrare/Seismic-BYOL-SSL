@@ -75,7 +75,7 @@ def plot_metrics(data_file, output_file, metric="iou", selected_backbones=None, 
 # Example usage:
 plot_metrics(
     data_file="evaluation_results.csv",  # CSV file with evaluation results
-    output_file="outputs/donstream_f3.png",  # Output file for the plot
+    output_file="outputs/downstream_f3.png",  # Output file for the plot
     metric="iou",  # Metric to plot: "iou" or "f1"
     selected_backbones=["f3", 'f3_norm', "seam_ai", 'seam_ai_norm', "both", 'both_N'],  # Backbones to display
     selected_data="f3"  # Data to filter by (set to None for all data)
