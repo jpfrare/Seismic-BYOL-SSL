@@ -7,73 +7,68 @@ import numpy as np
 
 def main():
     
-    report_name = 'folds_eval_25_10'
+    report_name = 'final_folds_eval_04'
     
     data = 'f3'
-    main_path = '../../shared_data/seismic_vinicius/'
-    
-    # list_of_partitions = ['f3_fold_0', 'f3_fold_1', 'f3_fold_2', 'f3_fold_3', 'f3_fold_4', 
-    #                     'f3_random_0', 'f3_random_1', 'f3_random_2', 'f3_random_3', 'f3_random_4', 
-    #                     'f3_uniform_split', 'f3_highest_mse']
-    # list_of_models = ['split_0', 'split_1', 'split_2', 'split_3', 'split_4', 
-    #                   'random_0', 'random_1', 'random_2', 'random_3', 'random_4',
-    #                   'uniform', 'high_mse']
-    
-    repetition = 'V_0.04'
-    
-    list_of_partitions = [
-        'f3_fold_0',
-        'f3_fold_0_cropped',
-        'f3_fold_0_il',
-        'f3_fold_0_xl',
-        'f3_random_3',
-        'f3_fold_4',
-        'f3_fold_4_cropped',
-        'f3_fold_4_il',
-        'f3_fold_4_xl',
-        'f3_blocks'
+
+    list_of_paths = [
+        # f3 ilan
+        '../data/f3',
+        '../data/f3',
+        '../data/f3',        
+        # f3 original
+        '../../shared_data/seismic_vinicius/f3',
+        '../../shared_data/seismic_vinicius/f3',
+        '../../shared_data/seismic_vinicius/f3',
+        # f3 com val do fold 0 com contaminação (sem crop)
+        '../../shared_data/seismic_vinicius/f3_fold_0_final_un',
+        '../../shared_data/seismic_vinicius/f3_fold_0_final_un',
+        '../../shared_data/seismic_vinicius/f3_fold_0_final_un',
+        # f3 com val do fold 0 sem contaminação (cropped)
+        '../../shared_data/seismic_vinicius/f3_fold_0_final_crop',
+        '../../shared_data/seismic_vinicius/f3_fold_0_final_crop',
+        '../../shared_data/seismic_vinicius/f3_fold_0_final_crop',
     ]
+    
     
     list_of_models = [
-        'f3_fold_0',
-        'f3_fold_0_cropped',
-        'f3_fold_0_il',
-        'f3_fold_0_xl',
-        'f3_random_3',
-        'f3_fold_4',
-        'f3_fold_4_cropped',
-        'f3_fold_4_il',
-        'f3_fold_4_xl',
-        'f3_blocks'
-    ]
-
-
-    # list_of_partitions = ['dataset_random/', 'dataset_uniform/', 'dataset_window/', 'highest_mse_pair/']
-    # list_of_models = ['random', 'uniform', 'window', 'high_mse_pair']
+        'final_f3_ilan',
+        'final_f3_ilan-v1',
+        'final_f3_ilan-v2',
+        'final_f3_original',
+        'final_f3_original-v1',
+        'final_f3_original-v2',
+        'final_fold_0_crop',
+        'final_fold_0_crop-v1',
+        'final_fold_0_crop-v2',
+        'final_fold_0_un',
+        'final_fold_0_un-v1',
+        'final_fold_0_un-v2',
+    ]    
     
-    # list_of_models = ['window_1', 'mse_pair_1']
-    # list_of_partitions = ['dataset_window/', 'highest_mse_pair/']
     
+    repetition = 'V_0.04'
+
     with open(report_name + '.txt', 'w') as f:
         f.write('---------------------------------------\n')
-        f.write(f'Partitions: {list_of_partitions}\n')
         f.write(f'Models: {list_of_models}\n')
         f.write('---------------------------------------\n')
     
-    for i in range(len(list_of_partitions)):
-        partition = list_of_partitions[i]
-        model = list_of_models[i]
-        
-        root_dir = main_path + partition
-        
+
+    for idx, model in enumerate(list_of_models):
+                
+        path = list_of_paths[idx]
+
+        print(f'---------- Path: {path} ----------')
+
         with open(report_name + '.txt', 'a') as f:
-            f.write(f'------------------ {partition} ------------------\n')
+            f.write(f'------------------ {model} ------------------\n')
         
         iou, f1 = eval_func(import_name=model,
                   mode='supervised',
                   dataset=data,
                   repetition=repetition,
-                  root_dir=root_dir,
+                  root_dir=path,
                   )
 
         with open(report_name + '.txt', 'a') as f:

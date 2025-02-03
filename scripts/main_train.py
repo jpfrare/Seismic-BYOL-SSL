@@ -59,87 +59,88 @@ def main():
         f.write('---------------------------------------\n')
     
     
-    # for num, repetition in enumerate(list_of_repets):
-    #     for pretrain in list_of_pretrains:
-    #         for data in list_of_datas:
+    for num, repetition in enumerate(list_of_repets):
+        for pretrain in list_of_pretrains:
+            for data in list_of_datas:
                 
-    #             if data == 'f3':
-    #                 root_dir = '../data/f3/'
-    #             elif data == 'seam_ai':
-    #                 root_dir = '../data/seam_ai/'
-    #             else:
-    #                 raise ValueError('Data not found. Must be one of "f3" or "seam_ai"')
+                if data == 'f3':
+                    root_dir = '../data/f3/'
+                elif data == 'seam_ai':
+                    root_dir = '../data/seam_ai/'
+                else:
+                    raise ValueError('Data not found. Must be one of "f3" or "seam_ai"')
                 
-    #             with open(report_path + f'{REPORT_NAME}.txt', 'a') as f:
-    #                 f.write(f'------------------ Pre on {pretrain} and train on {data} ------------------\n')
-    #             for cap in list_of_caps:
+                with open(report_path + f'{REPORT_NAME}.txt', 'a') as f:
+                    f.write(f'------------------ Pre on {pretrain} and train on {data} ------------------\n')
+                for cap in list_of_caps:
                     
-    #                 print(30*'*-')
-    #                 print(f'Running with data {data} and model pretrained in {pretrain} with cap {cap*100:.0f}%. ')
-    #                 print(30*'*-')
+                    print(30*'*-')
+                    print(f'Running with data {data} and model pretrained in {pretrain} with cap {cap*100:.0f}%. ')
+                    print(30*'*-')
                 
-    #                 if pretrain == 'f3' or pretrain == 'seam_ai' or pretrain == 'both':
-    #                     mode = 'byol'
-    #                     supervised = False
-    #                     import_name = f'{repetition}_E300_B32_S256_{pretrain}'
-    #                     save_name = f'{repetition}_pre_{pretrain}_train_{data}_cap_{cap*100:.0f}%'
+                    if pretrain == 'f3' or pretrain == 'seam_ai' or pretrain == 'both':
+                        mode = 'byol'
+                        supervised = False
+                        import_name = f'{repetition}_E300_B32_S256_{pretrain}'
+                        save_name = f'{repetition}_pre_{pretrain}_train_{data}_cap_{cap*100:.0f}%'
                     
-    #                 elif pretrain == 'seg':
-    #                     mode = 'seg'
-    #                     supervised = False
-    #                     if data == 'f3':
-    #                         import_name = f'{list_of_repets_aux[num]}_sup_seam_ai_cap_100%'
-    #                     elif data == 'seam_ai':
-    #                         import_name = f'{list_of_repets_aux[num]}_sup_f3_cap_100%'
-    #                     save_name = f'{repetition}_pre_{pretrain}_train_{data}_cap_{cap*100:.0f}%'
+                    elif pretrain == 'seg':
+                        mode = 'seg'
+                        supervised = False
+                        if data == 'f3':
+                            import_name = f'{list_of_repets_aux[num]}_sup_seam_ai_cap_100%'
+                        elif data == 'seam_ai':
+                            import_name = f'{list_of_repets_aux[num]}_sup_f3_cap_100%'
+                        save_name = f'{repetition}_pre_{pretrain}_train_{data}_cap_{cap*100:.0f}%'
                         
-    #                 elif pretrain == 'COCO':
-    #                     mode = 'coco'
-    #                     supervised = False
-    #                     # Não importa, não será usado. Deve ser um import válido
-    #                     import_name = f'{repetition}_E300_B32_S256_f3'         
-    #                     save_name = f'{repetition}_pre_COCO_train_{data}_cap_{cap*100:.0f}%'
+                    elif pretrain == 'COCO':
+                        mode = 'coco'
+                        supervised = False
+                        # Não importa, não será usado. Deve ser um import válido
+                        import_name = f'{repetition}_E300_B32_S256_f3'         
+                        save_name = f'{repetition}_pre_COCO_train_{data}_cap_{cap*100:.0f}%'
                     
-    #                 elif pretrain == 'IMAGENET':
-    #                     mode = 'imagenet'
-    #                     supervised = False
-    #                     # Não importa, não será usado. Deve ser um import válido
-    #                     import_name = f'{repetition}_E300_B32_S256_f3'
-    #                     save_name = f'{repetition}_pre_IMAGENET_train_{data}_cap_{cap*100:.0f}%'
+                    elif pretrain == 'IMAGENET':
+                        mode = 'imagenet'
+                        supervised = False
+                        # Não importa, não será usado. Deve ser um import válido
+                        import_name = f'{repetition}_E300_B32_S256_f3'
+                        save_name = f'{repetition}_pre_IMAGENET_train_{data}_cap_{cap*100:.0f}%'
                     
-    #                 elif pretrain == 'sup':
-    #                     mode = 'supervised'
-    #                     supervised = True
-    #                     # Não importa, não será usado. Deve ser um import válido
-    #                     import_name = f'{repetition}_E300_B32_S256_f3'
-    #                     save_name = f'{repetition}_sup_{data}_cap_{cap*100:.0f}%'
+                    elif pretrain == 'sup':
+                        mode = 'supervised'
+                        supervised = True
+                        # Não importa, não será usado. Deve ser um import válido
+                        import_name = f'{repetition}_E300_B32_S256_f3'
+                        save_name = f'{repetition}_sup_{data}_cap_{cap*100:.0f}%'
 
-                    # with open(report_path + f'{REPORT_NAME}.txt', 'a') as f:
-                    #         f.write(f'Running with data {data} and model pretrained in {pretrain} with cap {cap*100:.0f}%. ')
-                    #         f.write(f'Import name: {import_name}\n')
-                    #         f.write(f'Save name: {save_name}\n')
-                    #         f.write(f'Mode: {mode}; Cap: {cap*100:.0f}%; Repetitions: {repetition}; Seed: {list_of_seeds[num]}\n')
+                    with open(report_path + f'{REPORT_NAME}.txt', 'a') as f:
+                            f.write(f'Running with data {data} and model pretrained in {pretrain} with cap {cap*100:.0f}%. ')
+                            f.write(f'Import name: {import_name}\n')
+                            f.write(f'Save name: {save_name}\n')
+                            f.write(f'Mode: {mode}; Cap: {cap*100:.0f}%; Repetitions: {repetition}; Seed: {list_of_seeds[num]}\n')
                         
-    #                 train_func(
-    #                     epocas=EPOCAS,
-    #                     batch_size=BATCH_SIZE,
-    #                     cap=1,
-    #                     import_name=import_name,
-    #                     save_name=save_name,
-    #                     supervised=supervised,
-    #                     freeze=FREEZE,
-    #                     downstream_data=data,
-    #                     mode=mode,
-    #                     repetition=repetition,
-    #                     seed=list_of_seeds[num],
-    #                     root_dir=root_dir,
-    #                     aux=list_of_repets_aux[num]
-    #                 )
+                    save_name = 'teste'
+                    train_func(
+                        epocas=EPOCAS,
+                        batch_size=BATCH_SIZE,
+                        cap=1,
+                        import_name=import_name,
+                        save_name=save_name,
+                        supervised=supervised,
+                        freeze=FREEZE,
+                        downstream_data=data,
+                        mode=mode,
+                        repetition=repetition,
+                        seed=list_of_seeds[num],
+                        root_dir=root_dir,
+                        aux=list_of_repets_aux[num]
+                    )
                         
-    #                 with open(report_path + f'{REPORT_NAME}.txt', 'a') as f:
-    #                     f.write('---------------------------------------\n')
-    #                     f.write('Treinamento finalizado\n')
-    #                     f.write('---------------------------------------\n')
+                    with open(report_path + f'{REPORT_NAME}.txt', 'a') as f:
+                        f.write('---------------------------------------\n')
+                        f.write('Treinamento finalizado\n')
+                        f.write('---------------------------------------\n')
         
                             
 

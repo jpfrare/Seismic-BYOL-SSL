@@ -86,9 +86,9 @@ class SegmentationModel(L.LightningModule):
             IoU = self.IoU(y_hat, y)
             F1 = self.F1(y_hat, y)
             
-            self.log("train_loss", loss)
-            self.log("train_IoU", IoU)
-            self.log("tain_F1", F1)
+            self.log("train_loss", loss, sync_dist=True)
+            self.log("train_IoU", IoU, sync_dist=True)
+            self.log("tain_F1", F1, sync_dist=True)
             return loss
         
         def validation_step(self, batch, batch_idx):
@@ -100,9 +100,9 @@ class SegmentationModel(L.LightningModule):
             val_IoU = self.IoU(y_hat, y)
             val_F1 = self.F1(y_hat.argmax(dim=1), y)
 
-            self.log("val_loss", val_loss)
-            self.log("val_IoU", val_IoU)
-            self.log("val_F1", val_F1)
+            self.log("val_loss", val_loss, sync_dist=True)
+            self.log("val_IoU", val_IoU, sync_dist=True)
+            self.log("val_F1", val_F1, sync_dist=True)
             return val_loss
         
         def test_step(self, batch, batch_idx):
@@ -114,9 +114,9 @@ class SegmentationModel(L.LightningModule):
             test_IoU = self.IoU(y_hat, y)
             test_F1 = self.F1(y_hat.argmax(dim=1), y)
 
-            self.log("test_loss", test_loss)
-            self.log("test_IoU", test_IoU)
-            self.log("test_F1", test_F1)
+            self.log("test_loss", test_loss, sync_dist=True)
+            self.log("test_IoU", test_IoU, sync_dist=True)
+            self.log("test_F1", test_F1, sync_dist=True)
             return test_loss
         
         def configure_optimizers(self):

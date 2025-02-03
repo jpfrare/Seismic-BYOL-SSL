@@ -119,20 +119,13 @@ def build_lightning_trainer(save_name:str, supervised:bool, epocas, reps) -> L.T
         save_top_k=1,
         mode='max',
     )
-    
-    # early_stopping_callback = EarlyStopping(
-    #     monitor='val_IoU',
-    #     patience=10,
-    #     mode='max'
-    # )
-    
+
     return L.Trainer(
         accelerator="gpu",
         max_epochs=epocas,
         logger=CSVLogger("logs", name="Supervised" if supervised else "Pretrained", version=save_name),
         callbacks=[checkpoint_callback],
-        # strategy='ddp_find_unused_parameters_true',
-        devices=[0]
+        # devices=[0]
         )
     
 ### --------------- Main -----------------------------------------------------------------

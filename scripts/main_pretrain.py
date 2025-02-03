@@ -33,7 +33,7 @@ def main():
     
     # list_of_datas = ['seam_ai']
     # list_of_datas = ['f3']
-    list_of_datas = ['both']
+    list_of_datas = ['f3']
     
     with open(report_path + f'{REPORT_NAME}.txt', 'w') as f:
         f.write('Report of the pretraining\n')
@@ -54,7 +54,7 @@ def main():
                 f.write(f'------------------ Pretraining on {data} ------------------\n')
             
             save_name = f'{repetition}_E{EPOCAS}_B{BATCH_SIZE}_S{INPUT_SIZE}_{data}'
-            
+            save_name = 'teste'
             pretrain_func(epocas=EPOCAS,
                         batch_size=BATCH_SIZE,
                         input_size=INPUT_SIZE,
