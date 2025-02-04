@@ -1,9 +1,0 @@
-Report of the training
----------------------------------------
-Datas being used: ['f3']
-Pretrains models: ['seg']
-Caps: [0.01]
-Node: node13[1]
----------------------------------------
------------------- Pre on seg and train on f3 ------------------
-Running with data f3 and model pretrained in seg with cap 1%. 

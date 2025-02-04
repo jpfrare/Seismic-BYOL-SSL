@@ -22,7 +22,7 @@ class PretrainDataset(Dataset):
     def __init__(self, root_dir, transform=None):
         self.root_dir = root_dir
         self.transform = transform
-        self.files = glob.glob(os.path.join(root_dir, "*.tif"))
+        self.files = glob.glob(os.path.join(root_dir, "*.tif*"))
 
     def __len__(self):
         return int(len(self.files))
