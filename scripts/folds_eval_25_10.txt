@@ -1,5 +1,0 @@
----------------------------------------
-Partitions: ['f3_fold_0', 'f3_fold_0_cropped', 'f3_fold_0_il', 'f3_fold_0_xl', 'f3_random_3', 'f3_fold_4', 'f3_fold_4_cropped', 'f3_fold_4_il', 'f3_fold_4_xl', 'f3_blocks']
-Models: ['f3_fold_0', 'f3_fold_0_cropped', 'f3_fold_0_il', 'f3_fold_0_xl', 'f3_random_3', 'f3_fold_4', 'f3_fold_4_cropped', 'f3_fold_4_il', 'f3_fold_4_xl', 'f3_blocks']
----------------------------------------
------------------- f3_fold_0 ------------------

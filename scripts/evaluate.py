@@ -55,14 +55,14 @@ def report_IoU(model, dataset_dl, prefix=""):
 
 # This function must instantiate and configure the datamodule for the downstream task.
 def build_downstream_datamodule(data, root_dir) -> L.LightningDataModule:
-
-    print(f"Root dir: {root_dir}")
-
-    if data == "f3":
+    
+    print(f'Root dir: {root_dir}')
+    
+    if data == 'f3' or data == 'f3_norm':
         print("F3 datas being used")
         return F3SeismicDataModule(root_dir=root_dir, batch_size=8, cap=1)
 
-    elif data == "seam_ai":
+    elif data == 'seam_ai' or data == 'seam_ai_norm':
         print("Parihaka datas being used")
         return ParihakaSeismicDataModule(root_dir=root_dir, batch_size=8, cap=1)
 
@@ -124,10 +124,10 @@ def eval_func(
     # import_name = 'pretreino_COCO_seam_ai_1s%'
 
     # Load the pretrained model
-    downstream_model = load_downstream_model(
-        f"../saves/models/{repetition}/{import_name}.ckpt", mode=mode
-    )
-
+    path = f'../saves/models/{repetition}/{import_name}.ckpt'
+    print(path)
+    downstream_model = load_downstream_model(path, mode=mode)
+    
     # For evaluating the 20 reps of seg pretrain
     # downstream_model = load_downstream_model(f'../saves/models/V_0.01/{import_name}.ckpt', mode=mode)
 
@@ -147,7 +147,9 @@ def eval_func(
 
     train_iou, val_iou, train_f1, val_f1 = 0, 0, 0, 0
 
-    return (train_iou, val_iou, test_iou), (train_f1, val_f1, test_f1)
+    # return (train_iou, val_iou, test_iou), (train_f1, val_f1, test_f1)
+    return {'iou': test_iou, 
+            'f1': test_f1}
 
 
 # if __name__ == "__main__":
