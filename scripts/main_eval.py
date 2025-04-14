@@ -9,110 +9,119 @@ A ideia é usar listas e dicionários para armazenar os parâmetros de cada mode
 
 
 def main():
-    
-    REPORT_NAME = 'eval_seg_10x_2'
-    
+
+    REPORT_NAME = "eval_seg_10x_2"
+
     # REPORT_NAME = 'eval_f3_13[0]'
 
-    report_path = 'reports/'
-            
-    list_of_datas = ['f3', 'seam_ai']
+    report_path = "reports/"
+
+    list_of_datas = ["f3", "seam_ai"]
     # list_of_datas = ['f3']
     # list_of_datas = ['seam_ai']
-    
+
     # list_of_pretrains = ['f3', 'seam_ai', 'COCO', 'IMAGENET', 'both', 'sup']
     # list_of_pretrains = ['f3', 'seam_ai', 'both']
     # list_of_pretrains = ['COCO', 'IMAGENET', 'sup']
     # list_of_pretrains = ['seam_ai']
-    list_of_pretrains = ['seg']
+    list_of_pretrains = ["seg"]
     # teste
-        
-    list_of_repets = [f'V{i}' for i in range(2, 11)] + ['V01']
+
+    list_of_repets = [f"V{i}" for i in range(2, 11)] + ["V01"]
     # list_of_repets = [f'V{i}' for i in range(2, 21)] + ['V01']
 
-
-        
     list_of_caps = [0.01, 0.1, 0.5, 1.0]
     # list_of_caps = [0.01]
-    
-    with open(report_path + f'{REPORT_NAME}.txt', 'w') as f:
-        f.write('Report of the evaluation of the models\n')
-        f.write('---------------------------------------\n')
-        f.write(f'Datas being used: {list_of_datas}\n')
-        f.write(f'Pretrains models: {list_of_pretrains}\n')
-        f.write(f'Caps: {list_of_caps}\n')
-        
-    
-    
-    
+
+    with open(report_path + f"{REPORT_NAME}.txt", "w") as f:
+        f.write("Report of the evaluation of the models\n")
+        f.write("---------------------------------------\n")
+        f.write(f"Datas being used: {list_of_datas}\n")
+        f.write(f"Pretrains models: {list_of_pretrains}\n")
+        f.write(f"Caps: {list_of_caps}\n")
+
     for data in list_of_datas:
-        
-        if data == 'f3':
-            root_dir = '../data/f3/'
-        elif data == 'seam_ai':
-            root_dir = '../data/seam_ai/'
+
+        if data == "f3":
+            root_dir = "../data/f3/"
+        elif data == "seam_ai":
+            root_dir = "../data/seam_ai/"
         else:
             raise ValueError(f"Unknown dataset: {data}")
-        
+
         for pretrain in list_of_pretrains:
-            
-            with open(report_path + f'{REPORT_NAME}.txt', 'a') as f:
-                f.write(f'------------------ Pre on {pretrain} and train on {data} ------------------\n')
-            
+
+            with open(report_path + f"{REPORT_NAME}.txt", "a") as f:
+                f.write(
+                    f"------------------ Pre on {pretrain} and train on {data} ------------------\n"
+                )
+
             for cap in list_of_caps:
 
-                print(30*'*-')
-                print(f'''Running with data {data} and model pretrained in  {pretrain} with cap {cap*100:.0f}%. Evaluating test dataset''')
-                print(30*'*-')
+                print(30 * "*-")
+                print(
+                    f"""Running with data {data} and model pretrained in  {pretrain} with cap {cap*100:.0f}%. Evaluating test dataset"""
+                )
+                print(30 * "*-")
                 list_of_iou = []
-                list_of_f1 = []    
-                
-                for repetition in list_of_repets:
-                    
+                list_of_f1 = []
 
-                    if pretrain == 'f3' or pretrain == 'seam_ai' or pretrain == 'both':
-                        mode = 'byol'
-                        import_name = f'{repetition}_pre_{pretrain}_train_{data}_cap_{cap*100:.0f}%'
-                    elif pretrain == 'COCO':
-                        mode = 'coco'
-                        import_name = f'{repetition}_pre_COCO_train_{data}_cap_{cap*100:.0f}%'
-                    elif pretrain == 'IMAGENET':
-                        mode = 'imagenet'
-                        import_name = f'{repetition}_pre_IMAGENET_train_{data}_cap_{cap*100:.0f}%'
-                    elif pretrain == 'sup':
-                        mode = 'supervised'
-                        import_name = f'{repetition}_sup_{data}_cap_{cap*100:.0f}%'
-                    elif pretrain == 'seg':
-                        mode = 'seg'
+                for repetition in list_of_repets:
+
+                    if pretrain == "f3" or pretrain == "seam_ai" or pretrain == "both":
+                        mode = "byol"
+                        import_name = f"{repetition}_pre_{pretrain}_train_{data}_cap_{cap*100:.0f}%"
+                    elif pretrain == "COCO":
+                        mode = "coco"
+                        import_name = (
+                            f"{repetition}_pre_COCO_train_{data}_cap_{cap*100:.0f}%"
+                        )
+                    elif pretrain == "IMAGENET":
+                        mode = "imagenet"
+                        import_name = (
+                            f"{repetition}_pre_IMAGENET_train_{data}_cap_{cap*100:.0f}%"
+                        )
+                    elif pretrain == "sup":
+                        mode = "supervised"
+                        import_name = f"{repetition}_sup_{data}_cap_{cap*100:.0f}%"
+                    elif pretrain == "seg":
+                        mode = "seg"
                         # if data == 'f3':
                         #     import_name = f'{repetition}_pre_seg_train_{data}_cap_{cap*100:.0f}%'
                         # elif data == 'seam_ai':
                         #     import_name = f'{repetition}_pre_seg_train_{data}_cap_{cap*100:.0f}%'
-                        import_name = f'{repetition}_pre_seg_train_{data}_cap_{cap*100:.0f}%'
+                        import_name = (
+                            f"{repetition}_pre_seg_train_{data}_cap_{cap*100:.0f}%"
+                        )
 
-                    iou, f1 = eval_func(import_name=import_name,
-                                mode=mode,
-                                dataset=data,
-                                repetition=repetition,
-                                root_dir=root_dir,
-                                )
+                    iou, f1 = eval_func(
+                        import_name=import_name,
+                        mode=mode,
+                        dataset=data,
+                        repetition=repetition,
+                        root_dir=root_dir,
+                    )
 
                     list_of_iou.append(iou[2])
                     list_of_f1.append(f1[2])
-                    
+
                     # with open(report_path + f'{REPORT_NAME}.txt', 'a') as f:
-                        # f.write(30*'--' + '\n')
-                        # f.write(import_name + '\n')
-                        # f.write(f'data: {data}, pretrain: {pretrain}, cap: {cap*100:.0f}% --> IoU: {iou[2]:.3f}; F1:{f1[2]:.3f}\n')
-                    
-                with open(report_path + f'{REPORT_NAME}.txt', 'a') as f:
-                    f.write(30*'--' + '\n')
-                    f.write(import_name + '\n')
+                    # f.write(30*'--' + '\n')
+                    # f.write(import_name + '\n')
+                    # f.write(f'data: {data}, pretrain: {pretrain}, cap: {cap*100:.0f}% --> IoU: {iou[2]:.3f}; F1:{f1[2]:.3f}\n')
+
+                with open(report_path + f"{REPORT_NAME}.txt", "a") as f:
+                    f.write(30 * "--" + "\n")
+                    f.write(import_name + "\n")
                     # f.write(f'data: {data}, pretrain: {pretrain}, cap: {cap*100:.0f}% --> IoU: {iou[2]:.3f}; F1:{f1[2]:.3f}\n')
                     # f.write(f'{iou[0]:.3f} {iou[1]:.3f} {iou[2]:.3f} ...... {f1[0]:.3f} {f1[1]:.3f} {f1[2]:.3f}\n')
-                    f.write(f'mean: {np.mean(list_of_iou):.2f}; std: {np.std(list_of_iou):.2f}\n')
-                    f.write(f'max: {np.max(list_of_iou):.2f}; min: {np.min(list_of_iou):.2f}\n')
-                    f.write(f'iou = {list_of_iou}\n')
+                    f.write(
+                        f"mean: {np.mean(list_of_iou):.2f}; std: {np.std(list_of_iou):.2f}\n"
+                    )
+                    f.write(
+                        f"max: {np.max(list_of_iou):.2f}; min: {np.min(list_of_iou):.2f}\n"
+                    )
+                    f.write(f"iou = {list_of_iou}\n")
 
 
 if __name__ == "__main__":
