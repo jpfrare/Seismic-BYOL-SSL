@@ -1,5 +1,6 @@
 import sys
-sys.path.append('..')
+
+sys.path.append("..")
 
 from torch import nn
 import torch
@@ -15,15 +16,19 @@ from transforms.byol import BYOLTransform
 from data_modules.Pretrain_dataset import PretrainDataModule as ByolDataModule
 from pytorch_lightning.loggers import CSVLogger
 
+
 # This function must save the weights of the pretrained model
 def pretext_save_backbone_weights(pretext_model, checkpoint_filename):
     print(f"Saving backbone pretrained weights at {checkpoint_filename}")
     torch.save(pretext_model.backbone.state_dict(), checkpoint_filename)
 
+
 def num_files(path):
     import os
+
     list = os.listdir(path)
     return len(list)
+
 
 ### ---------- DataModule -----------------------------------------------------------
 
@@ -52,37 +57,43 @@ def build_pretext_datamodule(batch, input_size, data:str = 'both', path:str = ''
     
     # path = f'../data/{data}/images/'
     # The selection of path/train is inside of the datamodule
-    
-    print(f'******* Data Loaded: {data} *******')
-    print(f'******* Path: {path} *******')
-    
-    return ByolDataModule(root_dir=path,
-                                batch_size=batch,
-                                transform=transform), num_of_files
+
+    print(f"******* Data Loaded: {data} *******")
+    print(f"******* Path: {path} *******")
+
+    return (
+        ByolDataModule(root_dir=path, batch_size=batch, transform=transform),
+        num_of_files,
+    )
+
 
 ### --------------- LightningModule --------------------------------------------------
 
 # This function must instantiate and configure the pretext model
 
-def build_pretext_model(schedule:int=9000 ) -> L.LightningModule:
+
+def build_pretext_model(schedule: int = 9000) -> L.LightningModule:
     # Build the backbone
-    
+
     backbone = models.segmentation.deeplabv3_resnet50().backbone
-        
-    return byol_module.BYOLModel(backbone=backbone,
-                                learning_rate=0.1,
-                                schedule=schedule,
-                                )
-    
+
+    return byol_module.BYOLModel(
+        backbone=backbone,
+        learning_rate=0.1,
+        schedule=schedule,
+    )
+
+
 ### --------------- Trainer -------------------------------------------------------------
 
 # This function must instantiate and configure the lightning trainer
 
-def build_lightning_trainer(save_name:str, epocas:int) -> L.Trainer:
+
+def build_lightning_trainer(save_name: str, epocas: int) -> L.Trainer:
     return L.Trainer(
         accelerator="gpu",
         max_epochs=epocas,
-        enable_checkpointing=False, 
+        enable_checkpointing=False,
         logger=CSVLogger("logs", name="Byol", version=save_name),
         # strategy='ddp_find_unused_parameters_true',
         devices=[2],
@@ -105,7 +116,7 @@ def pretrain_func(epocas:int = 300,
     schedule = int((num_of_files // batch_size) * epocas) 
     # Used to determine the cossine schedule in the pretext model
     # Numero de batches por epoca: num_of_files // batch_size pela quantidade de épocas
-    
+
     pretext_model = build_pretext_model(schedule=schedule)
     lightning_trainer = build_lightning_trainer(save_name, epocas)
 
@@ -115,8 +126,6 @@ def pretrain_func(epocas:int = 300,
     # Save the backbone weights
     output_filename = f"../saves/backbones/{repetition}/{save_name}.pth"
     pretext_save_backbone_weights(pretext_model, output_filename)
-
-
 
 
 if __name__ == "__main__":

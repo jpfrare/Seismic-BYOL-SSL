@@ -13,6 +13,7 @@ import random
 
 ## ----------------- F3 -------------------
 
+
 class F3SeismicDataset(Dataset):
     """
     A custom dataset class for the F3 seismic dataset.
@@ -61,7 +62,7 @@ class F3SeismicDataset(Dataset):
         Returns
         -------
             tuple
-                A tuple containing the image and label of the sample. 
+                A tuple containing the image and label of the sample.
                 In case transform/target_transform methods are provided, it returns the trasformed version of the image/label.
         """
         img, label = self._read_img_label(idx)
@@ -70,14 +71,13 @@ class F3SeismicDataset(Dataset):
             img = self.transform(img)
         if self.target_transform:
             label = self.target_transform(label)
-            
 
         return img, label
 
     @lru_cache(maxsize=None)
     def _read_img_label(self, idx):
         """
-        Read the sample image and its respective label from files. 
+        Read the sample image and its respective label from files.
 
         Parameters
         ----------
@@ -87,27 +87,26 @@ class F3SeismicDataset(Dataset):
         Returns
         -------
             tuple
-                A tuple containing the image and label of the sample. 
-        """        
+                A tuple containing the image and label of the sample.
+        """
         img = tiff.imread(self.data[idx])
         img_base_name = os.path.basename(self.data[idx]).split(".")[0]
-
 
         label = np.array(
             Image.open(os.path.join(self.labels_dir, img_base_name + ".png"))
         )
-        
+
         if len(img.shape) == 2 or (len(img.shape) == 3 and img.shape[2] == 1):
             # Se for grayscale (1 canal), aumenta para 3 canais copiando o valor existente
             img = np.repeat(img[..., np.newaxis], 3, axis=2)
-        
+
         img = self._pad(img, [256, 704])
         label = self._pad(label, [256, 704])
         return img, label
 
     def _pad(self, x, target_size):
         """
-        Pads the image to achieve the target size. 
+        Pads the image to achieve the target size.
 
         Parameters
         ----------
@@ -119,8 +118,8 @@ class F3SeismicDataset(Dataset):
         Returns
         -------
             padded_img
-                The padded image. 
-        """        
+                The padded image.
+        """
         h, w = x.shape[:2]
         pad_h = max(0, target_size[0] - h)
         pad_w = max(0, target_size[1] - w)
@@ -135,6 +134,7 @@ class F3SeismicDataset(Dataset):
 
         return padded_img
 
+
 class F3SeismicDataModule(L.LightningDataModule):
     """
     A custom dataset module for the F3 seismic dataset.
@@ -146,7 +146,7 @@ class F3SeismicDataModule(L.LightningDataModule):
         batch_size: int
             The batch size for the DataLoaders.
         shuffle_dataset_indices: bool
-            If true, the indices of the train, validation, and test datasets will be shuffled. 
+            If true, the indices of the train, validation, and test datasets will be shuffled.
             They are only shuffled once, at the DataModule initialization.
         transform: callable, optional
             A function/transform that takes in a np.array representing the sample feattures and returns a transformed version of this sample.
@@ -156,17 +156,19 @@ class F3SeismicDataModule(L.LightningDataModule):
             A function/transform that takes in a np.array representing the sample label and returns a transformed version of this label
             This function will be employed on the train, validation and test datasets.
             Default is None.
-    """    
-    def __init__(self, 
-                    root_dir, 
-                    batch_size=32, 
-                    num_workers=8, 
-                    shuffle_dataset_indices = True,
-                    transform=None, 
-                    target_transform=None,
-                    cap=1.0,
-                    seed=42,
-                    ):
+    """
+
+    def __init__(
+        self,
+        root_dir,
+        batch_size=32,
+        num_workers=8,
+        shuffle_dataset_indices=True,
+        transform=None,
+        target_transform=None,
+        cap=1.0,
+        seed=42,
+    ):
         super().__init__()
         self.root_dir = root_dir
         self.batch_size = batch_size
@@ -178,27 +180,33 @@ class F3SeismicDataModule(L.LightningDataModule):
         self.seed = seed
         self.setup()
 
-    def setup(self, stage:str = None):
+    def setup(self, stage: str = None):
 
-        self.data_dir   = os.path.join(self.root_dir, "images")
+        self.data_dir = os.path.join(self.root_dir, "images")
         self.labels_dir = os.path.join(self.root_dir, "annotations")
 
         self.train_dataset = F3SeismicDataset(
-            self.data_dir + "/train", self.labels_dir + "/train", 
-            transform=self.transform, target_transform=self.target_transform
+            self.data_dir + "/train",
+            self.labels_dir + "/train",
+            transform=self.transform,
+            target_transform=self.target_transform,
         )
         self.val_dataset = F3SeismicDataset(
-            self.data_dir + "/val", self.labels_dir + "/val",
-            transform=self.transform, target_transform=self.target_transform
+            self.data_dir + "/val",
+            self.labels_dir + "/val",
+            transform=self.transform,
+            target_transform=self.target_transform,
         )
         self.test_dataset = F3SeismicDataset(
-            self.data_dir + "/test", self.labels_dir + "/test",
-            transform=self.transform, target_transform=self.target_transform
+            self.data_dir + "/test",
+            self.labels_dir + "/test",
+            transform=self.transform,
+            target_transform=self.target_transform,
         )
 
         self.train_indices = list(range(len(self.train_dataset)))
-        self.val_indices   = list(range(len(self.val_dataset)))
-        self.test_indices  = list(range(len(self.test_dataset)))
+        self.val_indices = list(range(len(self.val_dataset)))
+        self.test_indices = list(range(len(self.test_dataset)))
         random.seed(self.seed)
         if self.shuffle_dataset_indices:
             random.shuffle(self.train_indices)
@@ -207,12 +215,12 @@ class F3SeismicDataModule(L.LightningDataModule):
 
     def train_dataloader(self, cap: float = 1.0, drop_last=True):
         """
-        Retrieves the training dataloader. 
+        Retrieves the training dataloader.
 
         Parameters
         ----------
             cap: float
-                Percentage of the dataset to be used in the dataloader. 
+                Percentage of the dataset to be used in the dataloader.
                 Ex: cap=0.4 implies only the first 40% of the dataset items will be retrieved by the dataloader.
             drop_last: Bool
                 If True, the last batch is dropped by the dataloader (ensures all batches have the same size)
@@ -220,24 +228,26 @@ class F3SeismicDataModule(L.LightningDataModule):
         Returns
         -------
             dataloader
-                The training dataloader. 
-        """        
-        N = int(self.cap*len(self.train_dataset))
+                The training dataloader.
+        """
+        N = int(self.cap * len(self.train_dataset))
         dataset = torch.utils.data.Subset(self.train_dataset, self.train_indices[0:N])
         return DataLoader(
-            dataset, batch_size=self.batch_size, 
-            shuffle=True, drop_last=drop_last,
-            num_workers = self.num_workers
+            dataset,
+            batch_size=self.batch_size,
+            shuffle=True,
+            drop_last=drop_last,
+            num_workers=self.num_workers,
         )
 
     def val_dataloader(self, cap: float = 1.0, drop_last=True):
         """
-        Retrieves the validation dataloader. 
+        Retrieves the validation dataloader.
 
         Parameters
         ----------
             cap: float
-                Percentage of the dataset to be used in the dataloader. 
+                Percentage of the dataset to be used in the dataloader.
                 Ex: cap=0.4 implies only the first 40% of the dataset items will be retrieved by the dataloader.
             drop_last: Bool
                 If True, the last batch is dropped by the dataloader (ensures all batches have the same size)
@@ -245,25 +255,27 @@ class F3SeismicDataModule(L.LightningDataModule):
         Returns
         -------
             dataloader
-                The validation dataloader. 
-        """        
+                The validation dataloader.
+        """
         # N = int(self.cap*len(self.val_dataset))
         N = len(self.val_dataset)
         dataset = torch.utils.data.Subset(self.val_dataset, self.val_indices[0:N])
         return DataLoader(
-            dataset, batch_size=self.batch_size, 
-            shuffle=False, drop_last=drop_last,
-            num_workers = self.num_workers
+            dataset,
+            batch_size=self.batch_size,
+            shuffle=False,
+            drop_last=drop_last,
+            num_workers=self.num_workers,
         )
 
     def test_dataloader(self, cap: float = 1.0, drop_last=True):
         """
-        Retrieves the test dataloader. 
+        Retrieves the test dataloader.
 
         Parameters
         ----------
             cap: float
-                Percentage of the dataset to be used in the dataloader. 
+                Percentage of the dataset to be used in the dataloader.
                 Ex: cap=0.4 implies only the first 40% of the dataset items will be retrieved by the dataloader.
             drop_last: Bool
                 If True, the last batch is dropped by the dataloader (ensures all batches have the same size)
@@ -271,19 +283,22 @@ class F3SeismicDataModule(L.LightningDataModule):
         Returns
         -------
             dataloader
-                The test dataloader. 
-        """        
+                The test dataloader.
+        """
         # N = int(self.cap*len(self.test_dataset))
         N = len(self.test_dataset)
         dataset = torch.utils.data.Subset(self.test_dataset, self.test_indices[0:N])
         return DataLoader(
-            dataset, batch_size=self.batch_size, 
-            shuffle=False, drop_last=drop_last,
-            num_workers = self.num_workers
+            dataset,
+            batch_size=self.batch_size,
+            shuffle=False,
+            drop_last=drop_last,
+            num_workers=self.num_workers,
         )
 
 
 ## ---------------- Parihaka -----------------
+
 
 class ParihakaSeismicDataset(Dataset):
     """
@@ -333,7 +348,7 @@ class ParihakaSeismicDataset(Dataset):
         Returns
         -------
             tuple
-                A tuple containing the image and label of the sample. 
+                A tuple containing the image and label of the sample.
                 In case transform/target_transform methods are provided, it returns the trasformed version of the image/label.
         """
         img, label = self._read_img_label(idx)
@@ -348,7 +363,7 @@ class ParihakaSeismicDataset(Dataset):
     @lru_cache(maxsize=None)
     def _read_img_label(self, idx):
         """
-        Read the sample image and its respective label from files. 
+        Read the sample image and its respective label from files.
 
         Parameters
         ----------
@@ -358,8 +373,8 @@ class ParihakaSeismicDataset(Dataset):
         Returns
         -------
             tuple
-                A tuple containing the image and label of the sample. 
-        """        
+                A tuple containing the image and label of the sample.
+        """
         img = tiff.imread(self.data[idx])
         img_base_name = os.path.basename(self.data[idx]).split(".")[0]
 
@@ -372,7 +387,7 @@ class ParihakaSeismicDataset(Dataset):
 
     def _pad(self, x, target_size):
         """
-        Pads the image to achieve the target size. 
+        Pads the image to achieve the target size.
 
         Parameters
         ----------
@@ -384,8 +399,8 @@ class ParihakaSeismicDataset(Dataset):
         Returns
         -------
             padded_img
-                The padded image. 
-        """        
+                The padded image.
+        """
         h, w = x.shape[:2]
         pad_h = max(0, target_size[0] - h)
         pad_w = max(0, target_size[1] - w)
@@ -400,6 +415,7 @@ class ParihakaSeismicDataset(Dataset):
 
         return padded_img
 
+
 class ParihakaSeismicDataModule(L.LightningDataModule):
     """
     A custom dataset module for the Parihaka seismic dataset.
@@ -411,7 +427,7 @@ class ParihakaSeismicDataModule(L.LightningDataModule):
         batch_size: int
             The batch size for the DataLoaders.
         shuffle_dataset_indices: bool
-            If true, the indices of the train, validation, and test datasets will be shuffled. 
+            If true, the indices of the train, validation, and test datasets will be shuffled.
             They are only shuffled once, at the DataModule initialization.
         transform: callable, optional
             A function/transform that takes in a np.array representing the sample feattures and returns a transformed version of this sample.
@@ -421,17 +437,19 @@ class ParihakaSeismicDataModule(L.LightningDataModule):
             A function/transform that takes in a np.array representing the sample label and returns a transformed version of this label
             This function will be employed on the train, validation and test datasets.
             Default is None.
-    """    
-    def __init__(self, 
-                    root_dir, 
-                    batch_size=32, 
-                    num_workers=8, 
-                    shuffle_dataset_indices = True,
-                    transform=None, 
-                    target_transform=None,
-                    cap=1.0,
-                    seed=42,
-                    ):
+    """
+
+    def __init__(
+        self,
+        root_dir,
+        batch_size=32,
+        num_workers=8,
+        shuffle_dataset_indices=True,
+        transform=None,
+        target_transform=None,
+        cap=1.0,
+        seed=42,
+    ):
         super().__init__()
         self.root_dir = root_dir
         self.batch_size = batch_size
@@ -443,27 +461,33 @@ class ParihakaSeismicDataModule(L.LightningDataModule):
         self.seed = seed
         self.setup()
 
-    def setup(self, stage:str = None):
+    def setup(self, stage: str = None):
 
-        self.data_dir   = os.path.join(self.root_dir, "images")
+        self.data_dir = os.path.join(self.root_dir, "images")
         self.labels_dir = os.path.join(self.root_dir, "annotations")
 
         self.train_dataset = ParihakaSeismicDataset(
-            self.data_dir + "/train", self.labels_dir + "/train", 
-            transform=self.transform, target_transform=self.target_transform
+            self.data_dir + "/train",
+            self.labels_dir + "/train",
+            transform=self.transform,
+            target_transform=self.target_transform,
         )
         self.val_dataset = ParihakaSeismicDataset(
-            self.data_dir + "/val", self.labels_dir + "/val",
-            transform=self.transform, target_transform=self.target_transform
+            self.data_dir + "/val",
+            self.labels_dir + "/val",
+            transform=self.transform,
+            target_transform=self.target_transform,
         )
         self.test_dataset = ParihakaSeismicDataset(
-            self.data_dir + "/test", self.labels_dir + "/test",
-            transform=self.transform, target_transform=self.target_transform
+            self.data_dir + "/test",
+            self.labels_dir + "/test",
+            transform=self.transform,
+            target_transform=self.target_transform,
         )
 
         self.train_indices = list(range(len(self.train_dataset)))
-        self.val_indices   = list(range(len(self.val_dataset)))
-        self.test_indices  = list(range(len(self.test_dataset)))
+        self.val_indices = list(range(len(self.val_dataset)))
+        self.test_indices = list(range(len(self.test_dataset)))
         random.seed(self.seed)
         if self.shuffle_dataset_indices:
             random.shuffle(self.train_indices)
@@ -472,12 +496,12 @@ class ParihakaSeismicDataModule(L.LightningDataModule):
 
     def train_dataloader(self, cap: float = 1.0, drop_last=True):
         """
-        Retrieves the training dataloader. 
+        Retrieves the training dataloader.
 
         Parameters
         ----------
             cap: float
-                Percentage of the dataset to be used in the dataloader. 
+                Percentage of the dataset to be used in the dataloader.
                 Ex: cap=0.4 implies only the first 40% of the dataset items will be retrieved by the dataloader.
             drop_last: Bool
                 If True, the last batch is dropped by the dataloader (ensures all batches have the same size)
@@ -485,24 +509,26 @@ class ParihakaSeismicDataModule(L.LightningDataModule):
         Returns
         -------
             dataloader
-                The training dataloader. 
-        """        
-        N = int(self.cap*len(self.train_dataset))
+                The training dataloader.
+        """
+        N = int(self.cap * len(self.train_dataset))
         dataset = torch.utils.data.Subset(self.train_dataset, self.train_indices[0:N])
         return DataLoader(
-            dataset, batch_size=self.batch_size, 
-            shuffle=True, drop_last=drop_last,
-            num_workers = self.num_workers
+            dataset,
+            batch_size=self.batch_size,
+            shuffle=True,
+            drop_last=drop_last,
+            num_workers=self.num_workers,
         )
 
     def val_dataloader(self, cap: float = 1.0, drop_last=True):
         """
-        Retrieves the validation dataloader. 
+        Retrieves the validation dataloader.
 
         Parameters
         ----------
             cap: float
-                Percentage of the dataset to be used in the dataloader. 
+                Percentage of the dataset to be used in the dataloader.
                 Ex: cap=0.4 implies only the first 40% of the dataset items will be retrieved by the dataloader.
             drop_last: Bool
                 If True, the last batch is dropped by the dataloader (ensures all batches have the same size)
@@ -510,25 +536,27 @@ class ParihakaSeismicDataModule(L.LightningDataModule):
         Returns
         -------
             dataloader
-                The validation dataloader. 
-        """        
+                The validation dataloader.
+        """
         # N = int(self.cap*len(self.val_dataset))
         N = len(self.val_dataset)
         dataset = torch.utils.data.Subset(self.val_dataset, self.val_indices[0:N])
         return DataLoader(
-            dataset, batch_size=self.batch_size, 
-            shuffle=False, drop_last=drop_last,
-            num_workers = self.num_workers
+            dataset,
+            batch_size=self.batch_size,
+            shuffle=False,
+            drop_last=drop_last,
+            num_workers=self.num_workers,
         )
 
     def test_dataloader(self, cap: float = 1.0, drop_last=True):
         """
-        Retrieves the test dataloader. 
+        Retrieves the test dataloader.
 
         Parameters
         ----------
             cap: float
-                Percentage of the dataset to be used in the dataloader. 
+                Percentage of the dataset to be used in the dataloader.
                 Ex: cap=0.4 implies only the first 40% of the dataset items will be retrieved by the dataloader.
             drop_last: Bool
                 If True, the last batch is dropped by the dataloader (ensures all batches have the same size)
@@ -536,13 +564,15 @@ class ParihakaSeismicDataModule(L.LightningDataModule):
         Returns
         -------
             dataloader
-                The test dataloader. 
-        """        
+                The test dataloader.
+        """
         # N = int(self.cap*len(self.test_dataset))
         N = len(self.test_dataset)
         dataset = torch.utils.data.Subset(self.test_dataset, self.test_indices[0:N])
         return DataLoader(
-            dataset, batch_size=self.batch_size, 
-            shuffle=False, drop_last=drop_last,
-            num_workers = self.num_workers
+            dataset,
+            batch_size=self.batch_size,
+            shuffle=False,
+            drop_last=drop_last,
+            num_workers=self.num_workers,
         )

@@ -1,7 +1,6 @@
 from train import train_func
 
 
-
 """
 Com essa função é possível treinar modelos em sequência dentro de um loop.
 A ideia é usar listas e dicionários para armazenar os parâmetros de cada modelo.
@@ -13,7 +12,10 @@ cap e flag do treinamento supervisionado
 
 def main():
 
-    report_path = 'reports/'
+    NODE = "f3_folds_tesst_13[0]"
+    REPORT_NAME = f"{NODE}_run"
+
+    report_path = "reports/"
 
     EPOCAS = 75
     BATCH_SIZE = 8
