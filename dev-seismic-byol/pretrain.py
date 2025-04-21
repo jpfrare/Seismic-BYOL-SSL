@@ -8,7 +8,7 @@ from functions import *
 from minerva.transforms.transform import *
 from minerva.transforms.random_transform import *
 
-from minerva.data.readers import TiffReader, LazyPaddedPatchedZarrReader
+from minerva.data.readers import TiffReader
 from minerva.data.datasets import SimpleDataset
 from minerva.data.data_modules import MinervaDataModule
 
@@ -21,19 +21,21 @@ from lightning.pytorch.callbacks import ModelCheckpoint
 from lightning import Trainer
 
 
-def main(input_size,
-        dataset_name,
-        batch_size,
-        num_epochs,
-        repetition,
-        learning_rate,
-        data_path,
-        ckpt_path,
-        log_path,
-        gpus, 
-        ):
+def main(
+    input_size,
+    dataset_name,
+    batch_size,
+    num_epochs,
+    repetition,
+    learning_rate,
+    data_path,
+    ckpt_path,
+    log_path,
+    gpus,
+):
 
-    model_name = f'V{repetition}_pretrain_{dataset_name}_In{str(input_size[0])}_B{batch_size}_E{num_epochs}'
+    model_name = f"V{repetition}_pretrain_{dataset_name}_In{str(input_size[0])}_B{batch_size}_E{num_epochs}"
+    logger.info(f"Model name: {model_name}")
 
     # Transforms
     random_flip = RandomFlip(possible_axis=1)
@@ -42,32 +44,27 @@ def main(input_size,
     transpose = Transpose([2, 0, 1])
     cast_to_tensor = CastTo(dtype=np.float32)
 
-    byol_transform_pipeline = TransformPipeline([
-        random_crop,
-        random_flip,
-        random_rotation,
-        transpose,
-        cast_to_tensor,
-    ])
+    byol_transform_pipeline = TransformPipeline(
+        [
+            random_crop,
+            random_flip,
+            random_rotation,
+            transpose,
+            cast_to_tensor,
+        ]
+    )
 
     constrastive_transform = ContrastiveTransform(byol_transform_pipeline)
+    logger.info(f"Transforms built for {dataset_name}")
 
     # Dataset
-    
-    if dataset_name == 's0':
-        train_img_reader = LazyPaddedPatchedZarrReader(
-            path=data_path,
-            data_shape=(1, 6625, 2001),
-            stride=None,
-            pad_width=None,
-            )
-    else:
-        train_img_reader = TiffReader(path=data_path)
-    
+
+    train_img_reader = TiffReader(path=data_path)
+
+    logger.info(f"Readers built!")
+
     pretrain_dataset = SimpleDataset(
-        readers=train_img_reader,
-        transforms=constrastive_transform,
-        return_single=True
+        readers=train_img_reader, transforms=constrastive_transform, return_single=True
     )
 
     data_module = MinervaDataModule(
@@ -75,27 +72,32 @@ def main(input_size,
         batch_size=batch_size,
         drop_last=True,
         shuffle_train=True,
-        name=dataset_name
+        name=dataset_name,
     )
+
+    logger.info(f"DataModule assembled")
 
     # Modelo
     backbone = DeepLabV3Backbone(num_classes=6)
     model = BYOL(backbone=backbone, learning_rate=learning_rate)
+    logger.info(f"Model built: {type(model).__name__}")
 
     # Logger, Checkpoints, Trainer
     log_dir = Path(log_path) / model_name / dataset_name
     ckpt_dir = Path(ckpt_path) / model_name / dataset_name
     logger = CSVLogger(log_dir, name=model_name, version=dataset_name)
     ckpt_callback = ModelCheckpoint(save_top_k=1, save_last=True, dirpath=ckpt_dir)
+    logger.info("Loggers and checkpoints built")
 
     trainer = Trainer(
-        accelerator='gpu',
+        accelerator="gpu",
         logger=logger,
         callbacks=[ckpt_callback],
         max_epochs=num_epochs,
-        strategy='auto',
-        devices=gpus
+        strategy="auto",
+        devices=gpus,
     )
+    logger.info("Trainer instantiated")
 
     pipeline = SimpleLightningPipeline(
         model=model,
@@ -104,4 +106,4 @@ def main(input_size,
         save_run_status=True,
     )
 
-    pipeline.run(data_module, task='fit')
+    pipeline.run(data_module, task="fit")
