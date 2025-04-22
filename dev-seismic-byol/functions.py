@@ -92,23 +92,28 @@ from minerva.models.ssl.byol import BYOL
 from minerva.models.nets.image.deeplabv3 import DeepLabV3Backbone
 from minerva.models.loaders import FromPretrained
 from torchvision.models.resnet import resnet50
+from minerva.models.nets.image.deeplabv3 import DeepLabV3
+
 import torchvision.models
 import torch
+import torchmetrics
 
 
 def get_model(pretrain_data, learning_rate, freeze, repetition, root_path=None):
-
-    base_name = f"V{repetition}_pretrain_{pretrain_data}_ln256_B32_E500"
+    num_classes = 6
+    base_name = f"V{repetition}_pretrain_{pretrain_data}_In256_B32_E500"
 
     if root_path:
-        import_path = f"{root_path}/{repetition}/{base_name}/last.ckpt"
+        import_path = f"{root_path}/{repetition}/{base_name}/{pretrain_data}/last.ckpt"
     else:
-        import_path = f"ckpt/pretrain/{repetition}/{base_name}/last.ckpt"
+        import_path = (
+            f"ckpt/pretrain/{repetition}/{base_name}/{pretrain_data}/last.ckpt"
+        )
 
     seg_data = ["f3", "f3_N", "seam_ai", "seam_ai_N", "both", "both_N", "s0", "a700"]
 
     if pretrain_data in seg_data:
-        backbone = DeepLabV3Backbone(num_classes=6)
+        backbone = DeepLabV3Backbone(num_classes=num_classes)
         model = BYOL(backbone=backbone, learning_rate=learning_rate)
 
         backbone = FromPretrained(
@@ -130,8 +135,118 @@ def get_model(pretrain_data, learning_rate, freeze, repetition, root_path=None):
             "pytorch/vision:v0.10.0", "deeplabv3_resnet50", pretrained=True
         ).backbone
 
-    elif pretrain_data == "no_pretrain":
+    elif pretrain_data == "sup":
+        logger.info("No model loaded!")
+        backbone = DeepLabV3Backbone(num_classes=num_classes)
 
-        logger.info("")
+    else:
+        raise KeyError("Pretrain data value wrong!")
 
-        backbone = DeepLabV3Backbone(num_classes=6)
+    if freeze:
+        logger.info("Freezing backbone parameters.")
+        for param in backbone.parameters():
+            param.requires_grad = False
+
+    # Métricas
+    iou = torchmetrics.JaccardIndex(
+        task="multiclass", num_classes=num_classes, average=None
+    )
+    f1_score = torchmetrics.F1Score(
+        task="multiclass", num_classes=num_classes, average=None
+    )
+    accuracy = torchmetrics.Accuracy(
+        task="multiclass", num_classes=num_classes, average=None
+    )
+
+    metrics = {
+        "iou": iou,
+        "f1_score": f1_score,
+        "accuracy": accuracy,
+    }
+
+    model = DeepLabV3(
+        backbone=backbone,
+        learning_rate=learning_rate,
+        num_classes=num_classes,
+    )
+
+    return model
+
+
+from minerva.data.data_modules.base import MinervaDataModule
+from typing import Optional
+from torch.utils.data import DataLoader, Dataset
+import random
+
+
+class CapDataModule(MinervaDataModule):
+    def __init__(
+        self, 
+        cap_train: Optional[float] = None, 
+        cap_val: Optional[float] = None, 
+        cap_test: Optional[float] = None, 
+        seed: Optional[int] = 42, 
+        *args, 
+        **kwargs    
+    ):
+        super().__init__(*args, **kwargs)
+        self.cap_train = cap_train
+        self.cap_val = cap_val
+        self.cap_test = cap_test
+        self.seed = seed
+        random.seed(self.seed)
+        torch.manual_seed(self.seed)
+
+    def train_dataloader(self):
+        dataloader = super().train_dataloader()
+        if self.cap_train is not None:
+            cap_len = int(len(dataloader.dataset) * self.cap_train)
+            subset, _ = torch.utils.data.random_split(
+                dataloader.dataset,
+                [cap_len, len(dataloader.dataset) - cap_len],
+                generator=torch.Generator().manual_seed(self.seed),
+            )
+            return torch.utils.data.DataLoader(
+                subset,
+                batch_size=dataloader.batch_size,
+                shuffle=True,
+                num_workers=dataloader.num_workers,
+                pin_memory=dataloader.pin_memory,
+            )
+        return dataloader
+
+    def val_dataloader(self):
+        dataloader = super().val_dataloader()
+        if self.cap_val is not None:
+            cap_len = int(len(dataloader.dataset) * self.cap_val)
+            subset, _ = torch.utils.data.random_split(
+                dataloader.dataset,
+                [cap_len, len(dataloader.dataset) - cap_len],
+                generator=torch.Generator().manual_seed(self.seed),
+            )
+            return torch.utils.data.DataLoader(
+                subset,
+                batch_size=dataloader.batch_size,
+                shuffle=False,
+                num_workers=dataloader.num_workers,
+                pin_memory=dataloader.pin_memory,
+            )
+        return dataloader
+
+    def test_dataloader(self):
+        dataloader = super().test_dataloader()
+        if self.cap_test is not None:
+            cap_len = int(len(dataloader.dataset) * self.cap_test)
+            subset, _ = torch.utils.data.random_split(
+                dataloader.dataset,
+                [cap_len, len(dataloader.dataset) - cap_len],
+                generator=torch.Generator().manual_seed(self.seed),
+            )
+            return torch.utils.data.DataLoader(
+                subset,
+                batch_size=dataloader.batch_size,
+                shuffle=False,
+                num_workers=dataloader.num_workers,
+                pin_memory=dataloader.pin_memory,
+            )
+        return dataloader
