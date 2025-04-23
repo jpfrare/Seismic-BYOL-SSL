@@ -22,18 +22,18 @@ from lightning import Trainer
 
 from a700 import A700DataModule
 
-def main(input_size,
-        dataset_name,
-        batch_size,
-        num_epochs,
-        repetition,
-        learning_rate,
-        data_path,
-        ckpt_path,
-        log_path,
-        gpus, 
-        ):
-
+def main(
+    input_size,
+    dataset_name,
+    batch_size,
+    num_epochs,
+    repetition,
+    learning_rate,
+    data_path,
+    ckpt_path,
+    log_path,
+    gpus,
+):
 
     model_name = f'V{repetition}_pretrain_{dataset_name}_In{str(input_size[0])}_B{batch_size}_E{num_epochs}'
     logger.info(f'Model name: {model_name}')
@@ -123,13 +123,11 @@ def main(input_size,
     backbone = DeepLabV3Backbone(num_classes=6)
     model = BYOL(backbone=backbone, learning_rate=learning_rate)
     logger.info(f"Model built: {type(model).__name__}")
-    
     # Logger, Checkpoints, Trainer
     log_dir = Path(log_path) / model_name / dataset_name
     ckpt_dir = Path(ckpt_path) / model_name / dataset_name
     CSVlogger = CSVLogger(log_dir, name=model_name, version=dataset_name)
     ckpt_callback = ModelCheckpoint(save_top_k=1, save_last=True, dirpath=ckpt_dir)
-
     logger.info("Loggers and checkpoints built")
 
     trainer = Trainer(
@@ -140,7 +138,6 @@ def main(input_size,
         strategy='ddp_find_unused_parameters_true',
         devices=gpus
     )
-
     logger.info("Trainer instantiated")
 
     pipeline = SimpleLightningPipeline(
@@ -150,4 +147,4 @@ def main(input_size,
         save_run_status=True,
     )
 
-    pipeline.run(data_module, task='fit')
+    pipeline.run(data_module, task="fit")
