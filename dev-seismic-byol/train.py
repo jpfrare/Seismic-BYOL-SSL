@@ -62,7 +62,9 @@ def main(
         return_single=False,
     )
 
-    assert len(train_dataset) * cap >= batch_size, "Too few samples for given cap and batch size"
+    assert (
+        len(train_dataset) * cap >= batch_size
+    ), "Too few samples for given cap and batch size"
 
     val_dataset = SimpleDataset(
         readers=[

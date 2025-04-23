@@ -12,14 +12,14 @@ if __name__ == "__main__":
         type=str,
         required=True,
         default="f3",
-        help="Dataset used in pretraining (e.g., f3, seam_ai, both)"
+        help="Dataset used in pretraining (e.g., f3, seam_ai, both)",
     )
     parser.add_argument(
         "--finetune_data",
         type=str,
         required=True,
         default="f3",
-        help="Dataset used for fine-tuning (e.g., f3, seam_ai, both)"
+        help="Dataset used for fine-tuning (e.g., f3, seam_ai, both)",
     )
     parser.add_argument(
         "--num_epochs", type=int, default=20, help="Number of training epochs"
@@ -35,7 +35,7 @@ if __name__ == "__main__":
         "--cap",
         type=float,
         default=1.0,
-        help="Fraction of data to use for training (between 0 and 1)"
+        help="Fraction of data to use for training (between 0 and 1)",
     )
     parser.add_argument(
         "--freeze", action="store_true", help="Whether to freeze the encoder backbone"
@@ -60,14 +60,28 @@ if __name__ == "__main__":
     }
 
     if args.finetune_data not in dataset_mapping.keys():
-        raise KeyError(f"Dataset '{args.finetune_data}' not found in available options: {list(dataset_mapping.keys())}")
+        raise KeyError(
+            f"Dataset '{args.finetune_data}' not found in available options: {list(dataset_mapping.keys())}"
+        )
 
     pretrain_list = [
-        "f3", "f3_N", "seam_ai", "seam_ai_N", "both", "both_N", "s0", "a700", "imagenet", "coco", "sup",
+        "f3",
+        "f3_N",
+        "seam_ai",
+        "seam_ai_N",
+        "both",
+        "both_N",
+        "s0",
+        "a700",
+        "imagenet",
+        "coco",
+        "sup",
     ]
 
     if args.pretrain_data not in pretrain_list:
-        raise KeyError(f"Pretrain '{args.pretrain_data}' not found in available options: {pretrain_list}")
+        raise KeyError(
+            f"Pretrain '{args.pretrain_data}' not found in available options: {pretrain_list}"
+        )
 
     # Simulação de treinamento
     logger.info(" =-=-=- Beginning fine-tuning =-=-=-")

@@ -181,14 +181,14 @@ import random
 
 class CapDataModule(MinervaDataModule):
     def __init__(
-        self, 
-        cap_train: Optional[float] = None, 
-        cap_val: Optional[float] = None, 
-        cap_test: Optional[float] = None, 
+        self,
+        cap_train: Optional[float] = None,
+        cap_val: Optional[float] = None,
+        cap_test: Optional[float] = None,
         seed: Optional[int] = 42,
         drop_last: Optional[bool] = False,
-        *args, 
-        **kwargs    
+        *args,
+        **kwargs,
     ):
         super().__init__(*args, **kwargs)
         self.cap_train = cap_train
@@ -214,7 +214,7 @@ class CapDataModule(MinervaDataModule):
                 shuffle=True,
                 num_workers=15,
                 pin_memory=dataloader.pin_memory,
-                drop_last=self.drop_last
+                drop_last=self.drop_last,
             )
         return dataloader
 
@@ -233,7 +233,7 @@ class CapDataModule(MinervaDataModule):
                 shuffle=False,
                 num_workers=15,
                 pin_memory=dataloader.pin_memory,
-                drop_last=self.drop_last
+                drop_last=self.drop_last,
             )
         return dataloader
 
@@ -252,6 +252,6 @@ class CapDataModule(MinervaDataModule):
                 shuffle=False,
                 num_workers=15,
                 pin_memory=dataloader.pin_memory,
-                drop_last=self.drop_last
+                drop_last=self.drop_last,
             )
         return dataloader
