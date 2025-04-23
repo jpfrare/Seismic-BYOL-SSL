@@ -1,5 +1,4 @@
 import argparse
-import torch
 from train import main
 from functions import *
 
@@ -74,6 +73,7 @@ if __name__ == "__main__":
     logger.info(" =-=-=- Beginning fine-tuning =-=-=-")
     logger.info(f"Pretrain data: {args.pretrain_data}")
     logger.info(f"Finetune data: {args.finetune_data}")
+    logger.info(f"Batch size: {args.batch_size}, LR: {args.learning_rate}")
     logger.info(f"Cap: {args.cap}, Freeze: {args.freeze}")
 
     # Aqui você chama o método de treinamento

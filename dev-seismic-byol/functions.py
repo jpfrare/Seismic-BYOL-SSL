@@ -94,6 +94,7 @@ from minerva.models.loaders import FromPretrained
 from torchvision.models.resnet import resnet50
 from minerva.models.nets.image.deeplabv3 import DeepLabV3
 
+from torchvision.models.segmentation import DeepLabV3_ResNet50_Weights
 import torchvision.models
 import torch
 import torchmetrics
@@ -175,7 +176,6 @@ def get_model(pretrain_data, learning_rate, freeze, repetition, root_path=None):
 
 from minerva.data.data_modules.base import MinervaDataModule
 from typing import Optional
-from torch.utils.data import DataLoader, Dataset
 import random
 
 
@@ -185,7 +185,8 @@ class CapDataModule(MinervaDataModule):
         cap_train: Optional[float] = None, 
         cap_val: Optional[float] = None, 
         cap_test: Optional[float] = None, 
-        seed: Optional[int] = 42, 
+        seed: Optional[int] = 42,
+        drop_last: Optional[bool] = False,
         *args, 
         **kwargs    
     ):
@@ -194,6 +195,7 @@ class CapDataModule(MinervaDataModule):
         self.cap_val = cap_val
         self.cap_test = cap_test
         self.seed = seed
+        self.drop_last = drop_last
         random.seed(self.seed)
         torch.manual_seed(self.seed)
 
@@ -210,8 +212,9 @@ class CapDataModule(MinervaDataModule):
                 subset,
                 batch_size=dataloader.batch_size,
                 shuffle=True,
-                num_workers=dataloader.num_workers,
+                num_workers=15,
                 pin_memory=dataloader.pin_memory,
+                drop_last=self.drop_last
             )
         return dataloader
 
@@ -228,8 +231,9 @@ class CapDataModule(MinervaDataModule):
                 subset,
                 batch_size=dataloader.batch_size,
                 shuffle=False,
-                num_workers=dataloader.num_workers,
+                num_workers=15,
                 pin_memory=dataloader.pin_memory,
+                drop_last=self.drop_last
             )
         return dataloader
 
@@ -246,7 +250,8 @@ class CapDataModule(MinervaDataModule):
                 subset,
                 batch_size=dataloader.batch_size,
                 shuffle=False,
-                num_workers=dataloader.num_workers,
+                num_workers=15,
                 pin_memory=dataloader.pin_memory,
+                drop_last=self.drop_last
             )
         return dataloader

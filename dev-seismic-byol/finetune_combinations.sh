@@ -2,7 +2,7 @@
 
 # Verifica número mínimo de argumentos
 if [ "$#" -lt 6 ]; then
-  echo "Usage: $0 --rep <start> <end> --pre <pretrain1> [...] --finetune <finetune1> [...] [--caps <cap1> ...] [--gpus <gpu1> ...]"
+  echo "Usage: $0 --rep <start> <end> --pre <pretrain1> [...] --finetune <finetune1> [...] [--caps <cap1> ...] [--gpus <gpu1> ...] [--freeze]"
   exit 1
 fi
 
@@ -64,6 +64,20 @@ while [[ $# -gt 0 ]]; do
       ;;
   esac
 done
+
+# Exibe os parâmetros recebidos
+echo "------------------"
+echo "Parsed Arguments:"
+echo "Repetitions: $START_REP to $END_REP"
+echo "Pretrain datasets: ${PRETRAIN_DATASETS[*]}"
+echo "Finetune datasets: ${FINETUNE_DATASETS[*]}"
+echo "Caps: ${CAPS[*]:-None (default=1.0)}"
+echo "GPUs: ${GPUS[*]}"
+echo "Freeze: $FREEZE"
+echo "Batch size: $BATCH_SIZE"
+echo "Learning rate: $LR"
+echo "Epochs: $NUM_EPOCHS"
+echo "------------------"
 
 # Função para obter o cap com fallback
 get_cap_for_index() {

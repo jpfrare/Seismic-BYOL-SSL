@@ -1,4 +1,3 @@
-import numpy as np
 from pathlib import Path
 
 from functions import *
@@ -8,10 +7,6 @@ from minerva.transforms.random_transform import *
 
 from minerva.data.readers import TiffReader, PNGReader
 from minerva.data.datasets import SimpleDataset
-from minerva.data.data_modules import MinervaDataModule
-
-from minerva.models.ssl.byol import BYOL
-from minerva.models.nets.image.deeplabv3 import DeepLabV3Backbone
 
 from minerva.pipelines.lightning_pipeline import SimpleLightningPipeline
 from lightning.pytorch.loggers.csv_logs import CSVLogger
@@ -67,6 +62,8 @@ def main(
         return_single=False,
     )
 
+    assert len(train_dataset) * cap >= batch_size, "Too few samples for given cap and batch size"
+
     val_dataset = SimpleDataset(
         readers=[
             val_data_reader,
@@ -104,7 +101,7 @@ def main(
     ckpt_dir = Path(ckpt_path) / save_name / finetune_data
     logger = CSVLogger(log_dir, name=save_name, version=finetune_data)
     ckpt_callback = ModelCheckpoint(
-        save_top_k=1, save_last=True, dirpath=ckpt_dir, monitor="val_IoU", mode="max"
+        save_top_k=1, save_last=True, dirpath=ckpt_dir, mode="min", monitor="val_loss"
     )
 
     trainer = Trainer(
@@ -114,6 +111,7 @@ def main(
         max_epochs=num_epochs,
         strategy="auto",
         devices=gpus,
+        check_val_every_n_epoch=2,
     )
 
     pipeline = SimpleLightningPipeline(
@@ -129,13 +127,13 @@ def main(
 if __name__ == "__main__":
     main(
         pretrain_data="f3",
-        finetune_data="seam_ai",
-        data_path="/workspaces/shared_data/seam_ai_datasets/seam_ai",
+        finetune_data="f3",
+        data_path="/workspaces/shared_data/seismic/f3_segmentation",
         num_epochs=20,
         batch_size=8,
         repetition=0,
         learning_rate=0.001,
-        cap=0.1,
+        cap=0.01,
         freeze=False,
         ckpt_path="/workspaces/Seismic-Byol/dev-seismic-byol/ckpt",
         logs_path="/workspaces/Seismic-Byol/dev-seismic-byol/logs",
