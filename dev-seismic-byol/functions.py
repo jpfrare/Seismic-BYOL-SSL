@@ -98,6 +98,7 @@ from torchvision.models.segmentation import DeepLabV3_ResNet50_Weights
 import torchvision.models
 import torch
 import torchmetrics
+import torch.nn as nn
 
 
 def get_model(pretrain_data, learning_rate, freeze, repetition, root_path=None):
@@ -130,6 +131,8 @@ def get_model(pretrain_data, learning_rate, freeze, repetition, root_path=None):
         backbone = resnet50(
             replace_stride_with_dilation=[False, True, True], weights=weights
         )
+        backbone = nn.Sequential(*list(backbone.children())[:-2])
+        return backbone
 
     elif pretrain_data == "coco":
         backbone = torch.hub.load(
