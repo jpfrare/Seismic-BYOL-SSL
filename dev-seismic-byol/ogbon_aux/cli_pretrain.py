@@ -2,7 +2,6 @@
 
 import argparse
 from pretrain import main
-from functions import *
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
@@ -38,30 +37,23 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     dataset_mapping = {
-        "seam_ai_N": "/workspaces/shared_data/seam_ai_datasets/seam_ai_N/images",
-        "seam_ai": "/workspaces/shared_data/seam_ai_datasets/seam_ai/images",
-        "f3": "/workspaces/shared_data/seismic/f3_segmentation/images",
-        "f3_N": "/workspaces/shared_data/seismic/f3_segmentation_N/images",
-        "both": "/workspaces/shared_data/seismic/both/images",
-        "both_N": "/workspaces/shared_data/seismic/both_N/images",
+        "seam_ai_N": "/home/vinicius.soares/asml/datasets/tiff_data/seam_ai_N/images",
+        "seam_ai": "/home/vinicius.soares/asml/datasets/tiff_data/seam_ai/images",
+        "f3": "/home/vinicius.soares/asml/datasets/tiff_data/f3_segmentation/images",
+        "f3_N": "/home/vinicius.soares/asml/datasets/tiff_data/f3_segmentation_N/images",
+        "both": "/home/vinicius.soares/asml/datasets/tiff_data/both/images",
+        "both_N": "/home/vinicius.soares/asml/datasets/tiff_data/both_N/images",
+        "s0": "/home/vinicius.soares/asml/datasets/S0.M.B316.P3415.E0302.LALL.PSDM_MTVFL.2013.01.P.zarr",
+        "a700": "/home/vinicius.soares/asml/datasets/a700",
     }
 
-    logger.info(" =-=-=- Begining training =-=-=-")
-
-    logger.info(f"Dataset path: {dataset_mapping[args.dataset_name]}")
-
     if args.dataset_name not in dataset_mapping.keys():
-        logger.error("Dataset not available")
         raise KeyError(
             f"Dataset '{args.dataset_name}' not found in available options: {list(dataset_mapping.keys())}"
         )
 
     PRETRAIN_LOGS_PATH = f"logs/pretrain/{args.repetition}"
     PRETRAIN_CKPT_PATH = f"ckpt/pretrain/{args.repetition}"
-
-    logger.info(f"Batches: {args.batch_size} - Input: {args.input_size}")
-    logger.info(f"Pretrain Log Path: {PRETRAIN_LOGS_PATH}")
-    logger.info(f"Pretrain CKPT Path: {PRETRAIN_CKPT_PATH}")
 
     main(
         input_size=(args.input_size, args.input_size),

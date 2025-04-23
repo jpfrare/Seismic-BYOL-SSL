@@ -8,7 +8,11 @@ from functions import *
 from minerva.transforms.transform import *
 from minerva.transforms.random_transform import *
 
-from minerva.data.readers import TiffReader
+from minerva.data.readers import (
+    TiffReader,
+    LazyPaddedPatchedZarrReader,
+    NumpyArrayReader,
+)
 from minerva.data.datasets import SimpleDataset
 from minerva.data.data_modules import MinervaDataModule
 
@@ -35,7 +39,6 @@ def main(
 ):
 
     model_name = f"V{repetition}_pretrain_{dataset_name}_In{str(input_size[0])}_B{batch_size}_E{num_epochs}"
-    logger.info(f"Model name: {model_name}")
 
     # Transforms
     random_flip = RandomFlip(possible_axis=1)
@@ -55,13 +58,21 @@ def main(
     )
 
     constrastive_transform = ContrastiveTransform(byol_transform_pipeline)
-    logger.info(f"Transforms built for {dataset_name}")
 
     # Dataset
 
-    train_img_reader = TiffReader(path=data_path)
+    if dataset_name == "s0":
+        train_img_reader = LazyPaddedPatchedZarrReader(
+            path=data_path,
+            data_shape=(1, 6625, 2001),
+            stride=None,
+            pad_width=None,
+        )
 
-    logger.info(f"Readers built!")
+    elif dataset_name == "a700":
+        train_img_reader = NumpyArrayReader(path=data_path)
+    else:
+        train_img_reader = TiffReader(path=data_path)
 
     pretrain_dataset = SimpleDataset(
         readers=train_img_reader, transforms=constrastive_transform, return_single=True
@@ -75,19 +86,15 @@ def main(
         name=dataset_name,
     )
 
-    logger.info(f"DataModule assembled")
-
     # Modelo
     backbone = DeepLabV3Backbone(num_classes=6)
     model = BYOL(backbone=backbone, learning_rate=learning_rate)
-    logger.info(f"Model built: {type(model).__name__}")
 
     # Logger, Checkpoints, Trainer
     log_dir = Path(log_path) / model_name / dataset_name
     ckpt_dir = Path(ckpt_path) / model_name / dataset_name
     logger = CSVLogger(log_dir, name=model_name, version=dataset_name)
     ckpt_callback = ModelCheckpoint(save_top_k=1, save_last=True, dirpath=ckpt_dir)
-    logger.info("Loggers and checkpoints built")
 
     trainer = Trainer(
         accelerator="gpu",
@@ -97,7 +104,6 @@ def main(
         strategy="auto",
         devices=gpus,
     )
-    logger.info("Trainer instantiated")
 
     pipeline = SimpleLightningPipeline(
         model=model,
