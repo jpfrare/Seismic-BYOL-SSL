@@ -12,29 +12,27 @@ from minerva.pipelines.lightning_pipeline import SimpleLightningPipeline
 from lightning.pytorch.loggers.csv_logs import CSVLogger
 from lightning.pytorch.callbacks import ModelCheckpoint
 from lightning import Trainer
+from torchmetrics import Accuracy, JaccardIndex, F1Score
+from lightning.fabric import seed_everything
+
 
 
 def main(
-    pretrain_data,
+    ckpt_file,
+    model_name,
     finetune_data,
+    pretrain_data,
     data_path,
     num_epochs,
     batch_size,
     repetition,
-    learning_rate,
-    cap,
-    freeze,
     ckpt_path,
     logs_path,
-    import_root_path,
     gpus,
 ):
 
-    # Set general seed**
-    torch.manual_seed(repetition)
-    save_name = (
-        f"V{repetition}_pre_{pretrain_data}_train_{finetune_data}_cap_{cap*100:.0f}%"
-    )
+    # Set general seed
+    seed_everything(repetition)
 
     # Transforms
     if finetune_data == "f3" or finetune_data == "f3_N":
@@ -53,6 +51,9 @@ def main(
     val_data_reader = TiffReader(path=f"{image_path}/val")
     val_label_reader = PNGReader(path=f"{label_path}/val")
 
+    test_data_reader = TiffReader(path=f"{image_path}/test")
+    test_label_reader = PNGReader(path=f"{label_path}/test") 
+
     train_dataset = SimpleDataset(
         readers=[
             train_data_reader,
@@ -61,10 +62,6 @@ def main(
         transforms=padding,
         return_single=False,
     )
-
-    assert (
-        len(train_dataset) * cap >= batch_size
-    ), "Too few samples for given cap and batch size"
 
     val_dataset = SimpleDataset(
         readers=[
@@ -75,15 +72,26 @@ def main(
         return_single=False,
     )
 
+    test_dataset = SimpleDataset(
+        readers=[
+            test_data_reader,
+            test_label_reader,
+        ],
+        transforms=padding,
+        return_single=False,
+    ) 
+
+
     # DataModule
 
     data_module = CapDataModule(
-        cap_train=cap,
+        cap_train=1,
         cap_val=1,
         cap_test=1,
         seed=repetition,
         train_dataset=train_dataset,
         val_dataset=val_dataset,
+        test_dataset=test_dataset,
         batch_size=batch_size,
         drop_last=True,
         shuffle_train=True,
@@ -91,17 +99,27 @@ def main(
 
     # Model
 
-    model = get_model(
-        pretrain_data,
-        learning_rate,
-        freeze,
-        repetition,
-        import_root_path,
-    )
+    model = get_eval_model(
+        pretrain_data=pretrain_data,
+        import_path=ckpt_file,
+        learning_rate=0.001
+        )
 
-    log_dir = Path(logs_path) / save_name / finetune_data
-    ckpt_dir = Path(ckpt_path) / save_name / finetune_data
-    logger = CSVLogger(log_dir, name=save_name, version=finetune_data)
+    num_classes = 6
+
+    metrics = {
+            "mIoU": JaccardIndex(
+                num_classes=num_classes, average="macro", task="multiclass"
+            ),
+            "acc": Accuracy(num_classes=num_classes, task="multiclass"),
+            "f1-weighted": F1Score(
+                num_classes=num_classes, task="multiclass", average="weighted"
+            ),
+        }
+
+    log_dir = Path(logs_path) / model_name
+    ckpt_dir = Path(ckpt_path) / model_name 
+    logger = CSVLogger(log_dir, model_name, version=finetune_data)
     ckpt_callback = ModelCheckpoint(
         save_top_k=1, save_last=True, dirpath=ckpt_dir, mode="min", monitor="val_loss"
     )
@@ -120,25 +138,29 @@ def main(
         model=model,
         trainer=trainer,
         log_dir=log_dir,
-        save_run_status=True,
+        save_run_status=False,
+        seed=repetition,
+        apply_metrics_per_sample=False,
+        classification_metrics=metrics,
     )
 
-    pipeline.run(data_module, task="fit")
-
+    pipeline.run(data_module, task="evaluate")
 
 if __name__ == "__main__":
     main(
-        pretrain_data="f3",
+        model_name="V0_pre_seam_ai_N_train_seam_ai_N_cap_100%",
+        ckpt_file="ckpt/train/0/V0_pre_seam_ai_N_train_seam_ai_N_cap_100%/seam_ai_N/epoch=3-step=560.ckpt",
+        pretrain_data="seam_ai",
         finetune_data="f3",
-        data_path="/workspaces/shared_data/seismic/f3_segmentation",
+        data_path='/workspaces/shared_data/seam_ai_datasets/seam_ai_N',
         num_epochs=20,
         batch_size=8,
-        repetition=0,
-        learning_rate=0.001,
-        cap=0.5,
-        freeze=False,
-        ckpt_path="/workspaces/Seismic-Byol/dev-seismic-byol/ckpt/0",
-        logs_path="/workspaces/Seismic-Byol/dev-seismic-byol/logs/0",
-        import_root_path=None,
+        repetition=8,
+        ckpt_path="./ckpt",
+        logs_path="./logs",
         gpus=[0],
     )
+
+
+
+

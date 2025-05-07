@@ -9,7 +9,7 @@ fi
 BATCH_SIZE=32
 INPUT_SIZE=256
 LR=0.2
-GPUS=0
+GPUS=0w
 NUM_EPOCHS=500
 
 # Repetition range
