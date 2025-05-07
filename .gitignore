@@ -178,3 +178,4 @@ reports/
 *.ckpt
 # *.csv
 # *.yaml
+outputs/
