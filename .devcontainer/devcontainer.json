@@ -14,7 +14,7 @@
         "--gpus",
         "all",
         "--shm-size",
-        "1g",
+        "4g",
         "--ulimit",
         "memlock=-1",
         "--ulimit",
