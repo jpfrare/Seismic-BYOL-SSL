@@ -98,11 +98,18 @@ from torchvision.models.segmentation import DeepLabV3_ResNet50_Weights
 import torchvision.models
 import torch
 import torchmetrics
+import torch.nn as nn
 
+from pathlib import Path
+import re
 
 def get_model(pretrain_data, learning_rate, freeze, repetition, root_path=None):
     num_classes = 6
-    base_name = f"V{repetition}_pretrain_{pretrain_data}_In256_B32_E500"
+    
+    if pretrain_data == 'a700':
+        base_name = f"V{repetition}_pretrain_{pretrain_data}_In256_B32_E100"
+    else:
+        base_name = f"V{repetition}_pretrain_{pretrain_data}_In256_B32_E500"
 
     if root_path:
         import_path = f"{root_path}/{repetition}/{base_name}/{pretrain_data}/last.ckpt"
@@ -124,21 +131,25 @@ def get_model(pretrain_data, learning_rate, freeze, repetition, root_path=None):
             error_on_missing_keys=False,
             # keys_to_rename={"": "backbone."},
         ).backbone
+        logger.info(f"{pretrain_data} backbone loaded")
 
     elif pretrain_data == "imagenet":
         weights = torchvision.models.ResNet50_Weights.IMAGENET1K_V2
         backbone = resnet50(
             replace_stride_with_dilation=[False, True, True], weights=weights
         )
+        backbone = nn.Sequential(*list(backbone.children())[:-2])
+        logger.info("IMAGENET backbone loaded")
 
     elif pretrain_data == "coco":
         backbone = torch.hub.load(
             "pytorch/vision:v0.10.0", "deeplabv3_resnet50", pretrained=True
         ).backbone
+        logger.info("COCO backbone loaded")
 
     elif pretrain_data == "sup":
-        logger.info("No model loaded!")
         backbone = DeepLabV3Backbone(num_classes=num_classes)
+        logger.info("No model loaded!")
 
     else:
         raise KeyError("Pretrain data value wrong!")
@@ -172,6 +183,95 @@ def get_model(pretrain_data, learning_rate, freeze, repetition, root_path=None):
     )
 
     return model
+
+
+def get_eval_model(pretrain_data, import_path, learning_rate):
+
+    num_classes = 6
+
+    seg_data = [
+        "f3",
+        "f3_N",
+        "seam_ai",
+        "seam_ai_N",
+        "both",
+        "both_N",
+        "s0",
+        "a700",
+        "sup",
+        "seg",
+    ]
+
+    if pretrain_data in seg_data:
+        backbone = DeepLabV3Backbone(num_classes=num_classes)
+
+    elif pretrain_data == "imagenet":
+        backbone = resnet50(replace_stride_with_dilation=[False, True, True])
+        backbone = nn.Sequential(*list(backbone.children())[:-2])
+
+    elif pretrain_data == "coco":
+        backbone = torch.hub.load(
+            "pytorch/vision:v0.10.0", "deeplabv3_resnet50"
+        ).backbone
+
+    else:
+        raise KeyError("Pretrain data value wrong!")
+
+    model = DeepLabV3(
+        backbone=backbone,
+        learning_rate=learning_rate,
+        num_classes=num_classes,
+    )
+
+    model = FromPretrained(
+        model=model, ckpt_path=import_path, strict=False, error_on_missing_keys=False
+    )
+
+    return model
+
+
+def extract_epoch_number(filename):
+    match = re.search(r"epoch=(\d+)", filename)
+    return int(match.group(1)) if match else -1
+
+
+def get_models_files(base_dir="./ckpt/train", target_repetition=None):
+    base_dir = Path(base_dir)
+    results = []
+    repetitions = [str(target_repetition)] if target_repetition != None else [d.name for d in base_dir.iterdir() if d.is_dir()]
+
+    for repetition_dir in repetitions:
+        rep_path = base_dir / repetition_dir
+        if not rep_path.is_dir():
+            continue
+
+        for model_dir in rep_path.iterdir():
+            if not model_dir.is_dir():
+                continue
+
+            match = re.match(r"V(\d+)_pre_(.+?)_train_(.+?)_cap_(.+)", model_dir.name)
+            if not match:
+                continue
+
+            _, pretrain_data, train_data, cap = match.groups()
+
+            for train_data_dir in model_dir.iterdir():
+                if not train_data_dir.is_dir():
+                    continue
+
+                ckpt_files = [f for f in train_data_dir.iterdir() if f.is_file() and f.name.startswith("epoch=")]
+                if ckpt_files:
+                    ckpt_files.sort(key=lambda f: extract_epoch_number(f.name), reverse=True)
+                    results.append({
+                        "model_name": model_dir.name,
+                        "repetition": repetition_dir,
+                        "pretrain_data": pretrain_data,
+                        "train_data": train_data,
+                        "cap": cap,
+                        "ckpt_file": str(ckpt_files[0]),
+                    })
+
+    return results
 
 
 from minerva.data.data_modules.base import MinervaDataModule
