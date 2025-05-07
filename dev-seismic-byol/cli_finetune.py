@@ -51,12 +51,10 @@ if __name__ == "__main__":
     IMPORT_ROOT_PATH = f"ckpt/pretrain/"
 
     dataset_mapping = {
-        "seam_ai_N": "/workspaces/shared_data/seam_ai_datasets/seam_ai_N",
-        "seam_ai": "/workspaces/shared_data/seam_ai_datasets/seam_ai",
-        "f3": "/workspaces/shared_data/seismic/f3_segmentation",
-        "f3_N": "/workspaces/shared_data/seismic/f3_segmentation_N",
-        "both": "/workspaces/shared_data/seismic/both",
-        "both_N": "/workspaces/shared_data/seismic/both_N",
+    'seam_ai_N':'/home/vinicius.soares/asml/datasets/tiff_data/seam_ai_N',
+    'seam_ai':'/home/vinicius.soares/asml/datasets/tiff_data/seam_ai',
+    'f3':'/home/vinicius.soares/asml/datasets/tiff_data/f3_segmentation',
+    'f3_N':'/home/vinicius.soares/asml/datasets/tiff_data/f3_segmentation_N',
     }
 
     if args.finetune_data not in dataset_mapping.keys():

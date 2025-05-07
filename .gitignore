@@ -176,6 +176,6 @@ reports/
 
 *.pth
 *.ckpt
-# *.csv
+*.csv
 # *.yaml
 outputs/

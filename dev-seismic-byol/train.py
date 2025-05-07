@@ -12,6 +12,7 @@ from minerva.pipelines.lightning_pipeline import SimpleLightningPipeline
 from lightning.pytorch.loggers.csv_logs import CSVLogger
 from lightning.pytorch.callbacks import ModelCheckpoint
 from lightning import Trainer
+from lightning.fabric import seed_everything
 
 
 def main(
@@ -31,7 +32,7 @@ def main(
 ):
 
     # Set general seed**
-    torch.manual_seed(repetition)
+    seed_everything(repetition)
     save_name = (
         f"V{repetition}_pre_{pretrain_data}_train_{finetune_data}_cap_{cap*100:.0f}%"
     )
@@ -126,17 +127,17 @@ def main(
 
 if __name__ == "__main__":
     main(
-        pretrain_data="f3",
+        pretrain_data="both_N",
         finetune_data="f3",
-        data_path="/workspaces/shared_data/seismic/f3_segmentation",
+        data_path="/home/vinicius.soares/asml/datasets/tiff_data/f3_segmentation",
         num_epochs=20,
         batch_size=8,
-        repetition=0,
+        repetition=8,
         learning_rate=0.001,
         cap=0.01,
         freeze=False,
-        ckpt_path="/workspaces/Seismic-Byol/dev-seismic-byol/ckpt",
-        logs_path="/workspaces/Seismic-Byol/dev-seismic-byol/logs",
+        ckpt_path="/home/vinicius.soares/dev-seismic-byol/ckpt",
+        logs_path="/home/vinicius.soares/dev-seismic-byol/logs",
         import_root_path=None,
         gpus=[0],
     )
