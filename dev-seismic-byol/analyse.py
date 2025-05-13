@@ -147,8 +147,8 @@ def plot_from_df(df, x="cap", y="mean", err="std", hue="pretrain_data", title=No
         
 finetune_list = ['f3', 'f3_N', 'seam_ai', 'seam_ai_N']
 
-all_cap_list = [1.0, 2.0, 3.0, 5.0, 8.0, 13.0, 22.0, 36.0, 60.0, 100.0]
-small_caps = [1.0, 2.0, 3.0, 5.0, 8.0]
+all_cap_list = [1.0, 2.0, 3.0, 5.0, 8.0, 10.0, 13.0, 22.0, 36.0, 60.0, 100.0]
+small_caps = [1.0, 2.0, 3.0, 5.0, 8.0, 10.0]
 
 metric = "mIoU"
 

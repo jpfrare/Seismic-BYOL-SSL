@@ -43,12 +43,21 @@ if __name__ == "__main__":
     
     logger.info(f"Ammount of models found: {len(models_list)}")
     
+    # Filter models based on user input
+    parser.add_argument(
+        "--filter_models",
+        type=str,
+        nargs="*",
+        default=None,
+        help="List of model names to evaluate. If not provided, all models will be evaluated."
+    )   
     
     
     for model in models_list:
         
         logger.info(model)
         
+        model_cap = model["cap"]        
         ckpt_file = model["ckpt_file"]
         model_name = model["model_name"]
         pretrain_data = model["pretrain_data"]
@@ -67,6 +76,8 @@ if __name__ == "__main__":
         logger.info(f'Data Path :{data_path}')
     
     
+        # if model_cap == "10%":
+        
         # Rodar avaliação
     
         main(
