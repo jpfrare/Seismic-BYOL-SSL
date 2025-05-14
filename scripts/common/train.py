@@ -82,17 +82,22 @@ def build_downstream_datamodule(
     num_of_files = num_files(f"{path}/train")
     print("Number of files in dataset: ", num_of_files)
 
-    assert data in ['seam_ai', 'f3', 'seam_ai_N', 'f3_N'], f"Datamodule {data} not found. Must be one of 'seam_ai' or 'f3'"
+    assert data in [
+        "seam_ai",
+        "f3",
+        "seam_ai_N",
+        "f3_N",
+    ], f"Datamodule {data} not found. Must be one of 'seam_ai' or 'f3'"
 
-    if data == 'seam_ai' or data == 'seam_ai_N':
-        print(f'******* Path: {path} *******')
+    if data == "seam_ai" or data == "seam_ai_N":
+        print(f"******* Path: {path} *******")
         print("Parihaka datas being used")
         return ParihakaSeismicDataModule(
             root_dir=root_dir, batch_size=batch_size, cap=cap, seed=seed
         )
 
-    elif data == 'f3' or data == 'f3_N':
-        print(f'******* Path: {path} *******')
+    elif data == "f3" or data == "f3_N":
+        print(f"******* Path: {path} *******")
         print("F3 datas being used")
         return F3SeismicDataModule(
             root_dir=root_dir, batch_size=batch_size, cap=cap, seed=seed
@@ -135,10 +140,10 @@ def build_lightning_trainer(
     # according to validation loss
 
     checkpoint_callback = ModelCheckpoint(
-        monitor='val_IoU',
-        dirpath=f'../saves/models/{reps}/',
+        monitor="val_IoU",
+        dirpath=f"../saves/models/{reps}/",
         # dirpath=f'../saves/models/V_0.04/',
-        filename=f'{save_name}',
+        filename=f"{save_name}",
         save_top_k=1,
         mode="max",
     )
@@ -181,9 +186,13 @@ def train_func(
         )
     else:
         # pretrained_backbone_checkpoint_filename = f"../saves/backbones/{repetition}/{import_name}.pth"
-        pretrained_backbone_checkpoint_filename = f"../saves/backbones/{aux}/{import_name}.pth"
-    print(f'Loading pretrained backbone from {pretrained_backbone_checkpoint_filename}')
-    backbone = load_pretrained_backbone(pretrained_backbone_checkpoint_filename, mode=mode)
+        pretrained_backbone_checkpoint_filename = (
+            f"../saves/backbones/{aux}/{import_name}.pth"
+        )
+    print(f"Loading pretrained backbone from {pretrained_backbone_checkpoint_filename}")
+    backbone = load_pretrained_backbone(
+        pretrained_backbone_checkpoint_filename, mode=mode
+    )
 
     # Build the downstream model, the downstream datamodule, and the trainer
     downstream_model = build_downstream_model(backbone, freeze)

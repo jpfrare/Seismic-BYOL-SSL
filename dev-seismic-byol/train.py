@@ -38,8 +38,10 @@ def main(
 
     # Transforms
     if finetune_data == "f3" or finetune_data == "f3_N":
+        logger.info("Using padding of (256,704)")
         padding = Padding(256, 704)
     elif finetune_data == "seam_ai" or finetune_data == "seam_ai_N":
+        logger.info("Using padding of (1008,592)")
         padding = Padding(1008, 592)
 
     # Dataset

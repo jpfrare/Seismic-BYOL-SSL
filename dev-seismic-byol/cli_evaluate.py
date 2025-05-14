@@ -10,43 +10,34 @@ if __name__ == "__main__":
         "--repetition",
         type=int,
         required=True,
-        help="Experiment repetition index to evaluate."
+        help="Experiment repetition index to evaluate.",
     )
     parser.add_argument(
         "--num_epochs",
         type=int,
         default=20,
-        help="Number of epochs (needed for Trainer even in evaluation mode)."
+        help="Number of epochs (needed for Trainer even in evaluation mode).",
     )
     parser.add_argument(
-        "--batch_size",
-        type=int,
-        default=8,
-        help="Batch size for evaluation."
+        "--batch_size", type=int, default=8, help="Batch size for evaluation."
     )
     parser.add_argument(
-        "--gpus",
-        type=int,
-        nargs="+",
-        default=[0],
-        help="List of GPU indices to use."
+        "--gpus", type=int, nargs="+", default=[0], help="List of GPU indices to use."
     )
 
     args = parser.parse_args()
 
     TEST_LOGS_PATH = f"logs/test/{args.repetition}"
     TEST_CKPT_PATH = f"ckpt/test/{args.repetition}"
-    
+
     models_list = get_models_files(target_repetition=args.repetition)
-    
+
     logger.info(f"Ammount of models found: {len(models_list)}")
-    
-    
-    
+
     for model in models_list:
-        
+
         logger.info(model)
-        
+
         ckpt_file = model["ckpt_file"]
         model_name = model["model_name"]
         pretrain_data = model["pretrain_data"]
@@ -60,13 +51,12 @@ if __name__ == "__main__":
         }
 
         data_path = data_path_mapping[finetune_data]
-        
-        logger.info(f'Backbone loaded: {pretrain_data}')
-        logger.info(f'Data Path :{data_path}')
-    
-    
+
+        logger.info(f"Backbone loaded: {pretrain_data}")
+        logger.info(f"Data Path :{data_path}")
+
         # Rodar avaliação
-    
+
         main(
             ckpt_file=ckpt_file,
             model_name=model_name,

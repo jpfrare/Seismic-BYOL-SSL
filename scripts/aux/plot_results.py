@@ -2,7 +2,10 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 
-def plot_metrics(data_file, output_file, metric="iou", selected_backbones=None, selected_data=None):
+
+def plot_metrics(
+    data_file, output_file, metric="iou", selected_backbones=None, selected_data=None
+):
     """
     Generates a bar plot of the evaluation metrics grouped by `cap` with mean and standard deviation.
 
@@ -23,7 +26,11 @@ def plot_metrics(data_file, output_file, metric="iou", selected_backbones=None, 
         df = df[df["backbone"].isin(selected_backbones)]
 
     # Group by cap, backbone, and downstream, calculating mean and std for the selected metric
-    grouped = df.groupby(["cap", "backbone", "downstream"])[metric].agg(["mean", "std"]).reset_index()
+    grouped = (
+        df.groupby(["cap", "backbone", "downstream"])[metric]
+        .agg(["mean", "std"])
+        .reset_index()
+    )
 
     # Fill NaN values with 0 to avoid plotting issues
     grouped = grouped.fillna(0)
@@ -44,10 +51,10 @@ def plot_metrics(data_file, output_file, metric="iou", selected_backbones=None, 
     for i, backbone in enumerate(backbones):
         # Filter rows for the current backbone
         backbone_data = grouped[grouped["backbone"] == backbone]
-        
+
         # Align x positions for this backbone
         backbone_x = x_positions + i * bar_width
-        
+
         # Plot bars with error bars for std
         plt.bar(
             backbone_x,
@@ -59,10 +66,15 @@ def plot_metrics(data_file, output_file, metric="iou", selected_backbones=None, 
         )
 
     # Customize plot
-    plt.xticks(x_positions + (len(backbones) - 1) * bar_width / 2, [f"{cap}" for cap in caps])
+    plt.xticks(
+        x_positions + (len(backbones) - 1) * bar_width / 2, [f"{cap}" for cap in caps]
+    )
     plt.xlabel("Fraction of Data (cap)", fontsize=12)
     plt.ylabel(f"Mean {metric.upper()} with Std Dev", fontsize=12)
-    plt.title(f"{metric.upper()} vs Fraction of Data for Selected Backbones on {selected_data}", fontsize=14)
+    plt.title(
+        f"{metric.upper()} vs Fraction of Data for Selected Backbones on {selected_data}",
+        fontsize=14,
+    )
     plt.legend(title="Backbone", fontsize=10, loc="best")
     plt.grid(axis="y", linestyle="--", alpha=0.7)
     plt.tight_layout()
@@ -72,60 +84,133 @@ def plot_metrics(data_file, output_file, metric="iou", selected_backbones=None, 
     plt.close()
     print(f"Plot saved to {output_file}")
 
+
 # Example usage:
 plot_metrics(
     data_file="evaluation_results.csv",  # CSV file with evaluation results
     output_file="outputs/downstream_f3.png",  # Output file for the plot
     metric="iou",  # Metric to plot: "iou" or "f1"
-    selected_backbones=["f3", 'f3_norm', "seam_ai", 'seam_ai_norm', "both", 'both_N'],  # Backbones to display
-    selected_data="f3"  # Data to filter by (set to None for all data)
+    selected_backbones=[
+        "f3",
+        "f3_norm",
+        "seam_ai",
+        "seam_ai_norm",
+        "both",
+        "both_N",
+    ],  # Backbones to display
+    selected_data="f3",  # Data to filter by (set to None for all data)
 )
 plot_metrics(
     data_file="evaluation_results.csv",  # CSV file with evaluation results
     output_file="outputs/downstream_f3_N.png",  # Output file for the plot
     metric="iou",  # Metric to plot: "iou" or "f1"
-    selected_backbones=["f3", 'f3_norm', "seam_ai", 'seam_ai_norm', "both", 'both_N'],  # Backbones to display
-    selected_data="f3_N"  # Data to filter by (set to None for all data)
+    selected_backbones=[
+        "f3",
+        "f3_norm",
+        "seam_ai",
+        "seam_ai_norm",
+        "both",
+        "both_N",
+    ],  # Backbones to display
+    selected_data="f3_N",  # Data to filter by (set to None for all data)
 )
 plot_metrics(
     data_file="evaluation_results.csv",  # CSV file with evaluation results
     output_file="outputs/downstream_seam_ai.png",  # Output file for the plot
     metric="iou",  # Metric to plot: "iou" or "f1"
-    selected_backbones=["f3", 'f3_norm', "seam_ai", 'seam_ai_norm', "both", 'both_N'],  # Backbones to display
-    selected_data="seam_ai"  # Data to filter by (set to None for all data)
+    selected_backbones=[
+        "f3",
+        "f3_norm",
+        "seam_ai",
+        "seam_ai_norm",
+        "both",
+        "both_N",
+    ],  # Backbones to display
+    selected_data="seam_ai",  # Data to filter by (set to None for all data)
 )
 plot_metrics(
     data_file="evaluation_results.csv",  # CSV file with evaluation results
     output_file="outputs/downstream_seam_ai_N.png",  # Output file for the plot
     metric="iou",  # Metric to plot: "iou" or "f1"
-    selected_backbones=["f3", 'f3_norm', "seam_ai", 'seam_ai_norm', "both", 'both_N'],  # Backbones to display
-    selected_data="seam_ai_N"  # Data to filter by (set to None for all data)
+    selected_backbones=[
+        "f3",
+        "f3_norm",
+        "seam_ai",
+        "seam_ai_norm",
+        "both",
+        "both_N",
+    ],  # Backbones to display
+    selected_data="seam_ai_N",  # Data to filter by (set to None for all data)
 )
 plot_metrics(
     data_file="evaluation_results.csv",  # CSV file with evaluation results
     output_file="outputs/downstream_f3_full.png",  # Output file for the plot
     metric="iou",  # Metric to plot: "iou" or "f1"
-    selected_backbones=["f3", 'f3_norm', "seam_ai", 'seam_ai_norm', "both", 'both_N', 'COCO', 'imagenet', 'seg', 'sup'],  # Backbones to display
-    selected_data="f3"  # Data to filter by (set to None for all data)
+    selected_backbones=[
+        "f3",
+        "f3_norm",
+        "seam_ai",
+        "seam_ai_norm",
+        "both",
+        "both_N",
+        "COCO",
+        "imagenet",
+        "seg",
+        "sup",
+    ],  # Backbones to display
+    selected_data="f3",  # Data to filter by (set to None for all data)
 )
 plot_metrics(
     data_file="evaluation_results.csv",  # CSV file with evaluation results
     output_file="outputs/downstream_f3_N_full.png",  # Output file for the plot
     metric="iou",  # Metric to plot: "iou" or "f1"
-    selected_backbones=["f3", 'f3_norm', "seam_ai", 'seam_ai_norm', "both", 'both_N', 'COCO', 'imagenet', 'seg', 'sup'],  # Backbones to display
-    selected_data="f3_N"  # Data to filter by (set to None for all data)
+    selected_backbones=[
+        "f3",
+        "f3_norm",
+        "seam_ai",
+        "seam_ai_norm",
+        "both",
+        "both_N",
+        "COCO",
+        "imagenet",
+        "seg",
+        "sup",
+    ],  # Backbones to display
+    selected_data="f3_N",  # Data to filter by (set to None for all data)
 )
 plot_metrics(
     data_file="evaluation_results.csv",  # CSV file with evaluation results
     output_file="outputs/downstream_seam_ai_full.png",  # Output file for the plot
     metric="iou",  # Metric to plot: "iou" or "f1"
-    selected_backbones=["f3", 'f3_norm', "seam_ai", 'seam_ai_norm', "both", 'both_N', 'COCO', 'imagenet', 'seg', 'sup'],  # Backbones to display
-    selected_data="seam_ai"  # Data to filter by (set to None for all data)
+    selected_backbones=[
+        "f3",
+        "f3_norm",
+        "seam_ai",
+        "seam_ai_norm",
+        "both",
+        "both_N",
+        "COCO",
+        "imagenet",
+        "seg",
+        "sup",
+    ],  # Backbones to display
+    selected_data="seam_ai",  # Data to filter by (set to None for all data)
 )
 plot_metrics(
     data_file="evaluation_results.csv",  # CSV file with evaluation results
     output_file="outputs/downstream_seam_ai_N_full.png",  # Output file for the plot
     metric="iou",  # Metric to plot: "iou" or "f1"
-    selected_backbones=["f3", 'f3_norm', "seam_ai", 'seam_ai_norm', "both", 'both_N', 'COCO', 'imagenet', 'seg', 'sup'],  # Backbones to display
-    selected_data="seam_ai_N"  # Data to filter by (set to None for all data)
+    selected_backbones=[
+        "f3",
+        "f3_norm",
+        "seam_ai",
+        "seam_ai_norm",
+        "both",
+        "both_N",
+        "COCO",
+        "imagenet",
+        "seg",
+        "sup",
+    ],  # Backbones to display
+    selected_data="seam_ai_N",  # Data to filter by (set to None for all data)
 )

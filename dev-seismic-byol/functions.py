@@ -103,11 +103,11 @@ import torch.nn as nn
 from pathlib import Path
 import re
 
+
 def get_model(pretrain_data, learning_rate, freeze, repetition, root_path=None):
-    
     num_classes = 6
-    
-    if pretrain_data == 'a700':
+
+    if pretrain_data == "a700":
         base_name = f"V{repetition}_pretrain_{pretrain_data}_In256_B32_E100"
     else:
         base_name = f"V{repetition}_pretrain_{pretrain_data}_In256_B32_E500"
@@ -159,6 +159,23 @@ def get_model(pretrain_data, learning_rate, freeze, repetition, root_path=None):
         logger.info("Freezing backbone parameters.")
         for param in backbone.parameters():
             param.requires_grad = False
+
+    # Métricas
+    iou = torchmetrics.JaccardIndex(
+        task="multiclass", num_classes=num_classes, average=None
+    )
+    f1_score = torchmetrics.F1Score(
+        task="multiclass", num_classes=num_classes, average=None
+    )
+    accuracy = torchmetrics.Accuracy(
+        task="multiclass", num_classes=num_classes, average=None
+    )
+
+    metrics = {
+        "iou": iou,
+        "f1_score": f1_score,
+        "accuracy": accuracy,
+    }
 
     model = DeepLabV3(
         backbone=backbone,
@@ -222,7 +239,11 @@ def extract_epoch_number(filename):
 def get_models_files(base_dir="./ckpt/train", target_repetition=None):
     base_dir = Path(base_dir)
     results = []
-    repetitions = [str(target_repetition)] if target_repetition != None else [d.name for d in base_dir.iterdir() if d.is_dir()]
+    repetitions = (
+        [str(target_repetition)]
+        if target_repetition != None
+        else [d.name for d in base_dir.iterdir() if d.is_dir()]
+    )
 
     for repetition_dir in repetitions:
         rep_path = base_dir / repetition_dir
@@ -243,20 +264,27 @@ def get_models_files(base_dir="./ckpt/train", target_repetition=None):
                 if not train_data_dir.is_dir():
                     continue
 
-                ckpt_files = [f for f in train_data_dir.iterdir() if f.is_file() and f.name.startswith("epoch=")]
+                ckpt_files = [
+                    f
+                    for f in train_data_dir.iterdir()
+                    if f.is_file() and f.name.startswith("epoch=")
+                ]
                 if ckpt_files:
-                    ckpt_files.sort(key=lambda f: extract_epoch_number(f.name), reverse=True)
-                    results.append({
-                        "model_name": model_dir.name,
-                        "repetition": repetition_dir,
-                        "pretrain_data": pretrain_data,
-                        "train_data": train_data,
-                        "cap": cap,
-                        "ckpt_file": str(ckpt_files[0]),
-                    })
+                    ckpt_files.sort(
+                        key=lambda f: extract_epoch_number(f.name), reverse=True
+                    )
+                    results.append(
+                        {
+                            "model_name": model_dir.name,
+                            "repetition": repetition_dir,
+                            "pretrain_data": pretrain_data,
+                            "train_data": train_data,
+                            "cap": cap,
+                            "ckpt_file": str(ckpt_files[0]),
+                        }
+                    )
 
     return results
-
 
 
 from minerva.data.data_modules.base import MinervaDataModule
@@ -266,14 +294,14 @@ import random
 
 class CapDataModule(MinervaDataModule):
     def __init__(
-        self, 
-        cap_train: Optional[float] = None, 
-        cap_val: Optional[float] = None, 
-        cap_test: Optional[float] = None, 
+        self,
+        cap_train: Optional[float] = None,
+        cap_val: Optional[float] = None,
+        cap_test: Optional[float] = None,
         seed: Optional[int] = 42,
         drop_last: Optional[bool] = False,
-        *args, 
-        **kwargs    
+        *args,
+        **kwargs,
     ):
         super().__init__(*args, **kwargs)
         self.cap_train = cap_train
@@ -299,7 +327,7 @@ class CapDataModule(MinervaDataModule):
                 shuffle=True,
                 num_workers=15,
                 pin_memory=dataloader.pin_memory,
-                drop_last=self.drop_last
+                drop_last=self.drop_last,
             )
         return dataloader
 
@@ -318,7 +346,7 @@ class CapDataModule(MinervaDataModule):
                 shuffle=False,
                 num_workers=15,
                 pin_memory=dataloader.pin_memory,
-                drop_last=self.drop_last
+                drop_last=self.drop_last,
             )
         return dataloader
 
@@ -337,6 +365,6 @@ class CapDataModule(MinervaDataModule):
                 shuffle=False,
                 num_workers=15,
                 pin_memory=dataloader.pin_memory,
-                drop_last=self.drop_last
+                drop_last=self.drop_last,
             )
         return dataloader
