@@ -19,6 +19,7 @@ from minerva.pipelines.lightning_pipeline import SimpleLightningPipeline
 from lightning.pytorch.loggers.csv_logs import CSVLogger
 from lightning.pytorch.callbacks import ModelCheckpoint
 from lightning import Trainer
+from lightning.fabric import seed_everything
 
 from a700 import A700DataModule
 
@@ -34,8 +35,9 @@ def main(
     log_path,
     gpus,
 ):
-
-    model_name = f'V{repetition}_pretrain_{dataset_name}_In{str(input_size[0])}_B{batch_size}_E{num_epochs}'
+    
+    seed_everything(repetition)
+    model_name = f'V{repetition}_pretrain_{dataset_name}_In{str(input_size[0])}_B{batch_size}_E{num_epochs}_lr{learning_rate}'
     logger.info(f'Model name: {model_name}')
  
  
@@ -50,27 +52,47 @@ def main(
     
 
     if dataset_name == 's0' or dataset_name == 'a700':
-        byol_transform_pipeline = TransformPipeline([
-            transpose_to_HWC,
-            repeat,
-            random_crop,
+        aux_transform_pipeline = TransformPipeline([
+
             random_flip,
             random_rotation,
             transpose_to_CHW,
-            # cast_to_tensor,
         ])
+        constrastive_transform = ContrastiveTransform(
+            aux_transform_pipeline
+        )
+
+        byol_transform_pipeline = TransformPipeline(
+            [
+                transpose_to_HWC,
+                repeat,
+                random_crop,
+                constrastive_transform,
+            ]
+        )
         
     else: 
-        byol_transform_pipeline = TransformPipeline([
-            random_crop,
-            random_flip,
-            random_rotation,
-            transpose_to_CHW,
-            cast_to_tensor,
-        ])
+        aux_transform_pipeline = TransformPipeline(
+            [   
+                random_flip,
+                random_rotation,
+                transpose_to_CHW,
+                cast_to_tensor,
+                ]
+        ) 
+
+        constrastive_transform = ContrastiveTransform(
+            aux_transform_pipeline
+        )
+
+        byol_transform_pipeline = TransformPipeline(
+            [
+                random_crop,
+                constrastive_transform,
+            ]
+        )
         
 
-    constrastive_transform = ContrastiveTransform(byol_transform_pipeline)
     logger.info(f"Transforms built for {dataset_name}")
     
     # Dataset
@@ -94,7 +116,7 @@ def main(
     
         pretrain_dataset = SimpleDataset(
             readers=train_img_reader,
-            transforms=constrastive_transform,
+            transforms=byol_transform_pipeline,
             return_single=True
         )
     
@@ -104,7 +126,7 @@ def main(
             normalization_strategy='z-sample',
             crop_size=0,
             batch_size=batch_size,
-            transform=constrastive_transform,
+            transform=byol_transform_pipeline,
             root=data_path
         )
 
@@ -121,21 +143,34 @@ def main(
 
     # Modelo
     backbone = DeepLabV3Backbone(num_classes=6)
-    model = BYOL(backbone=backbone, learning_rate=learning_rate)
+    model = BYOL(backbone=backbone, 
+                 learning_rate=learning_rate,
+                 )
     logger.info(f"Model built: {type(model).__name__}")
     # Logger, Checkpoints, Trainer
     log_dir = Path(log_path) / model_name / dataset_name
     ckpt_dir = Path(ckpt_path) / model_name / dataset_name
     CSVlogger = CSVLogger(log_dir, name=model_name, version=dataset_name)
-    ckpt_callback = ModelCheckpoint(save_top_k=1, save_last=True, dirpath=ckpt_dir)
+    
+    ckpt_callback = ModelCheckpoint(
+        save_top_k=1, 
+        save_last=True, 
+        dirpath=ckpt_dir)
+    ckpt_callback_every_50 = ModelCheckpoint(
+        save_top_k=-1,  # Save all checkpoints
+        every_n_epochs=50,  # Save every 50 epochs
+        dirpath=ckpt_dir,
+        filename="{epoch:03d}"  # Filename format
+    )
+    
     logger.info("Loggers and checkpoints built")
 
     trainer = Trainer(
         accelerator='gpu',
         logger=CSVlogger,
-        callbacks=[ckpt_callback],
+        callbacks=[ckpt_callback, ckpt_callback_every_50],
         max_epochs=num_epochs,
-        strategy='ddp_find_unused_parameters_true',
+        strategy='auto',
         devices=gpus
     )
     logger.info("Trainer instantiated")

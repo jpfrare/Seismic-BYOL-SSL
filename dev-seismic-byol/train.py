@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from functions import *
+from functions import logger
 
 from minerva.transforms.transform import *
 from minerva.transforms.random_transform import *
@@ -29,14 +30,26 @@ def main(
     logs_path,
     import_root_path,
     gpus,
+    import_path=False,
+    full_save_name=False
 ):
 
     # Set general seed**
     seed_everything(repetition)
-    save_name = (
-        f"V{repetition}_pre_{pretrain_data}_train_{finetune_data}_cap_{cap*100:.0f}%"
-    )
-
+    if full_save_name:
+        save_name = full_save_name
+    else:
+        if isinstance(cap, float):
+            save_name = (
+                f"V{repetition}_pre_{pretrain_data}_train_{finetune_data}_cap_{cap*100:.0f}%"
+            )
+        elif isinstance(cap, int):
+            save_name = (
+                f"V{repetition}_pre_{pretrain_data}_train_{finetune_data}_cap_{cap}_img"
+            )
+        
+    logger.info(f"Saving model {save_name}")
+    
     # Transforms
     if finetune_data == "f3" or finetune_data == "f3_N":
         padding = Padding(256, 704)
@@ -63,7 +76,7 @@ def main(
         return_single=False,
     )
 
-    assert len(train_dataset) * cap >= batch_size, "Too few samples for given cap and batch size"
+    # assert len(train_dataset) * cap >= batch_size, "Too few samples for given cap and batch size"
 
     val_dataset = SimpleDataset(
         readers=[
@@ -78,8 +91,8 @@ def main(
 
     data_module = CapDataModule(
         cap_train=cap,
-        cap_val=1,
-        cap_test=1,
+        cap_val=1.0,
+        cap_test=1.0,
         seed=repetition,
         train_dataset=train_dataset,
         val_dataset=val_dataset,
@@ -96,18 +109,19 @@ def main(
         freeze,
         repetition,
         import_root_path,
+        full_path=import_path
     )
 
     log_dir = Path(logs_path) / save_name / finetune_data
     ckpt_dir = Path(ckpt_path) / save_name / finetune_data
-    logger = CSVLogger(log_dir, name=save_name, version=finetune_data)
+    csv_logger = CSVLogger(log_dir, name=save_name, version=finetune_data)
     ckpt_callback = ModelCheckpoint(
         save_top_k=1, save_last=True, dirpath=ckpt_dir, mode="min", monitor="val_loss"
     )
 
     trainer = Trainer(
         accelerator="gpu",
-        logger=logger,
+        logger=csv_logger,
         callbacks=[ckpt_callback],
         max_epochs=num_epochs,
         strategy="auto",
@@ -134,10 +148,10 @@ if __name__ == "__main__":
         batch_size=8,
         repetition=8,
         learning_rate=0.001,
-        cap=0.01,
+        cap=1,
         freeze=False,
-        ckpt_path="/home/vinicius.soares/dev-seismic-byol/ckpt",
-        logs_path="/home/vinicius.soares/dev-seismic-byol/logs",
+        ckpt_path="/home/vinicius.soares/dev-seismic-byol/ckpt_new",
+        logs_path="/home/vinicius.soares/dev-seismic-byol/logs_new",
         import_root_path=None,
         gpus=[0],
     )
