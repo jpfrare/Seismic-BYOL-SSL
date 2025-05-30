@@ -4,24 +4,6 @@ import seaborn as sns
 import numpy as np
 import os
 
-
-
-def group_metrics_by_cap(csv_path, train_data_filter, metric="acc"):
-    df = pd.read_csv(csv_path)
-
-    # Filtrar por train_data
-
-    # Converter cap para número (ex: "50%" -> 50)
-    df["cap"] = df["cap"].str.rstrip('%').astype(float)
-
-    # Agrupar por pretrain_data e cap
-    grouped = df.groupby(["pretrain_data", "cap", "train_data"])[metric].agg(['mean', 'std']).reset_index()
-    grouped.to_csv("new_metrics.csv", index=False)
-    
-    grouped = grouped[grouped["train_data"] == train_data_filter].copy()    
-    return grouped
-
-
 def plot_metric_by_cap(grouped_df, metric="acc"):
     plt.figure(figsize=(10, 6))
     sns.set_theme(style="whitegrid")
@@ -39,7 +21,25 @@ def plot_metric_by_cap(grouped_df, metric="acc"):
     plt.ylabel(metric)
     plt.legend(title="Pré-treino")
     plt.tight_layout()
-    plt.show()
+    # plt.show()
+
+
+def group_metrics_by_cap(csv_path, train_data_filter, metric="acc"):
+    df = pd.read_csv(csv_path)
+
+    df = df[df["train_data"] == train_data_filter].copy()
+
+    # Convert cap to numeric
+    df["cap"] = df["cap"].astype(float)
+
+    result = {}
+
+    for cap_type in ["percent", "images"]:
+        df_type = df[df["cap_type"] == cap_type].copy()
+        grouped = df_type.groupby(["pretrain_data", "cap", "train_data"])[metric].agg(['mean', 'std']).reset_index()
+        result[cap_type] = grouped
+
+    return result
 
 
 def barplot_from_df(
@@ -52,7 +52,8 @@ def barplot_from_df(
     save_path=None,
     pretrains=None,
     caps=None,
-    train_data=None
+    train_data=None,
+    cap_type="percent"  # "percent" or "images"
 ):
 
     import matplotlib.pyplot as plt
@@ -88,7 +89,7 @@ def barplot_from_df(
             ax.errorbar(x_pos, height, yerr=std_val, color='black', capsize=5, fmt='none')
             i += 1
 
-    plt.xlabel("Cap (%)")
+    plt.xlabel("Cap (%)" if cap_type == "percent" else "Cap (n imagens)")
     plt.ylabel(y)
     plot_title = title or f"{y} por {x} agrupado por {hue}"
     if train_data:
@@ -99,11 +100,16 @@ def barplot_from_df(
     if save_path:
         plt.savefig(save_path, dpi=300)
         print(f"Gráfico salvo em: {save_path}")
-    else:
-        plt.show()
+    # else:
+        # plt.show()
 
 
-def plot_from_df(df, x="cap", y="mean", err="std", hue="pretrain_data", title=None, save_path=None, log_scale=False, pretrains=None, caps=None, train_data=None):
+def plot_from_df(
+    df, x="cap", y="mean", err="std", hue="pretrain_data",
+    title=None, save_path=None, log_scale=False,
+    pretrains=None, caps=None, train_data=None,
+    cap_type="percent"  # "percent" or "images"
+):
     import matplotlib.pyplot as plt
     import seaborn as sns
 
@@ -127,22 +133,26 @@ def plot_from_df(df, x="cap", y="mean", err="std", hue="pretrain_data", title=No
             marker='o', linestyle='-', linewidth=2
         )
 
-    plt.xlabel("Cap (%)")
+    # Dynamic x-axis label
+    plt.xlabel("Cap (%)" if cap_type == "percent" else "Cap (n imagens)")
     plt.ylabel(y)
+
     plot_title = title or f"{y} vs {x}"
     if train_data:
         plot_title += f": {train_data}"
     plt.title(plot_title)
-    if log_scale:
+
+    # Only use log scale for percent
+    if log_scale and cap_type == "percent":
         plt.xscale("log")
+
     plt.legend(title=hue)
     plt.tight_layout()
 
     if save_path:
         plt.savefig(save_path, dpi=300)
         print(f"Gráfico salvo em: {save_path}")
-    else:
-        plt.show()
+
         
         
 finetune_list = ['f3', 'f3_N', 'seam_ai', 'seam_ai_N']
@@ -174,50 +184,56 @@ for train_data in finetune_list:
     if old:    
         metrics = pd.read_csv("old_metrics.csv")
         metrics = metrics[metrics["train_data"] == train_data].copy()
+        grouped_dict = {"percent": metrics}  # fallback
     else:
-        metrics = group_metrics_by_cap(csv_path=csv_path, train_data_filter=train_data, metric=metric)
+        grouped_dict = group_metrics_by_cap(csv_path=csv_path, train_data_filter=train_data, metric=metric)
 
-    # print(metrics)
+    for cap_type, metrics in grouped_dict.items():
 
-    save_path = f'outputs/old/{train_data}' if old else f'outputs/new/{train_data}'
+        if metrics.empty:
+            print(f"[{train_data}] Nenhum dado para cap_type = {cap_type}")
+            continue
 
-    # plot_from_df(metrics, 
-    #             save_path=f"{save_path}_lines.png", 
-    #             log_scale=True,
-    #             pretrains=seismic_pretrain,
-    #             caps=cap_list,
-    #             train_data=train_data)
+        suffix = "percent" if cap_type == "percent" else "images"
+        cap_list = all_cap_list if cap_type == "percent" else sorted(metrics["cap"].unique())
+        small_caps_list = small_caps if cap_type == "percent" else sorted([c for c in cap_list if c <= 10.0])
 
-    # barplot_from_df(metrics,
-    #             save_path=f"{save_path}_bars.png", 
-    #             pretrains=seismic_pretrain,
-    #             caps=cap_list,
-    #             train_data=train_data)
-    
-    plot_from_df(metrics, 
-                save_path=f"{save_path}_lines.png", 
-                log_scale=True,
-                pretrains=all_pretrain_list,
-                caps=all_cap_list,
-                train_data=train_data)
+        save_path = f'outputs/{"old" if old else "new"}/{suffix}/{train_data}_{suffix}'
 
-    barplot_from_df(metrics,
-                save_path=f"{save_path}_bars.png", 
-                pretrains=all_pretrain_list,
-                caps=all_cap_list,
-                train_data=train_data)
-    
-    barplot_from_df(metrics,
-                save_path=f"{save_path}_first_bars.png", 
-                pretrains=all_pretrain_list,
-                caps=small_caps,
-                train_data=train_data)
-    
+        os.makedirs(f'outputs/new/percent', exist_ok=True)
+        os.makedirs(f'outputs/new/images', exist_ok=True)
 
-    plot_from_df(metrics, 
-                save_path=f"{save_path}_filtered_lines.png", 
-                log_scale=True,
-                pretrains=[train_data, 'sup', 'coco', 'imagenet', 'a700', 'both_N' if '_N' in train_data else 'both'],
-                caps=all_cap_list,
-                train_data=train_data)
 
+        # Line plot - all
+        plot_from_df(metrics, 
+                    save_path=f"{save_path}_lines.png", 
+                    log_scale=True,
+                    pretrains=all_pretrain_list,
+                    caps=cap_list,
+                    train_data=train_data,
+                    cap_type=cap_type)
+
+        # Bar plot - all
+        barplot_from_df(metrics,
+                    save_path=f"{save_path}_bars.png", 
+                    pretrains=all_pretrain_list,
+                    caps=cap_list,
+                    train_data=train_data,
+                    cap_type=cap_type)
+
+        # Bar plot - small caps
+        barplot_from_df(metrics,
+                    save_path=f"{save_path}_first_bars.png", 
+                    pretrains=all_pretrain_list,
+                    caps=small_caps_list,
+                    train_data=train_data,
+                    cap_type=cap_type)
+
+        # Filtered plot (just key pretrains)
+        plot_from_df(metrics, 
+                    save_path=f"{save_path}_filtered_lines.png", 
+                    log_scale=True,
+                    pretrains=[train_data, 'sup', 'coco', 'imagenet', 'a700', 'both_N' if '_N' in train_data else 'both'],
+                    caps=cap_list,
+                    train_data=train_data,
+                    cap_type=cap_type)
