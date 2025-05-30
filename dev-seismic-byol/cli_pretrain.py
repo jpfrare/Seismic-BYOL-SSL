@@ -58,8 +58,8 @@ if __name__ == "__main__":
             f"Dataset '{args.dataset_name}' not found in available options: {list(dataset_mapping.keys())}"
         )
 
-    PRETRAIN_LOGS_PATH = f"logs/pretrain/{args.repetition}"
-    PRETRAIN_CKPT_PATH = f"ckpt/pretrain/{args.repetition}"
+    PRETRAIN_LOGS_PATH = f"logs_ht/pretrain/{args.repetition}"
+    PRETRAIN_CKPT_PATH = f"ckpt_ht/pretrain/{args.repetition}"
 
     logger.info(f"Batches: {args.batch_size} - Input: {args.input_size}")
     logger.info(f"Pretrain Log Path: {PRETRAIN_LOGS_PATH}")

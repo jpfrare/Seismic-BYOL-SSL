@@ -2,6 +2,21 @@ import argparse
 from train import main
 from functions import *
 
+def parse_cap(value):
+    try:
+        if '.' in value:
+            val = float(value)
+            if not (0.0 < val <= 1.0):
+                raise argparse.ArgumentTypeError("Float cap must be in the (0, 1] range.")
+            return val
+        else:
+            val = int(value)
+            if val <= 0:
+                raise argparse.ArgumentTypeError("Integer cap must be greater than 0.")
+            return val
+    except ValueError:
+        raise argparse.ArgumentTypeError("Cap must be a float in (0, 1] or a positive int.")
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Fine-tuning script for seismic segmentation using pretrained BYOL backbone."
@@ -33,9 +48,9 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--cap",
-        type=float,
+        type=parse_cap,
         default=1.0,
-        help="Fraction of data to use for training (between 0 and 1)"
+        help="Amount of data to use for training: float (0-1] for fraction, or int > 0 for fixed number of samples"
     )
     parser.add_argument(
         "--freeze", action="store_true", help="Whether to freeze the encoder backbone"
@@ -73,6 +88,7 @@ if __name__ == "__main__":
     logger.info(f"Finetune data: {args.finetune_data}")
     logger.info(f"Batch size: {args.batch_size}, LR: {args.learning_rate}")
     logger.info(f"Cap: {args.cap}, Freeze: {args.freeze}")
+    logger.info(f"Cap type: {type(args.cap)}")
 
     # Aqui você chama o método de treinamento
     main(

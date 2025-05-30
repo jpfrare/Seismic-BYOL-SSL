@@ -103,20 +103,24 @@ import torch.nn as nn
 from pathlib import Path
 import re
 
-def get_model(pretrain_data, learning_rate, freeze, repetition, root_path=None):
-    num_classes = 6
-    
-    if pretrain_data == 'a700':
-        base_name = f"V{repetition}_pretrain_{pretrain_data}_In256_B32_E100"
-    else:
-        base_name = f"V{repetition}_pretrain_{pretrain_data}_In256_B32_E500"
 
-    if root_path:
-        import_path = f"{root_path}/{repetition}/{base_name}/{pretrain_data}/last.ckpt"
+def get_model(pretrain_data, learning_rate, freeze, repetition, root_path=None, full_path=False):
+    num_classes = 6
+
+    if full_path: 
+        import_path = full_path
     else:
-        import_path = (
-            f"ckpt/pretrain/{repetition}/{base_name}/{pretrain_data}/last.ckpt"
-        )
+        if pretrain_data == "a700":
+            base_name = f"V{repetition}_pretrain_{pretrain_data}_In256_B32_E100"
+        else:
+            base_name = f"V{repetition}_pretrain_{pretrain_data}_In256_B32_E500"
+
+        if root_path:
+            import_path = f"{root_path}/{repetition}/{base_name}/{pretrain_data}/last.ckpt"
+        else:
+            import_path = (
+                f"ckpt/pretrain/{repetition}/{base_name}/{pretrain_data}/last.ckpt"
+            )
 
     seg_data = ["f3", "f3_N", "seam_ai", "seam_ai_N", "both", "both_N", "s0", "a700"]
 
@@ -154,11 +158,6 @@ def get_model(pretrain_data, learning_rate, freeze, repetition, root_path=None):
     else:
         raise KeyError("Pretrain data value wrong!")
 
-    if freeze:
-        logger.info("Freezing backbone parameters.")
-        for param in backbone.parameters():
-            param.requires_grad = False
-
     # Métricas
     iou = torchmetrics.JaccardIndex(
         task="multiclass", num_classes=num_classes, average=None
@@ -180,7 +179,11 @@ def get_model(pretrain_data, learning_rate, freeze, repetition, root_path=None):
         backbone=backbone,
         learning_rate=learning_rate,
         num_classes=num_classes,
+        freeze_backbone=freeze
     )
+    
+    if freeze:
+        logger.info("Freezing backbone parameters via `freeze_weights`.")
 
     return model
 
@@ -238,7 +241,11 @@ def extract_epoch_number(filename):
 def get_models_files(base_dir="./ckpt/train", target_repetition=None):
     base_dir = Path(base_dir)
     results = []
-    repetitions = [str(target_repetition)] if target_repetition != None else [d.name for d in base_dir.iterdir() if d.is_dir()]
+    repetitions = (
+        [str(target_repetition)]
+        if target_repetition != None
+        else [d.name for d in base_dir.iterdir() if d.is_dir()]
+    )
 
     for repetition_dir in repetitions:
         rep_path = base_dir / repetition_dir
@@ -259,36 +266,81 @@ def get_models_files(base_dir="./ckpt/train", target_repetition=None):
                 if not train_data_dir.is_dir():
                     continue
 
-                ckpt_files = [f for f in train_data_dir.iterdir() if f.is_file() and f.name.startswith("epoch=")]
+                ckpt_files = [
+                    f
+                    for f in train_data_dir.iterdir()
+                    if f.is_file() and f.name.startswith("epoch=")
+                ]
                 if ckpt_files:
-                    ckpt_files.sort(key=lambda f: extract_epoch_number(f.name), reverse=True)
-                    results.append({
-                        "model_name": model_dir.name,
-                        "repetition": repetition_dir,
-                        "pretrain_data": pretrain_data,
-                        "train_data": train_data,
-                        "cap": cap,
-                        "ckpt_file": str(ckpt_files[0]),
-                    })
+                    ckpt_files.sort(
+                        key=lambda f: extract_epoch_number(f.name), reverse=True
+                    )
+                    results.append(
+                        {
+                            "model_name": model_dir.name,
+                            "repetition": repetition_dir,
+                            "pretrain_data": pretrain_data,
+                            "train_data": train_data,
+                            "cap": cap,
+                            "ckpt_file": str(ckpt_files[0]),
+                        }
+                    )
 
     return results
 
 
+from torch.utils.data import Subset
+from math import ceil, floor
+
+
+def build_indices(start, end, size, sort=False, original_size=None):
+    if original_size is None:
+        original_size = size
+
+    if (end - start <= 0) or (size <= 0):
+        return []
+
+    midpoint = (end + start) // 2
+    r = [midpoint]
+
+    remainder = size - 1
+    left_apportion = ceil(remainder / 2)
+    right_apportion = floor(remainder / 2)
+
+    r += build_indices(start, midpoint, left_apportion, sort, original_size)
+    r += build_indices(midpoint + 1, end, right_apportion, sort, original_size)
+
+    if sort:
+        r.sort()
+
+    # Duplicar somente se for a chamada inicial e size original era 1
+    if original_size == 1:
+        return r * 2
+
+    return r
+
+
+class BinaryTreeSubset(Subset):
+    def __init__(self, dataset, size):
+        indices = build_indices(0, len(dataset), size, sort=True)
+        super().__init__(dataset, indices)
+
+
 from minerva.data.data_modules.base import MinervaDataModule
-from typing import Optional
+from typing import Optional, Union
 import random
 
 
 class CapDataModule(MinervaDataModule):
     def __init__(
-        self, 
-        cap_train: Optional[float] = None, 
-        cap_val: Optional[float] = None, 
-        cap_test: Optional[float] = None, 
+        self,
+        cap_train: Optional[Union[float, int]] = None,
+        cap_val: Optional[Union[float, int]] = None,
+        cap_test: Optional[Union[float, int]] = None,
         seed: Optional[int] = 42,
         drop_last: Optional[bool] = False,
-        *args, 
-        **kwargs    
+        *args,
+        **kwargs,
     ):
         super().__init__(*args, **kwargs)
         self.cap_train = cap_train
@@ -302,56 +354,73 @@ class CapDataModule(MinervaDataModule):
     def train_dataloader(self):
         dataloader = super().train_dataloader()
         if self.cap_train is not None:
-            cap_len = int(len(dataloader.dataset) * self.cap_train)
-            subset, _ = torch.utils.data.random_split(
-                dataloader.dataset,
-                [cap_len, len(dataloader.dataset) - cap_len],
-                generator=torch.Generator().manual_seed(self.seed),
-            )
+            if isinstance(self.cap_train, float):
+                cap_len = int(len(dataloader.dataset) * self.cap_train)
+                subset, _ = torch.utils.data.random_split(
+                    dataloader.dataset,
+                    [cap_len, len(dataloader.dataset) - cap_len],
+                    generator=torch.Generator().manual_seed(self.seed),
+                )
+            elif isinstance(self.cap_train, int):
+                subset = BinaryTreeSubset(dataloader.dataset, self.cap_train)
+            else:
+                raise TypeError("cap_train must be float or int.")
             return torch.utils.data.DataLoader(
                 subset,
                 batch_size=dataloader.batch_size,
                 shuffle=True,
                 num_workers=15,
                 pin_memory=dataloader.pin_memory,
-                drop_last=self.drop_last
+                drop_last=self.drop_last,
             )
         return dataloader
 
     def val_dataloader(self):
         dataloader = super().val_dataloader()
         if self.cap_val is not None:
-            cap_len = int(len(dataloader.dataset) * self.cap_val)
-            subset, _ = torch.utils.data.random_split(
-                dataloader.dataset,
-                [cap_len, len(dataloader.dataset) - cap_len],
-                generator=torch.Generator().manual_seed(self.seed),
-            )
+            if isinstance(self.cap_val, float):
+                cap_len = int(len(dataloader.dataset) * self.cap_val)
+                subset, _ = torch.utils.data.random_split(
+                    dataloader.dataset,
+                    [cap_len, len(dataloader.dataset) - cap_len],
+                    generator=torch.Generator().manual_seed(self.seed),
+                )
+            elif isinstance(self.cap_val, int):
+                subset = BinaryTreeSubset(dataloader.dataset, self.cap_val)
+            else:
+                raise TypeError("cap_val must be float or int.")
             return torch.utils.data.DataLoader(
                 subset,
                 batch_size=dataloader.batch_size,
                 shuffle=False,
                 num_workers=15,
                 pin_memory=dataloader.pin_memory,
-                drop_last=self.drop_last
+                # drop_last=self.drop_last,
+                drop_last=True,
             )
         return dataloader
 
     def test_dataloader(self):
         dataloader = super().test_dataloader()
         if self.cap_test is not None:
-            cap_len = int(len(dataloader.dataset) * self.cap_test)
-            subset, _ = torch.utils.data.random_split(
-                dataloader.dataset,
-                [cap_len, len(dataloader.dataset) - cap_len],
-                generator=torch.Generator().manual_seed(self.seed),
-            )
+            if isinstance(self.cap_test, float):
+                cap_len = int(len(dataloader.dataset) * self.cap_test)
+                subset, _ = torch.utils.data.random_split(
+                    dataloader.dataset,
+                    [cap_len, len(dataloader.dataset) - cap_len],
+                    generator=torch.Generator().manual_seed(self.seed),
+                )
+            elif isinstance(self.cap_test, int):
+                subset = BinaryTreeSubset(dataloader.dataset, self.cap_test)
+            else:
+                raise TypeError("cap_test must be float or int.")
             return torch.utils.data.DataLoader(
                 subset,
                 batch_size=dataloader.batch_size,
                 shuffle=False,
                 num_workers=15,
                 pin_memory=dataloader.pin_memory,
-                drop_last=self.drop_last
+                # drop_last=self.drop_last,
+                drop_last=True
             )
         return dataloader

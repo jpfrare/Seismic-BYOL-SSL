@@ -76,20 +76,22 @@ if __name__ == "__main__":
         logger.info(f'Data Path :{data_path}')
     
     
-        # if model_cap == "10%":
+        # if model_cap in ['1', '2', '3', '5', '10', '20']:
+        
+        if "_img" in model_cap:
         
         # Rodar avaliação
-    
-        main(
-            ckpt_file=ckpt_file,
-            model_name=model_name,
-            finetune_data=finetune_data,
-            pretrain_data=pretrain_data,
-            data_path=data_path,
-            num_epochs=args.num_epochs,
-            batch_size=args.batch_size,
-            repetition=args.repetition,
-            ckpt_path=TEST_CKPT_PATH,
-            logs_path=TEST_LOGS_PATH,
-            gpus=args.gpus,
-        )
+        
+            main(
+                ckpt_file=ckpt_file,
+                model_name=model_name,
+                finetune_data=finetune_data,
+                pretrain_data=pretrain_data,
+                data_path=data_path,
+                num_epochs=args.num_epochs,
+                batch_size=args.batch_size,
+                repetition=args.repetition,
+                ckpt_path=TEST_CKPT_PATH,
+                logs_path=TEST_LOGS_PATH,
+                gpus=args.gpus,
+            )
