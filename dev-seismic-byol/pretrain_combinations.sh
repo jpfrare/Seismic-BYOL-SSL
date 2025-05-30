@@ -6,10 +6,10 @@ if [ "$#" -lt 3 ]; then
 fi
 
 # Fixed parameters
-BATCH_SIZE=32
+BATCH_SIZE=54
 INPUT_SIZE=256
-LR=0.2
-GPUS=0
+LR=1e-4
+GPUS=3
 NUM_EPOCHS=500
 
 # Repetition range

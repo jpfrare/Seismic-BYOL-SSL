@@ -79,6 +79,28 @@ echo "Learning rate: $LR"
 echo "Epochs: $NUM_EPOCHS"
 echo "------------------"
 
+# Define listas válidas
+VALID_PRETRAIN=("f3" "f3_N" "seam_ai" "seam_ai_N" "both" "both_N" "s0" "a700" "imagenet" "coco" "sup")
+VALID_FINETUNE=("f3" "f3_N" "seam_ai" "seam_ai_N")
+
+# Verifica datasets de pretreinamento
+for dataset in "${PRETRAIN_DATASETS[@]}"; do
+  if [[ ! " ${VALID_PRETRAIN[*]} " =~ " ${dataset} " ]]; then
+    echo " Erro: Pretrain dataset inválido: '${dataset}'."
+    echo " Válidos: ${VALID_PRETRAIN[*]}"
+    exit 1
+  fi
+done
+
+# Verifica datasets de fine-tuning
+for dataset in "${FINETUNE_DATASETS[@]}"; do
+  if [[ ! " ${VALID_FINETUNE[*]} " =~ " ${dataset} " ]]; then
+    echo " Erro: Finetune dataset inválido: '${dataset}'."
+    echo " Válidos: ${VALID_FINETUNE[*]}"
+    exit 1
+  fi
+done
+
 # Run loop: for each rep, finetune, pretrain, cap
 for REP in $(seq "$START_REP" "$END_REP"); do
   for PRE in "${PRETRAIN_DATASETS[@]}"; do

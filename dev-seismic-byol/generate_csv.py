@@ -18,13 +18,27 @@ def extract_model_metadata(model_name):
     match = re.match(r"V(\d+)_pre_(.+?)_train_(.+?)_cap_(.+)", model_name)
     if not match:
         raise ValueError(f"Invalid model name format: {model_name}")
-    repetition, pretrain_data, train_data, cap = match.groups()
+    
+    repetition, pretrain_data, train_data, cap_raw = match.groups()
+
+    # Determine cap_type and clean cap value
+    if cap_raw.endswith("_img"):
+        cap_type = "images"
+        cap_value = cap_raw.replace("_img", "")
+    elif cap_raw.endswith("%"):
+        cap_type = "percent"
+        cap_value = cap_raw.replace("%", "")
+    else:
+        cap_type = "unknown"
+        cap_value = cap_raw  # fallback
+
     return {
         "model_name": model_name,
         "repetition": repetition,
         "pretrain_data": pretrain_data,
         "train_data": train_data,
-        "cap": cap
+        "cap": cap_value,
+        "cap_type": cap_type
     }
 
 def load_existing_csv(csv_path):
@@ -39,7 +53,7 @@ def save_to_csv(rows_dict, output_csv):
     rows = list(rows_dict.values())
     fieldnames = [
         "model_name", "repetition", "pretrain_data", "train_data",
-        "cap", "metrics_file", "acc", "f1_weighted", "mIoU"
+        "cap", "cap_type", "metrics_file", "acc", "f1_weighted", "mIoU"
     ]
     with open(output_csv, "w", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
