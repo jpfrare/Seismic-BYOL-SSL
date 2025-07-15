@@ -287,17 +287,54 @@ def get_models_files(base_dir="./ckpt/train", target_repetition=None):
     return results
 
 
+from torch.utils.data import Subset
+from math import ceil, floor
+
+
+def build_indices(start, end, size, sort=False, original_size=None):
+    if original_size is None:
+        original_size = size
+
+    if (end - start <= 0) or (size <= 0):
+        return []
+
+    midpoint = (end + start) // 2
+    r = [midpoint]
+
+    remainder = size - 1
+    left_apportion = ceil(remainder / 2)
+    right_apportion = floor(remainder / 2)
+
+    r += build_indices(start, midpoint, left_apportion, sort, original_size)
+    r += build_indices(midpoint + 1, end, right_apportion, sort, original_size)
+
+    if sort:
+        r.sort()
+
+    # Duplicar somente se for a chamada inicial e size original era 1
+    if original_size == 1:
+        return r * 2
+
+    return r
+
+
+class BinaryTreeSubset(Subset):
+    def __init__(self, dataset, size):
+        indices = build_indices(0, len(dataset), size, sort=True)
+        super().__init__(dataset, indices)
+
+
 from minerva.data.data_modules.base import MinervaDataModule
-from typing import Optional
+from typing import Optional, Union
 import random
 
 
 class CapDataModule(MinervaDataModule):
     def __init__(
         self,
-        cap_train: Optional[float] = None,
-        cap_val: Optional[float] = None,
-        cap_test: Optional[float] = None,
+        cap_train: Optional[Union[float, int]] = None,
+        cap_val: Optional[Union[float, int]] = None,
+        cap_test: Optional[Union[float, int]] = None,
         seed: Optional[int] = 42,
         drop_last: Optional[bool] = False,
         *args,
@@ -315,12 +352,17 @@ class CapDataModule(MinervaDataModule):
     def train_dataloader(self):
         dataloader = super().train_dataloader()
         if self.cap_train is not None:
-            cap_len = int(len(dataloader.dataset) * self.cap_train)
-            subset, _ = torch.utils.data.random_split(
-                dataloader.dataset,
-                [cap_len, len(dataloader.dataset) - cap_len],
-                generator=torch.Generator().manual_seed(self.seed),
-            )
+            if isinstance(self.cap_train, float):
+                cap_len = int(len(dataloader.dataset) * self.cap_train)
+                subset, _ = torch.utils.data.random_split(
+                    dataloader.dataset,
+                    [cap_len, len(dataloader.dataset) - cap_len],
+                    generator=torch.Generator().manual_seed(self.seed),
+                )
+            elif isinstance(self.cap_train, int):
+                subset = BinaryTreeSubset(dataloader.dataset, self.cap_train)
+            else:
+                raise TypeError("cap_train must be float or int.")
             return torch.utils.data.DataLoader(
                 subset,
                 batch_size=dataloader.batch_size,
@@ -334,12 +376,17 @@ class CapDataModule(MinervaDataModule):
     def val_dataloader(self):
         dataloader = super().val_dataloader()
         if self.cap_val is not None:
-            cap_len = int(len(dataloader.dataset) * self.cap_val)
-            subset, _ = torch.utils.data.random_split(
-                dataloader.dataset,
-                [cap_len, len(dataloader.dataset) - cap_len],
-                generator=torch.Generator().manual_seed(self.seed),
-            )
+            if isinstance(self.cap_val, float):
+                cap_len = int(len(dataloader.dataset) * self.cap_val)
+                subset, _ = torch.utils.data.random_split(
+                    dataloader.dataset,
+                    [cap_len, len(dataloader.dataset) - cap_len],
+                    generator=torch.Generator().manual_seed(self.seed),
+                )
+            elif isinstance(self.cap_val, int):
+                subset = BinaryTreeSubset(dataloader.dataset, self.cap_val)
+            else:
+                raise TypeError("cap_val must be float or int.")
             return torch.utils.data.DataLoader(
                 subset,
                 batch_size=dataloader.batch_size,
@@ -353,12 +400,17 @@ class CapDataModule(MinervaDataModule):
     def test_dataloader(self):
         dataloader = super().test_dataloader()
         if self.cap_test is not None:
-            cap_len = int(len(dataloader.dataset) * self.cap_test)
-            subset, _ = torch.utils.data.random_split(
-                dataloader.dataset,
-                [cap_len, len(dataloader.dataset) - cap_len],
-                generator=torch.Generator().manual_seed(self.seed),
-            )
+            if isinstance(self.cap_test, float):
+                cap_len = int(len(dataloader.dataset) * self.cap_test)
+                subset, _ = torch.utils.data.random_split(
+                    dataloader.dataset,
+                    [cap_len, len(dataloader.dataset) - cap_len],
+                    generator=torch.Generator().manual_seed(self.seed),
+                )
+            elif isinstance(self.cap_test, int):
+                subset = BinaryTreeSubset(dataloader.dataset, self.cap_test)
+            else:
+                raise TypeError("cap_test must be float or int.")
             return torch.utils.data.DataLoader(
                 subset,
                 batch_size=dataloader.batch_size,
