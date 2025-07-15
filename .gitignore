@@ -177,5 +177,7 @@ reports/
 *.pth
 *.ckpt
 *.csv
+*.png
 *.yaml
-outputs/
+dev-seismic-byol/ckpt/pretrain.tar.gz
+/outputs
