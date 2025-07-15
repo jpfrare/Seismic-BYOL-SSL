@@ -16,6 +16,7 @@ from torchmetrics import Accuracy, JaccardIndex, F1Score
 from lightning.fabric import seed_everything
 
 
+
 def main(
     ckpt_file,
     model_name,
@@ -98,7 +99,7 @@ def main(
 
     # Model
 
-    model = get_eval_model(
+    model = get_linear_eval_model(
         pretrain_data=pretrain_data,
         import_path=ckpt_file,
         learning_rate=0.001
@@ -147,18 +148,22 @@ def main(
 
 if __name__ == "__main__":
     main(
-        model_name="V10_pre_teste_train_seam_ai_cap_100%_01",
-        ckpt_file="/home/vinicius.soares/Seismic-Byol/dev-seismic-byol/ckpt/train/10/V10_pre_teste_train_seam_ai_cap_100%_01/seam_ai/epoch=3-step=560.ckpt",
-        pretrain_data="teste",
+        model_name="V6_pre_sup_train_seam_ai_cap_100%",
+        ckpt_file="/home/vinicius.soares/Seismic-Byol/dev-seismic-byol/ht_ckpt/train_01/6/V6_pre_sup_train_seam_ai_cap_100%/seam_ai/epoch=29-step=4200.ckpt",
+        pretrain_data="sup",
         finetune_data="seam_ai",
         data_path='/home/vinicius.soares/asml/datasets/tiff_data/seam_ai',
         num_epochs=50,
         batch_size=8,
-        repetition=10,
-        ckpt_path="ckpt/test/10",
-        logs_path="logs/test/10",
+        repetition=6,
+        ckpt_path="ht_ckpt/test_01/6",
+        logs_path="ht_logs/test_01/6",
         gpus=[0],
     )
+    
+    
+    # TEST_LOGS_PATH = f"ht_logs/test/8"pode
+    # TEST_CKPT_PATH = f"ht_ckpt/test/8"
 
 
 

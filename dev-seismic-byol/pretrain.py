@@ -1,5 +1,5 @@
 # main.py
-
+import os
 import numpy as np
 from pathlib import Path
 
@@ -7,8 +7,10 @@ from functions import *
 
 from minerva.transforms.transform import *
 from minerva.transforms.random_transform import *
+from torchvision.models.segmentation import deeplabv3_resnet50
+from lightning.pytorch.strategies import DDPStrategy
 
-from minerva.data.readers import TiffReader
+from minerva.data.readers import TiffReader, PartialPatchedZarrReader, NumpyArrayReader
 from minerva.data.datasets import SimpleDataset
 from minerva.data.data_modules import MinervaDataModule
 
@@ -19,7 +21,9 @@ from minerva.pipelines.lightning_pipeline import SimpleLightningPipeline
 from lightning.pytorch.loggers.csv_logs import CSVLogger
 from lightning.pytorch.callbacks import ModelCheckpoint
 from lightning import Trainer
+from lightning.fabric import seed_everything
 
+from a700 import A700DataModule
 
 def main(
     input_size,
@@ -33,71 +37,154 @@ def main(
     log_path,
     gpus,
 ):
-
-    model_name = f"V{repetition}_pretrain_{dataset_name}_In{str(input_size[0])}_B{batch_size}_E{num_epochs}"
-    logger.info(f"Model name: {model_name}")
-
+    
+    seed_everything(repetition)
+    model_name = f'V{repetition}_pretrain_{dataset_name}_In{str(input_size[0])}_B{batch_size}_E{num_epochs}_lr{learning_rate}'
+    logger.info(f'Model name: {model_name}')
+ 
+ 
     # Transforms
-    random_flip = RandomFlip(possible_axis=1)
+    random_flip = RandomFlip(possible_axis=[1])
     random_crop = RandomCrop(crop_size=input_size)
     random_rotation = RandomRotation(degrees=25, prob=0.2)
-    transpose = Transpose([2, 0, 1])
+    transpose_to_HWC = Transpose([1, 2, 0])
+    transpose_to_CHW = Transpose([2, 0, 1])    
     cast_to_tensor = CastTo(dtype=np.float32)
+    repeat = Repeat(axis=2, n_repetitions=3)
+    
 
-    byol_transform_pipeline = TransformPipeline(
-        [
-            random_crop,
+    if dataset_name == 's0' or dataset_name == 'a700':
+        aux_transform_pipeline = TransformPipeline([
+
             random_flip,
             random_rotation,
-            transpose,
-            cast_to_tensor,
-        ]
-    )
+            transpose_to_CHW,
+        ])
+        constrastive_transform = ContrastiveTransform(
+            aux_transform_pipeline
+        )
 
-    constrastive_transform = ContrastiveTransform(byol_transform_pipeline)
+        byol_transform_pipeline = TransformPipeline(
+            [
+                transpose_to_HWC,
+                repeat,
+                random_crop,
+                constrastive_transform,
+            ]
+        )
+        
+    else: 
+        aux_transform_pipeline = TransformPipeline(
+            [   
+                random_flip,
+                random_rotation,
+                transpose_to_CHW,
+                cast_to_tensor,
+                ]
+        ) 
+
+        constrastive_transform = ContrastiveTransform(
+            aux_transform_pipeline
+        )
+
+        byol_transform_pipeline = TransformPipeline(
+            [
+                random_crop,
+                constrastive_transform,
+            ]
+        )
+        
+
     logger.info(f"Transforms built for {dataset_name}")
-
+    
     # Dataset
-
-    train_img_reader = TiffReader(path=data_path)
-
+    
+    if dataset_name == 's0':
+        train_img_reader = PartialPatchedZarrReader(
+            path=data_path,
+            data_shape=(1, 512, 512),
+            stride=(1, 6625,  2001),
+            pad_width=None,
+            index_bounds=[(2000, 0, 0), (4000, 6625, 2001)],
+            )
+        
+    elif dataset_name != 'a700':
+        train_img_reader = TiffReader(path=data_path)
+        
     logger.info(f"Readers built!")
+    
+    
+    if dataset_name != 'a700':
+    
+        pretrain_dataset = SimpleDataset(
+            readers=train_img_reader,
+            transforms=byol_transform_pipeline,
+            return_single=True
+        )
+    
+    if dataset_name == 'a700':
+        data_module = A700DataModule(
+            subset='both',
+            normalization_strategy='z-sample',
+            crop_size=0,
+            batch_size=batch_size,
+            transform=byol_transform_pipeline,
+            root=data_path,
+            num_workers=os.cpu_count()
+        )
 
-    pretrain_dataset = SimpleDataset(
-        readers=train_img_reader, transforms=constrastive_transform, return_single=True
-    )
+    else:
+        data_module = MinervaDataModule(
+            train_dataset=pretrain_dataset,
+            batch_size=batch_size,
+            drop_last=True,
+            shuffle_train=True,
+            name=dataset_name,
+            num_workers=os.cpu_count()
+        )
 
-    data_module = MinervaDataModule(
-        train_dataset=pretrain_dataset,
-        batch_size=batch_size,
-        drop_last=True,
-        shuffle_train=True,
-        name=dataset_name,
-    )
-
-    logger.info(f"DataModule assembled")
+    logger.info(f'DataModule assembled')
 
     # Modelo
     backbone = DeepLabV3Backbone(num_classes=6)
-    model = BYOL(backbone=backbone, learning_rate=learning_rate)
+    # backbone = deeplabv3_resnet50().backbone
+    model = BYOL(backbone=backbone, 
+                 learning_rate=learning_rate,
+                 )
     logger.info(f"Model built: {type(model).__name__}")
-
     # Logger, Checkpoints, Trainer
     log_dir = Path(log_path) / model_name / dataset_name
     ckpt_dir = Path(ckpt_path) / model_name / dataset_name
-    logger = CSVLogger(log_dir, name=model_name, version=dataset_name)
-    ckpt_callback = ModelCheckpoint(save_top_k=1, save_last=True, dirpath=ckpt_dir)
+    CSVlogger = CSVLogger(log_dir, name=model_name, version=dataset_name)
+    
+    ckpt_callback = ModelCheckpoint(
+        save_top_k=1, 
+        save_last=True, 
+        dirpath=ckpt_dir,
+        )
+    # ckpt_callback_every_50 = ModelCheckpoint(
+    #     save_top_k=-1,  # Save all checkpoints
+    #     # every_n_epochs=ckpt_epochs,  # Save every 50 epochs
+    #     # every_n_train_steps= num_epochs // 10,
+    #     dirpath=ckpt_dir,
+    #     filename="{step:03d}"  # Filename format
+    # )
+    
     logger.info("Loggers and checkpoints built")
 
     trainer = Trainer(
-        accelerator="gpu",
-        logger=logger,
+        accelerator='gpu',
+        logger=CSVlogger,
+        # callbacks=[ckpt_callback, ckpt_callback_every_50],
         callbacks=[ckpt_callback],
         max_epochs=num_epochs,
-        strategy="auto",
+        # max_steps=num_epochs,
+        # strategy='auto',
+        strategy=DDPStrategy(static_graph=True),
         devices=gpus,
+        log_every_n_steps=10,
     )
-    logger.info("Trainer instantiated")
+    # logger.info("Trainer instantiated")
 
     pipeline = SimpleLightningPipeline(
         model=model,
@@ -107,3 +194,21 @@ def main(
     )
 
     pipeline.run(data_module, task="fit")
+    
+
+if __name__ == "__main__":
+    
+    input_size = 512
+
+    main(
+        input_size=(input_size, input_size),
+        dataset_name='seam_ai',
+        batch_size=15,
+        num_epochs=10,
+        repetition=1000,
+        learning_rate=0.00001,
+        data_path='/home/vinicius.soares/asml/datasets/tiff_data/seam_ai_N/images',
+        ckpt_path='nada',
+        log_path='nada',
+        gpus=[0],
+        )

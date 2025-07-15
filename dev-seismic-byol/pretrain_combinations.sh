@@ -8,9 +8,9 @@ fi
 # Fixed parameters
 BATCH_SIZE=32
 INPUT_SIZE=256
-LR=0.2
-GPUS=0w
-NUM_EPOCHS=500
+LR=1e-5
+# GPUS=0 1 2 3
+NUM_EPOCHS=200
 
 # Repetition range
 START_REP=$1
@@ -25,9 +25,9 @@ for DATASET in "$@"; do
       --batch_size $BATCH_SIZE \
       --input_size $INPUT_SIZE \
       --learning_rate $LR \
-      --gpus $GPUS \
       --num_epochs $NUM_EPOCHS \
       --dataset_name $DATASET \
       --repetition $REP
+      # --gpus $GPUS \
   done
 done

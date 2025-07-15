@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from functions import *
+from functions import logger
 
 from minerva.transforms.transform import *
 from minerva.transforms.random_transform import *
@@ -12,27 +13,43 @@ from minerva.pipelines.lightning_pipeline import SimpleLightningPipeline
 from lightning.pytorch.loggers.csv_logs import CSVLogger
 from lightning.pytorch.callbacks import ModelCheckpoint
 from lightning import Trainer
-from torchmetrics import Accuracy, JaccardIndex, F1Score
 from lightning.fabric import seed_everything
 
 
 def main(
-    ckpt_file,
-    model_name,
-    finetune_data,
     pretrain_data,
+    finetune_data,
     data_path,
     num_epochs,
     batch_size,
     repetition,
+    learning_rate,
+    cap,
+    freeze,
     ckpt_path,
     logs_path,
+    import_root_path,
     gpus,
+    import_path=False,
+    full_save_name=False
 ):
 
-    # Set general seed
+    # Set general seed**
     seed_everything(repetition)
-
+    if full_save_name:
+        save_name = full_save_name
+    else:
+        if isinstance(cap, float):
+            save_name = (
+                f"V{repetition}_pre_{pretrain_data}_train_{finetune_data}_cap_{cap*100:.0f}%"
+            )
+        elif isinstance(cap, int):
+            save_name = (
+                f"V{repetition}_pre_{pretrain_data}_train_{finetune_data}_cap_{cap}_img"
+            )
+        
+    logger.info(f"Saving model {save_name}")
+    
     # Transforms
     if finetune_data == "f3" or finetune_data == "f3_N":
         padding = Padding(256, 704)
@@ -50,9 +67,6 @@ def main(
     val_data_reader = TiffReader(path=f"{image_path}/val")
     val_label_reader = PNGReader(path=f"{label_path}/val")
 
-    test_data_reader = TiffReader(path=f"{image_path}/test")
-    test_label_reader = PNGReader(path=f"{label_path}/test") 
-
     train_dataset = SimpleDataset(
         readers=[
             train_data_reader,
@@ -61,6 +75,8 @@ def main(
         transforms=padding,
         return_single=False,
     )
+
+    # assert len(train_dataset) * cap >= batch_size, "Too few samples for given cap and batch size"
 
     val_dataset = SimpleDataset(
         readers=[
@@ -71,26 +87,15 @@ def main(
         return_single=False,
     )
 
-    test_dataset = SimpleDataset(
-        readers=[
-            test_data_reader,
-            test_label_reader,
-        ],
-        transforms=padding,
-        return_single=False,
-    ) 
-
-
     # DataModule
 
     data_module = CapDataModule(
-        cap_train=1,
-        cap_val=1,
-        cap_test=1,
+        cap_train=cap,
+        cap_val=1.0,
+        cap_test=1.0,
         seed=repetition,
         train_dataset=train_dataset,
         val_dataset=val_dataset,
-        test_dataset=test_dataset,
         batch_size=batch_size,
         drop_last=True,
         shuffle_train=True,
@@ -98,34 +103,25 @@ def main(
 
     # Model
 
-    model = get_eval_model(
-        pretrain_data=pretrain_data,
-        import_path=ckpt_file,
-        learning_rate=0.001
-        )
+    model = get_model_linear(
+        pretrain_data,
+        learning_rate,
+        freeze,
+        repetition,
+        import_root_path,
+        full_path=import_path
+    )
 
-    num_classes = 6
-
-    metrics = {
-            "mIoU": JaccardIndex(
-                num_classes=num_classes, average="macro", task="multiclass"
-            ),
-            "acc": Accuracy(num_classes=num_classes, task="multiclass"),
-            "f1-weighted": F1Score(
-                num_classes=num_classes, task="multiclass", average="weighted"
-            ),
-        }
-
-    log_dir = Path(logs_path) / model_name
-    ckpt_dir = Path(ckpt_path) / model_name 
-    logger = CSVLogger(log_dir, model_name, version=finetune_data)
+    log_dir = Path(logs_path) / save_name / finetune_data
+    ckpt_dir = Path(ckpt_path) / save_name / finetune_data
+    csv_logger = CSVLogger(log_dir, name=save_name, version=finetune_data)
     ckpt_callback = ModelCheckpoint(
         save_top_k=1, save_last=True, dirpath=ckpt_dir, mode="min", monitor="val_loss"
     )
 
     trainer = Trainer(
         accelerator="gpu",
-        logger=logger,
+        logger=csv_logger,
         callbacks=[ckpt_callback],
         max_epochs=num_epochs,
         strategy="auto",
@@ -137,29 +133,25 @@ def main(
         model=model,
         trainer=trainer,
         log_dir=log_dir,
-        save_run_status=False,
-        seed=repetition,
-        apply_metrics_per_sample=False,
-        classification_metrics=metrics,
+        save_run_status=True,
     )
 
-    pipeline.run(data_module, task="evaluate")
+    pipeline.run(data_module, task="fit")
+
 
 if __name__ == "__main__":
     main(
-        model_name="V10_pre_teste_train_seam_ai_cap_100%_01",
-        ckpt_file="/home/vinicius.soares/Seismic-Byol/dev-seismic-byol/ckpt/train/10/V10_pre_teste_train_seam_ai_cap_100%_01/seam_ai/epoch=3-step=560.ckpt",
-        pretrain_data="teste",
+        pretrain_data="coco",
         finetune_data="seam_ai",
-        data_path='/home/vinicius.soares/asml/datasets/tiff_data/seam_ai',
+        data_path="/home/vinicius.soares/asml/datasets/tiff_data/seam_ai",
         num_epochs=50,
         batch_size=8,
-        repetition=10,
-        ckpt_path="ckpt/test/10",
-        logs_path="logs/test/10",
-        gpus=[0],
+        repetition=6,
+        learning_rate=0.001,
+        cap=1.0,
+        freeze=True,
+        ckpt_path="/home/vinicius.soares/Seismic-Byol/dev-seismic-byol/ht_ckpt/train_01/6",
+        logs_path="/home/vinicius.soares/Seismic-Byol/dev-seismic-byol/ht_logs/train_01/6",
+        import_root_path='ckpt_ht/pretrain/',
+        gpus=[2],
     )
-
-
-
-

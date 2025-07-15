@@ -1,19 +1,19 @@
 #!/bin/bash
 
-# Verifica número mínimo de argumentos
+# Usage information
 if [ "$#" -lt 6 ]; then
   echo "Usage: $0 --rep <start> <end> --pre <pretrain1> [...] --finetune <finetune1> [...] [--caps <cap1> ...] [--gpus <gpu1> ...] [--freeze]"
   exit 1
 fi
 
-# Parâmetros fixos
+# Default parameters
 BATCH_SIZE=8
 FREEZE=False
 LR=0.001
 NUM_EPOCHS=50
-GPUS=("0")  # padrão
+GPUS=(0)  # default GPU list
 
-# Parse dos argumentos
+# Parse arguments
 while [[ $# -gt 0 ]]; do
   key="$1"
   case $key in
@@ -65,7 +65,7 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-# Exibe os parâmetros recebidos
+# Show parsed arguments
 echo "------------------"
 echo "Parsed Arguments:"
 echo "Repetitions: $START_REP to $END_REP"
@@ -79,49 +79,52 @@ echo "Learning rate: $LR"
 echo "Epochs: $NUM_EPOCHS"
 echo "------------------"
 
-# Função para obter o cap com fallback
-get_cap_for_index() {
-  local index=$1
-  if [[ ${#CAPS[@]} -eq 0 ]]; then
-    echo "1.0"
-  elif [[ ${#CAPS[@]} -eq 1 ]]; then
-    echo "${CAPS[0]}"
-  else
-    echo "${CAPS[$index]}"
+# Define listas válidas
+VALID_PRETRAIN=("f3" "f3_N" "seam_ai" "seam_ai_N" "both" "both_N" "s0" "a700" "imagenet" "coco" "sup")
+VALID_FINETUNE=("f3" "f3_N" "seam_ai" "seam_ai_N")
+
+# Verifica datasets de pretreinamento
+for dataset in "${PRETRAIN_DATASETS[@]}"; do
+  if [[ ! " ${VALID_PRETRAIN[*]} " =~ " ${dataset} " ]]; then
+    echo " Erro: Pretrain dataset inválido: '${dataset}'."
+    echo " Válidos: ${VALID_PRETRAIN[*]}"
+    exit 1
   fi
-}
+done
 
-# Loop para execução
+# Verifica datasets de fine-tuning
+for dataset in "${FINETUNE_DATASETS[@]}"; do
+  if [[ ! " ${VALID_FINETUNE[*]} " =~ " ${dataset} " ]]; then
+    echo " Erro: Finetune dataset inválido: '${dataset}'."
+    echo " Válidos: ${VALID_FINETUNE[*]}"
+    exit 1
+  fi
+done
+
+# Run loop: for each rep, finetune, pretrain, cap
 for REP in $(seq "$START_REP" "$END_REP"); do
-  for i in "${!FINETUNE_DATASETS[@]}"; do
-    FINETUNE="${FINETUNE_DATASETS[$i]}"
-    CAP=$(get_cap_for_index "$i")
+  for PRE in "${PRETRAIN_DATASETS[@]}"; do
+    for FINETUNE in "${FINETUNE_DATASETS[@]}"; do
+      for CAP in "${CAPS[@]:-1.0}"; do
+        echo "Running: rep=$REP | cap=$CAP | finetune=$FINETUNE | pretrain=$PRE | gpus=${GPUS[*]}"
+        
+        CMD=(
+          python cli_finetune.py
+          --pretrain_data "$PRE"
+          --finetune_data "$FINETUNE"
+          --num_epochs "$NUM_EPOCHS"
+          --batch_size "$BATCH_SIZE"
+          --repetition "$REP"
+          --learning_rate "$LR"
+          --cap "$CAP"
+          --gpus "${GPUS[@]}"
+        )
 
-    for PRE in "${PRETRAIN_DATASETS[@]}"; do
-      for GPU in "${GPUS[@]}"; do
-        echo "Running: rep=$REP | cap=$CAP | finetune=$FINETUNE | pretrain=$PRE | gpu=$GPU"
         if [ "$FREEZE" = True ]; then
-          python cli_finetune.py \
-            --pretrain_data "$PRE" \
-            --finetune_data "$FINETUNE" \
-            --num_epochs "$NUM_EPOCHS" \
-            --batch_size "$BATCH_SIZE" \
-            --repetition "$REP" \
-            --learning_rate "$LR" \
-            --cap "$CAP" \
-            --freeze \
-            --gpus "$GPU"
-        else
-          python cli_finetune.py \
-            --pretrain_data "$PRE" \
-            --finetune_data "$FINETUNE" \
-            --num_epochs "$NUM_EPOCHS" \
-            --batch_size "$BATCH_SIZE" \
-            --repetition "$REP" \
-            --learning_rate "$LR" \
-            --cap "$CAP" \
-            --gpus "$GPU"
+          CMD+=(--freeze)
         fi
+
+        "${CMD[@]}"
       done
     done
   done

@@ -4,59 +4,77 @@ from pathlib import Path
 import re
 import argparse
 
-
 def extract_metrics_from_yaml(file_path):
-    with open(file_path, "r") as f:
+    with open(file_path, 'r') as f:
         data = yaml.safe_load(f)
     classification = data.get("classification", {})
     return {
         "acc": classification.get("acc", [None])[0],
         "f1_weighted": classification.get("f1-weighted", [None])[0],
-        "mIoU": classification.get("mIoU", [None])[0],
+        "mIoU": classification.get("mIoU", [None])[0]
     }
 
-
 def extract_model_metadata(model_name):
-    match = re.match(r"V(\d+)_pre_(.+?)_train_(.+?)_cap_(.+)", model_name)
+
+    match = re.match(r"finetune_V(\d+)_pretrain_(.+?)_In(\d+)_B(\d+)_E(\d+)_lr([\deE\.-]+)_step_(\d+)", model_name)
     if not match:
         raise ValueError(f"Invalid model name format: {model_name}")
-    repetition, pretrain_data, train_data, cap = match.groups()
+    
+    repetition, pretrain_data, input_size, batch_size, epochs, learning_rate, ckpt_epoch = match.groups()
+
+    # # Determine cap_type and clean cap value
+    # if cap_raw.endswith("_img"):
+    #     cap_type = "images"
+    #     cap_value = cap_raw.replace("_img", "")
+    # elif cap_raw.endswith("%"):
+    #     cap_type = "percent"
+    #     cap_value = cap_raw.replace("%", "")
+    # else:
+    #     cap_type = "unknown"
+    #     cap_value = cap_raw  # fallback
+
     return {
+        # "model_name": model_name,
+        # "repetition": repetition,
+        # "pretrain_data": pretrain_data,
+        # "train_data": train_data,
+        # "cap": cap_value,
+        # "cap_type": cap_type
         "model_name": model_name,
         "repetition": repetition,
         "pretrain_data": pretrain_data,
-        "train_data": train_data,
-        "cap": cap,
+        "input_size": int(input_size),
+        "batch_size": int(batch_size),
+        "epochs": int(epochs),
+        "learning_rate": float(learning_rate),
+        "epoch_trained": int(ckpt_epoch),
     }
-
 
 def load_existing_csv(csv_path):
     if not csv_path.exists():
         return {}
 
-    with open(csv_path, newline="") as f:
+    with open(csv_path, newline='') as f:
         reader = csv.DictReader(f)
         return {row["model_name"]: row for row in reader}
-
 
 def save_to_csv(rows_dict, output_csv):
     rows = list(rows_dict.values())
     fieldnames = [
         "model_name",
         "repetition",
+        "combination",
         "pretrain_data",
-        "train_data",
-        "cap",
-        "metrics_file",
-        "acc",
-        "f1_weighted",
-        "mIoU",
+        "input_size",
+        "batch_size",
+        "epochs",
+        "learning_rate",
+        "epoch_trained", "metrics_file", "acc", "f1_weighted", "mIoU"
     ]
     with open(output_csv, "w", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()
         writer.writerows(rows)
-
 
 def collect_metrics_to_csv(logs_root, repetition, output_csv):
     metrics_dir = Path(logs_root) / str(repetition)
@@ -73,10 +91,15 @@ def collect_metrics_to_csv(logs_root, repetition, output_csv):
             continue
 
         metadata = extract_model_metadata(model_dir.name)
+        metadata['combination'] = repetition
 
         for yaml_file in model_dir.glob("metrics_*.yaml"):
             metrics = extract_metrics_from_yaml(yaml_file)
-            row = {**metadata, "metrics_file": str(yaml_file), **metrics}
+            row = {
+                **metadata,
+                "metrics_file": str(yaml_file),
+                **metrics
+            }
             if metadata["model_name"] in rows_dict:
                 rows_dict[metadata["model_name"]].update(row)
                 updated_entries += 1
@@ -89,27 +112,27 @@ def collect_metrics_to_csv(logs_root, repetition, output_csv):
 
     save_to_csv(rows_dict, Path(output_csv))
 
-    print(
-        f"✅ {new_entries} new, {updated_entries} updated rows written to {output_csv}"
-    )
-
+    print(f"✅ {new_entries} new, {updated_entries} updated rows written to {output_csv}")
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(
-        description="Export evaluation metrics to CSV (append/update mode)"
-    )
-    parser.add_argument(
-        "--repetition", type=int, required=True, help="Repetition number"
-    )
-    parser.add_argument(
-        "--logs_root", type=str, default="logs/test", help="Root logs/test directory"
-    )
-    parser.add_argument(
-        "--output_csv", type=str, default="eval_metrics.csv", help="Output CSV filename"
-    )
+    parser = argparse.ArgumentParser(description="Export evaluation metrics to CSV (append/update mode)")
+    # parser.add_argument("--repetition", type=int, required=True, help="Repetition number")
+    parser.add_argument("--logs_root", type=str, default="ht_logs/test_02_unfreeze_rerun", help="Root logs/test directory")
+    parser.add_argument("--output_csv", type=str, default="ht_eval_metrics_unfreeze.csv", help="Output CSV filename")
 
     args = parser.parse_args()
+    
+    # list_of_combinations = [
+    #     0, 2, 4, 6, 7, 11, 13, 15, 16, 17, 18, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 
+    # ]
+    list_of_combinations = [
+        40, 41, 42, 43, 44, 45, 46, 47       
+        ]
+    
+    for number in list_of_combinations:
 
-    collect_metrics_to_csv(
-        logs_root=args.logs_root, repetition=args.repetition, output_csv=args.output_csv
-    )
+        collect_metrics_to_csv(
+            logs_root=args.logs_root,
+            repetition=number,
+            output_csv=args.output_csv
+        )

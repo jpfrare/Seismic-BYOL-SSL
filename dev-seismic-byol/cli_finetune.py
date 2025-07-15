@@ -2,6 +2,21 @@ import argparse
 from train import main
 from functions import *
 
+def parse_cap(value):
+    try:
+        if '.' in value:
+            val = float(value)
+            if not (0.0 < val <= 1.0):
+                raise argparse.ArgumentTypeError("Float cap must be in the (0, 1] range.")
+            return val
+        else:
+            val = int(value)
+            if val <= 0:
+                raise argparse.ArgumentTypeError("Integer cap must be greater than 0.")
+            return val
+    except ValueError:
+        raise argparse.ArgumentTypeError("Cap must be a float in (0, 1] or a positive int.")
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Fine-tuning script for seismic segmentation using pretrained BYOL backbone."
@@ -33,7 +48,7 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--cap",
-        type=float,
+        type=parse_cap,
         default=1.0,
         help="Fraction of data to use for training (between 0 and 1)",
     )
@@ -51,12 +66,10 @@ if __name__ == "__main__":
     IMPORT_ROOT_PATH = f"ckpt/pretrain/"
 
     dataset_mapping = {
-        "seam_ai_N": "/workspaces/shared_data/seam_ai_datasets/seam_ai_N",
-        "seam_ai": "/workspaces/shared_data/seam_ai_datasets/seam_ai",
-        "f3": "/workspaces/shared_data/seismic/f3_segmentation",
-        "f3_N": "/workspaces/shared_data/seismic/f3_segmentation_N",
-        "both": "/workspaces/shared_data/seismic/both",
-        "both_N": "/workspaces/shared_data/seismic/both_N",
+    'seam_ai_N':'/home/vinicius.soares/asml/datasets/tiff_data/seam_ai_N',
+    'seam_ai':'/home/vinicius.soares/asml/datasets/tiff_data/seam_ai',
+    'f3':'/home/vinicius.soares/asml/datasets/tiff_data/f3_segmentation',
+    'f3_N':'/home/vinicius.soares/asml/datasets/tiff_data/f3_segmentation_N',
     }
 
     if args.finetune_data not in dataset_mapping.keys():
@@ -89,6 +102,7 @@ if __name__ == "__main__":
     logger.info(f"Finetune data: {args.finetune_data}")
     logger.info(f"Batch size: {args.batch_size}, LR: {args.learning_rate}")
     logger.info(f"Cap: {args.cap}, Freeze: {args.freeze}")
+    logger.info(f"Cap type: {type(args.cap)}")
 
     # Aqui você chama o método de treinamento
     main(
