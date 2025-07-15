@@ -148,16 +148,16 @@ def main(
 
 if __name__ == "__main__":
     main(
-        model_name="V0_pre_seam_ai_N_train_seam_ai_N_cap_100%",
-        ckpt_file="ckpt/train/0/V0_pre_seam_ai_N_train_seam_ai_N_cap_100%/seam_ai_N/epoch=3-step=560.ckpt",
-        pretrain_data="seam_ai",
-        finetune_data="f3",
+        model_name="V10_pre_teste_train_seam_ai_cap_100%_01",
+        ckpt_file="/home/vinicius.soares/Seismic-Byol/dev-seismic-byol/ckpt/train/10/V10_pre_teste_train_seam_ai_cap_100%_01/seam_ai/epoch=3-step=560.ckpt",
+        pretrain_data="teste",
+        finetune_data="seam_ai",
         data_path='/home/vinicius.soares/asml/datasets/tiff_data/seam_ai',
-        num_epochs=20,
+        num_epochs=50,
         batch_size=8,
-        repetition=8,
-        ckpt_path="./ckpt",
-        logs_path="./logs",
+        repetition=10,
+        ckpt_path="ckpt/test/10",
+        logs_path="logs/test/10",
         gpus=[0],
     )
 

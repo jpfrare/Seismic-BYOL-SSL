@@ -11,17 +11,20 @@ import torchmetrics
 import torch.nn as nn
 
 import argparse
-from evaluate import main  # seu main de avaliação
+from evaluate_copy import main  # seu main de avaliação
 from functions import *
 from pathlib import Path
 import re
 import pandas as pd
 
 
-def extract_epoch_number(filename):
-    match = re.search(r"epoch=(\d+)", filename)
+def extract_step_number(filename):
+    match = re.search(r"step=(\d+)", filename)
     return int(match.group(1)) if match else None
 
+# def extract_epoch_number(filename):
+#     match = re.search(r"epoch=(\d+)", filename)
+#     return int(match.group(1)) if match else None
 
 def get_models_files(base_dir="./ht_ckpt/train", target_repetition=None):
     base_dir = Path(base_dir)
@@ -43,9 +46,13 @@ def get_models_files(base_dir="./ht_ckpt/train", target_repetition=None):
                 continue
 
             match = re.match(
-                r"finetune_V(\d+)_pretrain_(.+?)_In(\d+)_B(\d+)_E(\d+)_lr([\deE\.-]+)_epoch_(\d+)",
+                r"finetune_V(\d+)_pretrain_(.+?)_In(\d+)_B(\d+)_E(\d+)_lr([\deE\.-]+)_step_(\d+)",
                 model_dir.name,
             )
+            # match = re.match(
+            #     r"finetune_V(\d+)_pretrain_(.+?)_In(\d+)_B(\d+)_E(\d+)_lr([\deE\.-]+)_epoch_(\d+)",
+            #     model_dir.name,
+            # )
             if not match:
                 continue
 
@@ -56,6 +63,10 @@ def get_models_files(base_dir="./ht_ckpt/train", target_repetition=None):
                     continue
 
                 # Agora procuramos arquivos tipo epoch=13-step=1960.ckpt
+                # ckpt_files = [
+                #     f for f in inner_dir.iterdir()
+                #     if f.is_file() and re.match(r"epoch=\d+(-step=\d+)?\.ckpt", f.name)
+                # ]
                 ckpt_files = [
                     f for f in inner_dir.iterdir()
                     if f.is_file() and re.match(r"epoch=\d+(-step=\d+)?\.ckpt", f.name)
@@ -99,15 +110,20 @@ if __name__ == "__main__":
         default=[0],
         help="List of GPU indices to use."
     )
+    
+    ckpt_path = "/home/vinicius.soares/Seismic-Byol/dev-seismic-byol/ht_ckpt/train_02_unfreeze"
 
     args = parser.parse_args()
 
-    TEST_LOGS_PATH = f"ht_logs/test/{args.combination}"
-    TEST_CKPT_PATH = f"ht_ckpt/test/{args.combination}"
+    TEST_LOGS_PATH = f"ht_logs/test_02_unfreeze_rerun/{args.combination}"
+    TEST_CKPT_PATH = f"ht_ckpt/test_02_unfreeze_rerun/{args.combination}"
     
     logger.info(f"Target combination: {args.combination}")
     
-    models_list = get_models_files(target_repetition=args.combination)
+    models_list = get_models_files(
+        base_dir = ckpt_path,
+        target_repetition=args.combination,
+        )
     
     df = pd.DataFrame(models_list)
     print(df.head)
@@ -162,16 +178,16 @@ if __name__ == "__main__":
         
         # Rodar avaliação
         
-        # main(
-        #     ckpt_file=ckpt_file,
-        #     model_name=model_name,
-        #     finetune_data=finetune_data,
-        #     pretrain_data=pretrain_data,
-        #     data_path=data_path,
-        #     num_epochs=50,
-        #     batch_size=8,
-        #     repetition=args.combination,
-        #     ckpt_path=TEST_CKPT_PATH,
-        #     logs_path=TEST_LOGS_PATH,
-        #     gpus=args.gpus,
-        # )
+        main(
+            ckpt_file=ckpt_file,
+            model_name=model_name,
+            finetune_data=finetune_data,
+            pretrain_data=pretrain_data,
+            data_path=data_path,
+            num_epochs=50,
+            batch_size=8,
+            repetition=args.combination,
+            ckpt_path=TEST_CKPT_PATH,
+            logs_path=TEST_LOGS_PATH,
+            gpus=args.gpus,
+        )

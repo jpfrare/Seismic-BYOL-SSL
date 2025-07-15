@@ -68,8 +68,13 @@ class A700Dataset(Dataset):
     ):
         self.transform = transform or (lambda x: x)
         root_path = Path(root_path)
-        self.stats = pd.read_csv(root_path / "stats.csv").set_index("file")
-
+        
+        # self.stats = pd.read_csv(root_path / "stats.csv").set_index("directory")
+        
+        df = pd.read_csv(root_path / "stats.csv")
+        df["directory"] = df["directory"].str.replace("file_", "", regex=False).astype(int)
+        self.stats = df.set_index("directory")
+        
         self.concatenation = ConcatDataset([
             A700File(
                 root_path / f"file_{i}",

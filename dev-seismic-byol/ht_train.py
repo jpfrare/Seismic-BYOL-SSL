@@ -21,8 +21,8 @@ if __name__ == "__main__":
     
     finetune_data = 'seam_ai'
     
-    PRETRAIN_LOGS_PATH = f"ht_logs/train/{args.combination}"
-    PRETRAIN_CKPT_PATH = f"ht_ckpt/train/{args.combination}"
+    PRETRAIN_LOGS_PATH = f"ht_logs/train_03_freeze/{args.combination}"
+    PRETRAIN_CKPT_PATH = f"ht_ckpt/train_03_freeze/{args.combination}"
     IMPORT_ROOT_PATH = f"ckpt_ht/pretrain/"
 
     dataset_mapping = {
@@ -33,7 +33,7 @@ if __name__ == "__main__":
     }
     
     combination_df = pd.read_csv('temp_df.csv')
-    models_df = pd.read_csv('df_test.csv')
+    models_df = pd.read_csv('df_filtered_combinations.csv')
     
     target_df = combination_df[combination_df['combination'] == args.combination]
     models_df = models_df[models_df['combination'] == args.combination]
@@ -69,5 +69,5 @@ if __name__ == "__main__":
             import_root_path=IMPORT_ROOT_PATH,
             import_path=row['ckpt_file'],
             gpus=args.gpus,
-            full_save_name=f'finetune_{row["model_name"]}_epoch_{row["epoch_save"]}'
+            full_save_name=f'finetune_{row["model_name"]}_step_{row["epoch_save"]}'
         )

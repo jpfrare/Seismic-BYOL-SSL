@@ -6,11 +6,11 @@ if [ "$#" -lt 3 ]; then
 fi
 
 # Fixed parameters
-BATCH_SIZE=54
+BATCH_SIZE=32
 INPUT_SIZE=256
-LR=1e-4
-GPUS=3
-NUM_EPOCHS=500
+LR=1e-5
+# GPUS=0 1 2 3
+NUM_EPOCHS=200
 
 # Repetition range
 START_REP=$1
@@ -25,9 +25,9 @@ for DATASET in "$@"; do
       --batch_size $BATCH_SIZE \
       --input_size $INPUT_SIZE \
       --learning_rate $LR \
-      --gpus $GPUS \
       --num_epochs $NUM_EPOCHS \
       --dataset_name $DATASET \
       --repetition $REP
+      # --gpus $GPUS \
   done
 done

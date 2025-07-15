@@ -103,7 +103,7 @@ def main(
 
     # Model
 
-    model = get_model(
+    model = get_model_linear(
         pretrain_data,
         learning_rate,
         freeze,
@@ -141,17 +141,17 @@ def main(
 
 if __name__ == "__main__":
     main(
-        pretrain_data="imagenet",
+        pretrain_data="coco",
         finetune_data="seam_ai",
         data_path="/home/vinicius.soares/asml/datasets/tiff_data/seam_ai",
         num_epochs=50,
         batch_size=8,
-        repetition=0,
+        repetition=6,
         learning_rate=0.001,
         cap=1.0,
         freeze=True,
-        ckpt_path="/home/vinicius.soares/Seismic-Byol/dev-seismic-byol/ht_logs/train/9",
-        logs_path="/home/vinicius.soares/Seismic-Byol/dev-seismic-byol/ht_logs/train/9",
+        ckpt_path="/home/vinicius.soares/Seismic-Byol/dev-seismic-byol/ht_ckpt/train_01/6",
+        logs_path="/home/vinicius.soares/Seismic-Byol/dev-seismic-byol/ht_logs/train_01/6",
         import_root_path='ckpt_ht/pretrain/',
-        gpus=[0],
+        gpus=[2],
     )

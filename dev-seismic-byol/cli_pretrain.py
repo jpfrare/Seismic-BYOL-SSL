@@ -11,13 +11,13 @@ if __name__ == "__main__":
     parser.add_argument(
         "--input_size",
         type=int,
-        default=224,
+        default=256,
         help="Input size (used for both height and width)",
     )
     parser.add_argument(
         "--dataset_name", type=str, default="seam_ai", help="Name of the dataset"
     )
-    parser.add_argument("--batch_size", type=int, default=8, help="Batch size")
+    parser.add_argument("--batch_size", type=int, default=32, help="Batch size")
     parser.add_argument(
         "--num_epochs", type=int, default=20, help="Number of training epochs"
     )
@@ -25,13 +25,13 @@ if __name__ == "__main__":
         "--repetition", type=int, default=0, help="Repetition being run"
     )
     parser.add_argument(
-        "--learning_rate", type=float, default=0.2, help="Models learning rate"
+        "--learning_rate", type=float, default=1e-5, help="Models learning rate"
     )
     parser.add_argument(
         "--gpus",
         type=int,
         nargs="+",
-        default=[0],
+        default=[0, 1, 2, 3],
         help="List of GPU device indices to use",
     )
 
@@ -58,8 +58,8 @@ if __name__ == "__main__":
             f"Dataset '{args.dataset_name}' not found in available options: {list(dataset_mapping.keys())}"
         )
 
-    PRETRAIN_LOGS_PATH = f"logs_ht/pretrain/{args.repetition}"
-    PRETRAIN_CKPT_PATH = f"ckpt_ht/pretrain/{args.repetition}"
+    PRETRAIN_LOGS_PATH = f"logs/pretrain/{args.repetition}"
+    PRETRAIN_CKPT_PATH = f"ckpt/pretrain/{args.repetition}"
 
     logger.info(f"Batches: {args.batch_size} - Input: {args.input_size}")
     logger.info(f"Pretrain Log Path: {PRETRAIN_LOGS_PATH}")

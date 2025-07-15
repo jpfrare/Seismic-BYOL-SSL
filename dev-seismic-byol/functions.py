@@ -103,6 +103,22 @@ import torch.nn as nn
 from pathlib import Path
 import re
 
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
+from torchvision.models.segmentation import deeplabv3_resnet50
+from torchvision.models.segmentation import DeepLabV3_ResNet50_Weights
+
+
+class LinearSegmentationHead(nn.Module):
+    def __init__(self, in_channels, num_classes):
+        super().__init__()
+        self.linear_head = nn.Conv2d(in_channels, num_classes, kernel_size=1)
+
+    def forward(self, x):
+        return self.linear_head(x)
+
 
 def get_model(pretrain_data, learning_rate, freeze, repetition, root_path=None, full_path=False):
     num_classes = 6
@@ -144,11 +160,80 @@ def get_model(pretrain_data, learning_rate, freeze, repetition, root_path=None, 
         )
         backbone = nn.Sequential(*list(backbone.children())[:-2])
         logger.info("IMAGENET backbone loaded")
+        
+    elif pretrain_data == "coco":      
+        weights = DeepLabV3_ResNet50_Weights.DEFAULT
+        backbone = deeplabv3_resnet50(weights=weights).backbone
+        logger.info("COCO backbone loaded")
 
-    elif pretrain_data == "coco":
-        backbone = torch.hub.load(
-            "pytorch/vision:v0.10.0", "deeplabv3_resnet50", pretrained=True
+    elif pretrain_data == "sup":
+        backbone = DeepLabV3Backbone(num_classes=num_classes)
+        logger.info("No model loaded!")
+        
+    elif pretrain_data == "teste":
+        backbone = deeplabv3_resnet50().backbone
+        logger.info("Imported backbone from scratch loaded")
+        
+    else:
+        raise KeyError("Pretrain data value wrong!")
+
+    model = DeepLabV3(
+        backbone=backbone,
+        learning_rate=learning_rate,
+        num_classes=num_classes,
+        freeze_backbone=freeze
+    )
+    
+    if freeze:
+        logger.info("Freezing backbone parameters via `freeze_weights`.")
+
+    return model
+
+
+def get_model_linear(pretrain_data, learning_rate, freeze, repetition, root_path=None, full_path=False):
+    num_classes = 6
+
+    if full_path: 
+        import_path = full_path
+    else:
+        if pretrain_data == "a700":
+            base_name = f"V{repetition}_pretrain_{pretrain_data}_In256_B32_E100"
+        else:
+            base_name = f"V{repetition}_pretrain_{pretrain_data}_In256_B32_E500"
+
+        if root_path:
+            import_path = f"{root_path}/{repetition}/{base_name}/{pretrain_data}/last.ckpt"
+        else:
+            import_path = (
+                f"ckpt/pretrain/{repetition}/{base_name}/{pretrain_data}/last.ckpt"
+            )
+
+    seg_data = ["f3", "f3_N", "seam_ai", "seam_ai_N", "both", "both_N", "s0", "a700"]
+
+    if pretrain_data in seg_data:
+        # backbone = deeplabv3_resnet50().backbone
+        backbone = DeepLabV3Backbone(num_classes=num_classes)
+        model = BYOL(backbone=backbone, learning_rate=learning_rate)
+
+        backbone = FromPretrained(
+            model=model,
+            ckpt_path=import_path,
+            strict=False,
+            error_on_missing_keys=False,
         ).backbone
+        logger.info(f"{pretrain_data} backbone loaded")
+
+    elif pretrain_data == "imagenet":
+        weights = torchvision.models.ResNet50_Weights.IMAGENET1K_V2
+        backbone = resnet50(
+            replace_stride_with_dilation=[False, True, True], weights=weights
+        )
+        backbone = nn.Sequential(*list(backbone.children())[:-2])
+        logger.info("IMAGENET backbone loaded")
+
+    elif pretrain_data == "coco":      
+        weights = DeepLabV3_ResNet50_Weights.DEFAULT
+        backbone = deeplabv3_resnet50(weights=weights).backbone
         logger.info("COCO backbone loaded")
 
     elif pretrain_data == "sup":
@@ -158,25 +243,14 @@ def get_model(pretrain_data, learning_rate, freeze, repetition, root_path=None, 
     else:
         raise KeyError("Pretrain data value wrong!")
 
-    # Métricas
-    iou = torchmetrics.JaccardIndex(
-        task="multiclass", num_classes=num_classes, average=None
+    pred_head = LinearSegmentationHead(
+        in_channels=2048,
+        num_classes=num_classes
     )
-    f1_score = torchmetrics.F1Score(
-        task="multiclass", num_classes=num_classes, average=None
-    )
-    accuracy = torchmetrics.Accuracy(
-        task="multiclass", num_classes=num_classes, average=None
-    )
-
-    metrics = {
-        "iou": iou,
-        "f1_score": f1_score,
-        "accuracy": accuracy,
-    }
 
     model = DeepLabV3(
         backbone=backbone,
+        pred_head=pred_head,
         learning_rate=learning_rate,
         num_classes=num_classes,
         freeze_backbone=freeze
@@ -216,12 +290,66 @@ def get_eval_model(pretrain_data, import_path, learning_rate):
         backbone = torch.hub.load(
             "pytorch/vision:v0.10.0", "deeplabv3_resnet50"
         ).backbone
+        
+    elif pretrain_data == "teste":
+        backbone = deeplabv3_resnet50().backbone
+        logger.info("Imported backbone from sratch loaded")
 
     else:
         raise KeyError("Pretrain data value wrong!")
 
     model = DeepLabV3(
         backbone=backbone,
+        learning_rate=learning_rate,
+        num_classes=num_classes,
+    )
+
+    model = FromPretrained(
+        model=model, ckpt_path=import_path, strict=False, error_on_missing_keys=False
+    )
+
+    return model
+
+
+def get_linear_eval_model(pretrain_data, import_path, learning_rate):
+
+    num_classes = 6
+
+    seg_data = [
+        "f3",
+        "f3_N",
+        "seam_ai",
+        "seam_ai_N",
+        "both",
+        "both_N",
+        "s0",
+        "a700",
+        "sup",
+        "seg",
+    ]
+
+    if pretrain_data in seg_data:
+        backbone = DeepLabV3Backbone(num_classes=num_classes)
+
+    elif pretrain_data == "imagenet":
+        backbone = resnet50(replace_stride_with_dilation=[False, True, True])
+        backbone = nn.Sequential(*list(backbone.children())[:-2])
+        
+    elif pretrain_data == "coco":      
+        weights = DeepLabV3_ResNet50_Weights.DEFAULT
+        backbone = deeplabv3_resnet50(weights=weights).backbone
+
+    else:
+        raise KeyError("Pretrain data value wrong!")
+    
+    pred_head = LinearSegmentationHead(
+        in_channels=2048,
+        num_classes=num_classes
+    )
+
+    model = DeepLabV3(
+        backbone=backbone,
+        pred_head=pred_head,
         learning_rate=learning_rate,
         num_classes=num_classes,
     )

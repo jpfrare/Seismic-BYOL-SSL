@@ -1,5 +1,5 @@
 # main.py
-
+import os
 import numpy as np
 from pathlib import Path
 
@@ -7,6 +7,8 @@ from functions import *
 
 from minerva.transforms.transform import *
 from minerva.transforms.random_transform import *
+from torchvision.models.segmentation import deeplabv3_resnet50
+from lightning.pytorch.strategies import DDPStrategy
 
 from minerva.data.readers import TiffReader, PartialPatchedZarrReader, NumpyArrayReader
 from minerva.data.datasets import SimpleDataset
@@ -127,7 +129,8 @@ def main(
             crop_size=0,
             batch_size=batch_size,
             transform=byol_transform_pipeline,
-            root=data_path
+            root=data_path,
+            num_workers=os.cpu_count()
         )
 
     else:
@@ -136,13 +139,15 @@ def main(
             batch_size=batch_size,
             drop_last=True,
             shuffle_train=True,
-            name=dataset_name
+            name=dataset_name,
+            num_workers=os.cpu_count()
         )
 
     logger.info(f'DataModule assembled')
 
     # Modelo
     backbone = DeepLabV3Backbone(num_classes=6)
+    # backbone = deeplabv3_resnet50().backbone
     model = BYOL(backbone=backbone, 
                  learning_rate=learning_rate,
                  )
@@ -155,25 +160,31 @@ def main(
     ckpt_callback = ModelCheckpoint(
         save_top_k=1, 
         save_last=True, 
-        dirpath=ckpt_dir)
-    ckpt_callback_every_50 = ModelCheckpoint(
-        save_top_k=-1,  # Save all checkpoints
-        every_n_epochs=50,  # Save every 50 epochs
         dirpath=ckpt_dir,
-        filename="{epoch:03d}"  # Filename format
-    )
+        )
+    # ckpt_callback_every_50 = ModelCheckpoint(
+    #     save_top_k=-1,  # Save all checkpoints
+    #     # every_n_epochs=ckpt_epochs,  # Save every 50 epochs
+    #     # every_n_train_steps= num_epochs // 10,
+    #     dirpath=ckpt_dir,
+    #     filename="{step:03d}"  # Filename format
+    # )
     
     logger.info("Loggers and checkpoints built")
 
     trainer = Trainer(
         accelerator='gpu',
         logger=CSVlogger,
-        callbacks=[ckpt_callback, ckpt_callback_every_50],
+        # callbacks=[ckpt_callback, ckpt_callback_every_50],
+        callbacks=[ckpt_callback],
         max_epochs=num_epochs,
-        strategy='auto',
-        devices=gpus
+        # max_steps=num_epochs,
+        # strategy='auto',
+        strategy=DDPStrategy(static_graph=True),
+        devices=gpus,
+        log_every_n_steps=10,
     )
-    logger.info("Trainer instantiated")
+    # logger.info("Trainer instantiated")
 
     pipeline = SimpleLightningPipeline(
         model=model,
@@ -183,3 +194,21 @@ def main(
     )
 
     pipeline.run(data_module, task="fit")
+    
+
+if __name__ == "__main__":
+    
+    input_size = 512
+
+    main(
+        input_size=(input_size, input_size),
+        dataset_name='seam_ai',
+        batch_size=15,
+        num_epochs=10,
+        repetition=1000,
+        learning_rate=0.00001,
+        data_path='/home/vinicius.soares/asml/datasets/tiff_data/seam_ai_N/images',
+        ckpt_path='nada',
+        log_path='nada',
+        gpus=[0],
+        )
