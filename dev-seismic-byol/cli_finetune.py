@@ -26,30 +26,30 @@ if __name__ == "__main__":
         "--pretrain_data",
         type=str,
         required=True,
-        default="f3",
+        default="seam_ai_N",
         help="Dataset used in pretraining (e.g., f3, seam_ai, both)",
     )
     parser.add_argument(
         "--finetune_data",
         type=str,
         required=True,
-        default="f3",
+        default="seam_ai_N",
         help="Dataset used for fine-tuning (e.g., f3, seam_ai, both)",
     )
     parser.add_argument(
-        "--num_epochs", type=int, default=20, help="Number of training epochs"
+        "--num_epochs", type=int, default=10, help="Number of training epochs"
     )
     parser.add_argument("--batch_size", type=int, default=8, help="Batch size")
     parser.add_argument(
         "--repetition", type=int, default=0, help="Experiment repetition index"
     )
     parser.add_argument(
-        "--learning_rate", type=float, default=0.001, help="Learning rate"
+        "--learning_rate", type=float, default=1e-3, help="Learning rate"
     )
     parser.add_argument(
         "--cap",
         type=parse_cap,
-        default=1.0,
+        default=10,
         help="Fraction of data to use for training (between 0 and 1)",
     )
     parser.add_argument(
@@ -57,6 +57,9 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--gpus", type=int, nargs="+", default=[0], help="List of GPU indices to use"
+    )
+    parser.add_argument(
+        "--linear", action="store_true", help="If true uses a linear prediction head"
     )
 
     args = parser.parse_args()
@@ -66,10 +69,10 @@ if __name__ == "__main__":
     IMPORT_ROOT_PATH = f"ckpt/pretrain/"
 
     dataset_mapping = {
-    'seam_ai_N':'/home/vinicius.soares/asml/datasets/tiff_data/seam_ai_N',
-    'seam_ai':'/home/vinicius.soares/asml/datasets/tiff_data/seam_ai',
-    'f3':'/home/vinicius.soares/asml/datasets/tiff_data/f3_segmentation',
-    'f3_N':'/home/vinicius.soares/asml/datasets/tiff_data/f3_segmentation_N',
+    'seam_ai_N':'/workspaces/shared_data/seam_ai_datasets/seam_ai_N',
+    'seam_ai':'/workspaces/shared_data/seam_ai_datasets/seam_ai',
+    'f3':'/workspaces/shared_data/seismic/f3_segmentation',
+    'f3_N':'/workspaces/shared_data/seismic/f3_segmentation_N',
     }
 
     if args.finetune_data not in dataset_mapping.keys():
@@ -103,6 +106,7 @@ if __name__ == "__main__":
     logger.info(f"Batch size: {args.batch_size}, LR: {args.learning_rate}")
     logger.info(f"Cap: {args.cap}, Freeze: {args.freeze}")
     logger.info(f"Cap type: {type(args.cap)}")
+    logger.info(f"Prediction head: {'linear' if args.linear == True else 'DLV3'}")
 
     # Aqui você chama o método de treinamento
     main(
@@ -119,4 +123,5 @@ if __name__ == "__main__":
         logs_path=PRETRAIN_LOGS_PATH,
         import_root_path=IMPORT_ROOT_PATH,
         gpus=args.gpus,
+        linear=args.linear
     )

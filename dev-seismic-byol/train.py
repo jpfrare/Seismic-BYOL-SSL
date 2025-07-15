@@ -17,21 +17,22 @@ from lightning.fabric import seed_everything
 
 
 def main(
-    pretrain_data,
-    finetune_data,
-    data_path,
-    num_epochs,
-    batch_size,
-    repetition,
-    learning_rate,
-    cap,
-    freeze,
-    ckpt_path,
-    logs_path,
-    import_root_path,
-    gpus,
-    import_path=False,
-    full_save_name=False
+    pretrain_data,  # Where the model was pretrained
+    finetune_data,  # Where the model is going to be trained
+    data_path,      # Root path for the data
+    num_epochs,     # Epochs to be trained
+    batch_size,     
+    repetition,     # Repetition and random seed
+    learning_rate,  
+    cap,            # Amount of samples to be used. 1.0 means 100%
+    freeze,         # Freeze backbone
+    ckpt_path,      # Where to save the checkpoints
+    logs_path,      # Where to save the logs
+    import_root_path,   # Root to import models
+    gpus,           # Gpus to run       
+    import_path=False,  # Flag to tell if the import path is root or complete
+    full_save_name=False,   # If want to save as a specific name
+    linear=False,   # FC to choose from linear or default
 ):
 
     # Set general seed**
@@ -58,50 +59,36 @@ def main(
         logger.info("Using padding of (1008,592)")
         padding = Padding(1008, 592)
 
-    # Dataset
-
-    image_path = f"{data_path}/images"
-    label_path = f"{data_path}/annotations"
-
-    train_data_reader = TiffReader(path=f"{image_path}/train")
-    train_label_reader = PNGReader(path=f"{label_path}/train")
-
-    val_data_reader = TiffReader(path=f"{image_path}/val")
-    val_label_reader = PNGReader(path=f"{label_path}/val")
-
-    train_dataset = SimpleDataset(
-        readers=[
-            train_data_reader,
-            train_label_reader,
-        ],
-        transforms=padding,
-        return_single=False,
-    )
-
-    # assert len(train_dataset) * cap >= batch_size, "Too few samples for given cap and batch size"
-
-    val_dataset = SimpleDataset(
-        readers=[
-            val_data_reader,
-            val_label_reader,
-        ],
-        transforms=padding,
-        return_single=False,
-    )
-
-    # DataModule
-
-    data_module = CapDataModule(
-        cap_train=cap,
-        cap_val=1.0,
-        cap_test=1.0,
-        seed=repetition,
-        train_dataset=train_dataset,
-        val_dataset=val_dataset,
-        batch_size=batch_size,
-        drop_last=True,
-        shuffle_train=True,
-    )
+    # 100% dos dados
+    if cap == 1.0:
+        
+        logger.info("Using 100% of train data")
+        train_dataset = SeismicFullDataset(root=data_path, partition='train', transform=padding)
+        data_module = SeismicDataModule(
+            root = data_path,
+            batch_size=batch_size,
+            cap=cap,
+            drop_last=False,
+            transform=padding,
+            test_transform=padding,
+            train_dataset = train_dataset,
+            val_dataset = None,
+            test_dataset = None,
+        )
+        
+    else:
+        logger.info(f'Using {cap} samples of train data')
+        data_module = SeismicDataModule(
+            root = data_path,
+            batch_size=batch_size,
+            cap=cap,
+            drop_last=False,
+            transform=padding,
+            test_transform=padding,
+            train_dataset = None,
+            val_dataset = None,
+            test_dataset = None,
+        )
 
     # Model
 
@@ -111,7 +98,8 @@ def main(
         freeze,
         repetition,
         import_root_path,
-        full_path=import_path
+        full_path=import_path, 
+        linear=linear
     )
 
     log_dir = Path(logs_path) / save_name / finetune_data
@@ -138,7 +126,7 @@ def main(
         save_run_status=True,
     )
 
-    pipeline.run(data_module, task="fit")
+    # pipeline.run(data_module, task="fit")
 
 
 if __name__ == "__main__":

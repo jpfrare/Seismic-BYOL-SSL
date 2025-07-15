@@ -97,7 +97,6 @@ from minerva.models.nets.image.deeplabv3 import DeepLabV3
 from torchvision.models.segmentation import DeepLabV3_ResNet50_Weights
 import torchvision.models
 import torch
-import torchmetrics
 import torch.nn as nn
 
 from pathlib import Path
@@ -105,7 +104,6 @@ import re
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
 from torchvision.models.segmentation import deeplabv3_resnet50
 from torchvision.models.segmentation import DeepLabV3_ResNet50_Weights
@@ -120,7 +118,18 @@ class LinearSegmentationHead(nn.Module):
         return self.linear_head(x)
 
 
-def get_model(pretrain_data, learning_rate, freeze, repetition, root_path=None, full_path=False):
+def get_state_dict(model):
+    state_dict = model.state_dict()
+    renamed_state_dict = {}
+    for key in state_dict.keys():
+        # Replace the key prefix to match my_state_dict
+        new_key = f"RN50model.{key}" if not key.startswith("RN50model.") else key
+        renamed_state_dict[new_key] = state_dict[key]
+
+    return renamed_state_dict    
+
+
+def get_model(pretrain_data, learning_rate, freeze, repetition, root_path=None, full_path=False, linear=False):
     num_classes = 6
 
     if pretrain_data == "a700":
@@ -145,49 +154,66 @@ def get_model(pretrain_data, learning_rate, freeze, repetition, root_path=None, 
 
     seg_data = ["f3", "f3_N", "seam_ai", "seam_ai_N", "both", "both_N", "s0", "a700"]
 
-    if pretrain_data in seg_data:
-        backbone = DeepLabV3Backbone(num_classes=num_classes)
-        model = BYOL(backbone=backbone, learning_rate=learning_rate)
+    resnet50_backbone = DeepLabV3Backbone(num_classes=num_classes)
 
-        backbone = FromPretrained(
+    if pretrain_data in seg_data:
+        # Builds the BYOL model, loads the weights and extracts the backbone
+        model = BYOL(backbone=resnet50_backbone, learning_rate=learning_rate)
+        resnet50_backbone = FromPretrained(
             model=model,
             ckpt_path=import_path,
             strict=False,
             error_on_missing_keys=False,
-            # keys_to_rename={"": "backbone."},
         ).backbone
         logger.info(f"{pretrain_data} backbone loaded")
 
     elif pretrain_data == "imagenet":
         weights = torchvision.models.ResNet50_Weights.IMAGENET1K_V2
-        backbone = resnet50(
+        imagenet_backbone = resnet50(
             replace_stride_with_dilation=[False, True, True], weights=weights
         )
-        backbone = nn.Sequential(*list(backbone.children())[:-2])
+        imagenet_state_dict = get_state_dict(imagenet_backbone)
+        resnet50_backbone.load_state_dict(imagenet_state_dict, strict=False)
         logger.info("IMAGENET backbone loaded")
         
     elif pretrain_data == "coco":      
         weights = DeepLabV3_ResNet50_Weights.DEFAULT
-        backbone = deeplabv3_resnet50(weights=weights).backbone
+        coco_backbone = deeplabv3_resnet50(weights=weights).backbone
+        coco_state_dict = get_state_dict(coco_backbone)
+        resnet50_backbone.load_state_dict(coco_state_dict, strict=False)
         logger.info("COCO backbone loaded")
 
     elif pretrain_data == "sup":
-        backbone = DeepLabV3Backbone(num_classes=num_classes)
         logger.info("No model loaded!")
         
     elif pretrain_data == "teste":
-        backbone = deeplabv3_resnet50().backbone
+        resnet50_backbone = deeplabv3_resnet50().backbone
         logger.info("Imported backbone from scratch loaded")
         
     else:
         raise KeyError("Pretrain data value wrong!")
 
-    model = DeepLabV3(
-        backbone=backbone,
-        learning_rate=learning_rate,
-        num_classes=num_classes,
-        freeze_backbone=freeze
-    )
+    if linear:
+        pred_head = LinearSegmentationHead(
+            in_channels=2048,
+            num_classes=num_classes
+        )
+
+        model = DeepLabV3(
+            backbone=resnet50_backbone,
+            pred_head=pred_head,
+            learning_rate=learning_rate,
+            num_classes=num_classes,
+            freeze_backbone=freeze
+        )
+        
+    else:
+        model = DeepLabV3(
+            backbone=resnet50_backbone,
+            learning_rate=learning_rate,
+            num_classes=num_classes,
+            freeze_backbone=freeze
+        )
     
     if freeze:
         logger.info("Freezing backbone parameters via `freeze_weights`.")
@@ -195,7 +221,7 @@ def get_model(pretrain_data, learning_rate, freeze, repetition, root_path=None, 
     return model
 
 
-def get_model_linear(pretrain_data, learning_rate, freeze, repetition, root_path=None, full_path=False):
+def get_model_linear(pretrain_data, learning_rate, freeze, repetition, root_path=None, full_path=False, linear=False):
     num_classes = 6
 
     if full_path: 
@@ -267,7 +293,7 @@ def get_model_linear(pretrain_data, learning_rate, freeze, repetition, root_path
     return model
 
 
-def get_eval_model(pretrain_data, import_path, learning_rate):
+def get_eval_model(pretrain_data, import_path, learning_rate, linear=False):
 
     num_classes = 6
 
@@ -282,32 +308,41 @@ def get_eval_model(pretrain_data, import_path, learning_rate):
         "a700",
         "sup",
         "seg",
+        "coco",
+        "imagenet",
     ]
 
     if pretrain_data in seg_data:
-        backbone = DeepLabV3Backbone(num_classes=num_classes)
-
-    elif pretrain_data == "imagenet":
-        backbone = resnet50(replace_stride_with_dilation=[False, True, True])
-        backbone = nn.Sequential(*list(backbone.children())[:-2])
-
-    elif pretrain_data == "coco":
-        backbone = torch.hub.load(
-            "pytorch/vision:v0.10.0", "deeplabv3_resnet50"
-        ).backbone
+        resnet50_backbone = DeepLabV3Backbone(num_classes=num_classes)
         
     elif pretrain_data == "teste":
-        backbone = deeplabv3_resnet50().backbone
+        resnet50_backbone = deeplabv3_resnet50().backbone
         logger.info("Imported backbone from sratch loaded")
 
     else:
         raise KeyError("Pretrain data value wrong!")
+    
+    if linear:
+        pred_head = LinearSegmentationHead(
+            in_channels=2048,
+            num_classes=num_classes
+        )
 
-    model = DeepLabV3(
-        backbone=backbone,
-        learning_rate=learning_rate,
-        num_classes=num_classes,
-    )
+        model = DeepLabV3(
+            backbone=resnet50_backbone,
+            pred_head=pred_head,
+            learning_rate=learning_rate,
+            num_classes=num_classes,
+            freeze_backbone=False
+        )
+        
+    else:
+        model = DeepLabV3(
+            backbone=resnet50_backbone,
+            learning_rate=learning_rate,
+            num_classes=num_classes,
+            freeze_backbone=False
+        )
 
     model = FromPretrained(
         model=model, ckpt_path=import_path, strict=False, error_on_missing_keys=False
@@ -422,46 +457,160 @@ def get_models_files(base_dir="./ckpt/train", target_repetition=None):
     return results
 
 
-from torch.utils.data import Subset
-from math import ceil, floor
-
-
-def build_indices(start, end, size, sort=False, original_size=None):
-    if original_size is None:
-        original_size = size
-
-    if (end - start <= 0) or (size <= 0):
-        return []
-
-    midpoint = (end + start) // 2
-    r = [midpoint]
-
-    remainder = size - 1
-    left_apportion = ceil(remainder / 2)
-    right_apportion = floor(remainder / 2)
-
-    r += build_indices(start, midpoint, left_apportion, sort, original_size)
-    r += build_indices(midpoint + 1, end, right_apportion, sort, original_size)
-
-    if sort:
-        r.sort()
-
-    # Duplicar somente se for a chamada inicial e size original era 1
-    if original_size == 1:
-        return r * 2
-
-    return r
-
-
-class BinaryTreeSubset(Subset):
-    def __init__(self, dataset, size):
-        indices = build_indices(0, len(dataset), size, sort=True)
-        super().__init__(dataset, indices)
-
-
 from minerva.data.data_modules.base import MinervaDataModule
-from typing import Optional, Union
+from minerva.data.datasets.binary_tree_subset import BinaryTreeSubset
+from typing import Optional, Union, Literal
 import random
+from torch.utils.data import Dataset, ConcatDataset, DataLoader
+from minerva.data.datasets.base import SimpleDataset
+from minerva.data.readers import TiffReader, PNGReader
+import lightning as L
+import os
+
+
+class SeismicReducibleDataset(Dataset):
+
+    def __init__(self, root: Path, size: int, transform = None):
+        assert size > 0, f"`size` must be a positive integer, but got `{size=}`"
+
+        self.root = Path(root)
+
+        xl_set = SimpleDataset(
+            [
+                TiffReader(
+                    self.root / "images/train",
+                    ["text", "numeric"],
+                    "_",
+                    [0, 1],
+                    False,
+                    r"xl.*",
+                ),
+                PNGReader(
+                    self.root / "annotations/train",
+                    ["text", "numeric"],
+                    "_",
+                    [0, 1],
+                    False,
+                    r"xl.*",
+                ),
+            ]
+        )
+
+        il_set = SimpleDataset(
+            [
+                TiffReader(
+                    self.root / "images/train",
+                    ["text", "numeric"],
+                    "_",
+                    [0, 1],
+                    False,
+                    r"il.*",
+                ),
+                PNGReader(
+                    self.root / "annotations/train",
+                    ["text", "numeric"],
+                    "_",
+                    [0, 1],
+                    False,
+                    r"il.*",
+                ),
+            ]
+        )
+
+        max_size = len(xl_set) + len(il_set)
+        assert max_size >= size, f"There are only {max_size} samples in the dataset but got {size=}"
+
+        xl_size = min(size // 2, len(xl_set))
+        il_size = min(size - xl_size, len(il_set))
+
+        sets = []
+        if xl_size > 0:
+            sets.append(BinaryTreeSubset(xl_set, xl_size))
+        if il_size > 0:
+            sets.append(BinaryTreeSubset(il_set, il_size))
+
+        self.data: Dataset = ConcatDataset(sets)
+        self.transform = transform
+
+    def __getitem__(self, index):
+        image, label = self.data[index]
+        return self.transform(image), self.transform(label)
+
+    def __len__(self):
+        return len(self.data)
+
+
+class SeismicFullDataset(SimpleDataset):
+
+    def __init__(
+        self,
+        root: Path,
+        partition: Literal["val", "test", "train"],
+        transform,
+    ):
+        self.root = Path(root)
+        super().__init__(
+            [
+                TiffReader(self.root / f"images/{partition}"),
+                PNGReader(self.root / f"annotations/{partition}"),
+            ],
+            transforms=transform
+        )
+
+
+class SeismicDataModule(MinervaDataModule):
+
+    def __init__(
+        self,
+        root: Path,
+        batch_size: int = 32,
+        num_workers = os.cpu_count(),
+        cap: int = 256,
+        drop_last: bool = False,
+        train_dataset = None,
+        val_dataset = None,
+        test_dataset = None,
+        transform = None,
+        test_transform = None,
+        *args,
+        **kwargs,
+    ):
+        super().__init__(
+            train_dataset=train_dataset if train_dataset else SeismicReducibleDataset(root=root, size=cap, transform=transform),
+            val_dataset=val_dataset if val_dataset else SeismicFullDataset(root=root, partition="val", transform=test_transform),
+            test_dataset=test_dataset if test_dataset else SeismicFullDataset(root=root, partition="test", transform=test_transform),
+            *args,
+            **kwargs,
+        )
+        
+        self.batch_size = batch_size
+        self.num_workers = num_workers
+        self.drop_last=drop_last
+        
+    def train_dataloader(self):
+        return DataLoader(
+            self._train_dataset,
+            batch_size=self.batch_size,
+            num_workers=self.num_workers,
+            shuffle=True,
+            drop_last=self.drop_last
+        )
+
+    def val_dataloader(self):
+        return DataLoader(
+            self._val_dataset,
+            batch_size=self.batch_size,
+            num_workers=self.num_workers,
+            shuffle=False,
+        )
+
+    def test_dataloader(self):
+        return DataLoader(
+            self._test_dataset,
+            batch_size=self.batch_size,
+            num_workers=self.num_workers,
+            shuffle=False,
+        )
 
 
 class CapDataModule(MinervaDataModule):
@@ -556,3 +705,6 @@ class CapDataModule(MinervaDataModule):
                 drop_last=self.drop_last,
             )
         return dataloader
+
+
+
