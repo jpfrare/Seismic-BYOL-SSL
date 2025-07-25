@@ -38,12 +38,14 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     dataset_mapping = {
-    'seam_ai_N':'/workspaces/shared_data/seam_ai_datasets/seam_ai_N/images',
-    'seam_ai':'/workspaces/shared_data/seam_ai_datasets/seam_ai/images',
-    'f3':'/workspaces/shared_data/seismic/f3_segmentation/images',
-    'f3_N':'/workspaces/shared_data/seismic/f3_segmentation_N/images',
-    'both':'/workspaces/shared_data/seismic/both/images',
-    'both_N':'/workspaces/shared_data/seismic/both_N/images',
+        'seam_ai_N':'/home/vinicius.soares/asml/datasets/tiff_data/seam_ai_N/images',
+        'seam_ai':'/home/vinicius.soares/asml/datasets/tiff_data/seam_ai/images',
+        'f3':'/home/vinicius.soares/asml/datasets/tiff_data/f3_segmentation/images',
+        'f3_N':'/home/vinicius.soares/asml/datasets/tiff_data/f3_segmentation_N/images',
+        'both':'/home/vinicius.soares/asml/datasets/tiff_data/both/images',
+        'both_N':'/home/vinicius.soares/asml/datasets/tiff_data/both_N/images',
+        's0':'/home/vinicius.soares/asml/datasets/seismic-attributes-calculation/raw/S0.n/K1/data',
+        'a700':'/parceirosbr/asml/datasets/a700',
    }
 
     logger.info(" =-=-=- Begining training =-=-=-")

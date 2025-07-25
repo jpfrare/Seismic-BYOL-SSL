@@ -28,6 +28,7 @@ def main(
     ckpt_path,
     logs_path,
     gpus,
+    linear,
 ):
 
     # Set general seed
@@ -39,61 +40,19 @@ def main(
     elif finetune_data == "seam_ai" or finetune_data == "seam_ai_N":
         padding = Padding(1008, 592)
 
-    # Dataset
-
-    image_path = f"{data_path}/images"
-    label_path = f"{data_path}/annotations"
-
-    train_data_reader = TiffReader(path=f"{image_path}/train")
-    train_label_reader = PNGReader(path=f"{label_path}/train")
-
-    val_data_reader = TiffReader(path=f"{image_path}/val")
-    val_label_reader = PNGReader(path=f"{label_path}/val")
-
-    test_data_reader = TiffReader(path=f"{image_path}/test")
-    test_label_reader = PNGReader(path=f"{label_path}/test") 
-
-    train_dataset = SimpleDataset(
-        readers=[
-            train_data_reader,
-            train_label_reader,
-        ],
-        transforms=padding,
-        return_single=False,
-    )
-
-    val_dataset = SimpleDataset(
-        readers=[
-            val_data_reader,
-            val_label_reader,
-        ],
-        transforms=padding,
-        return_single=False,
-    )
-
-    test_dataset = SimpleDataset(
-        readers=[
-            test_data_reader,
-            test_label_reader,
-        ],
-        transforms=padding,
-        return_single=False,
-    ) 
-
-
     # DataModule
-
-    data_module = CapDataModule(
-        cap_train=1,
-        cap_val=1,
-        cap_test=1,
-        seed=repetition,
-        train_dataset=train_dataset,
-        val_dataset=val_dataset,
-        test_dataset=test_dataset,
+    # Dataset instantiated inside of the datamodule class
+    train_dataset = SeismicFullDataset(root=data_path, partition='train', transform=padding)
+    data_module = SeismicDataModule(
+        root = data_path,
         batch_size=batch_size,
+        cap=1.0,
         drop_last=True,
-        shuffle_train=True,
+        transform=padding,
+        test_transform=padding,
+        train_dataset = train_dataset,
+        val_dataset = None,
+        test_dataset = None,
     )
 
     # Model
@@ -101,7 +60,8 @@ def main(
     model = get_eval_model(
         pretrain_data=pretrain_data,
         import_path=ckpt_file,
-        learning_rate=0.001
+        learning_rate=0.001,
+        linear=linear
         )
 
     num_classes = 6

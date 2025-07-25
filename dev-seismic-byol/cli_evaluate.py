@@ -31,6 +31,9 @@ if __name__ == "__main__":
         default=[0],
         help="List of GPU indices to use."
     )
+    parser.add_argument(
+        "--linear", action="store_true", help="If true uses a linear prediction head"
+    )
 
     args = parser.parse_args()
 
@@ -64,10 +67,10 @@ if __name__ == "__main__":
         finetune_data = model["train_data"]
 
         data_path_mapping = {
-            "seam_ai_N": "/workspaces/shared_data/seam_ai_datasets/seam_ai_N",
-            "seam_ai": "/workspaces/shared_data/seam_ai_datasets/seam_ai",
-            "f3": "/workspaces/shared_data/seismic/f3_segmentation",
-            "f3_N": "/workspaces/shared_data/seismic/f3_segmentation_N",
+            'seam_ai_N':'/home/vinicius.soares/asml/datasets/tiff_data/seam_ai_N',
+            'seam_ai':'/home/vinicius.soares/asml/datasets/tiff_data/seam_ai',
+            'f3':'/home/vinicius.soares/asml/datasets/tiff_data/f3_segmentation',
+            'f3_N':'/home/vinicius.soares/asml/datasets/tiff_data/f3_segmentation_N',
         }
 
         data_path = data_path_mapping[finetune_data]
@@ -89,4 +92,5 @@ if __name__ == "__main__":
             ckpt_path=TEST_CKPT_PATH,
             logs_path=TEST_LOGS_PATH,
             gpus=args.gpus,
+            linear=args.linear,
         )

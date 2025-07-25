@@ -61,6 +61,9 @@ if __name__ == "__main__":
     parser.add_argument(
         "--linear", action="store_true", help="If true uses a linear prediction head"
     )
+    parser.add_argument(
+        "--steps", action="store_true", help="Defines if num_epochs refers to train steps"
+    )
 
     args = parser.parse_args()
 
@@ -69,10 +72,10 @@ if __name__ == "__main__":
     IMPORT_ROOT_PATH = f"ckpt/pretrain/"
 
     dataset_mapping = {
-    'seam_ai_N':'/workspaces/shared_data/seam_ai_datasets/seam_ai_N',
-    'seam_ai':'/workspaces/shared_data/seam_ai_datasets/seam_ai',
-    'f3':'/workspaces/shared_data/seismic/f3_segmentation',
-    'f3_N':'/workspaces/shared_data/seismic/f3_segmentation_N',
+        'seam_ai_N':'/home/vinicius.soares/asml/datasets/tiff_data/seam_ai_N',
+        'seam_ai':'/home/vinicius.soares/asml/datasets/tiff_data/seam_ai',
+        'f3':'/home/vinicius.soares/asml/datasets/tiff_data/f3_segmentation',
+        'f3_N':'/home/vinicius.soares/asml/datasets/tiff_data/f3_segmentation_N',
     }
 
     if args.finetune_data not in dataset_mapping.keys():
@@ -92,6 +95,7 @@ if __name__ == "__main__":
         "imagenet",
         "coco",
         "sup",
+        "seg",
     ]
 
     if args.pretrain_data not in pretrain_list:
@@ -123,5 +127,6 @@ if __name__ == "__main__":
         logs_path=PRETRAIN_LOGS_PATH,
         import_root_path=IMPORT_ROOT_PATH,
         gpus=args.gpus,
-        linear=args.linear
+        linear=args.linear,
+        steps=args.steps,
     )

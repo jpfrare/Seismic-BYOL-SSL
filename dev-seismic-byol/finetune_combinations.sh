@@ -10,7 +10,8 @@ fi
 BATCH_SIZE=8
 FREEZE=False
 LR=0.001
-NUM_EPOCHS=50
+NUM_EPOCHS=6500
+# parihaka size: 1120 com batch 8 = 140 batches por 50 épocas = 7000 passos
 GPUS=(0)  # default GPU list
 
 # Parse arguments
@@ -80,7 +81,7 @@ echo "Epochs: $NUM_EPOCHS"
 echo "------------------"
 
 # Define listas válidas
-VALID_PRETRAIN=("f3" "f3_N" "seam_ai" "seam_ai_N" "both" "both_N" "s0" "a700" "imagenet" "coco" "sup")
+VALID_PRETRAIN=("f3" "f3_N" "seam_ai" "seam_ai_N" "both" "both_N" "s0" "a700" "imagenet" "coco" "sup", "seg")
 VALID_FINETUNE=("f3" "f3_N" "seam_ai" "seam_ai_N")
 
 # Verifica datasets de pretreinamento
@@ -118,6 +119,7 @@ for REP in $(seq "$START_REP" "$END_REP"); do
           --learning_rate "$LR"
           --cap "$CAP"
           --gpus "${GPUS[@]}"
+          --steps
         )
 
         if [ "$FREEZE" = True ]; then
