@@ -116,15 +116,8 @@ if __name__ == "__main__":
     # parser.add_argument("--repetition", type=int, required=True, help="Repetition number")
     parser.add_argument("--logs_root", type=str, default="logs_ht/test_02_unfreeze_rerun", help="Root logs/test directory")
     parser.add_argument("--output_csv", type=str, default="ht_eval_linear_unfreeze.csv", help="Output CSV filename")
-    parser.add_argument("--repetition", type=int, required=True, help="Repetition number")
-    parser.add_argument("--logs_root", type=str, default="logs/test_linear/", help="Root logs/test directory")
-    parser.add_argument("--output_csv", type=str, default="final_models_linear.csv", help="Output CSV filename")
-
-    args = parser.parse_args()
     
-    # list_of_combinations = [
-    #     40, 41, 42, 43, 44, 45, 46, 47       
-    #     ]
+    args = parser.parse_args()
     
     list_of_combinations = [46]
     
