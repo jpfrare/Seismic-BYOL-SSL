@@ -81,7 +81,7 @@ echo "Epochs: $NUM_EPOCHS"
 echo "------------------"
 
 # Define listas válidas
-VALID_PRETRAIN=("f3" "f3_N" "seam_ai" "seam_ai_N" "both" "both_N" "s0" "a700" "imagenet" "coco" "sup", "seg")
+VALID_PRETRAIN=("f3" "f3_N" "seam_ai" "seam_ai_N" "both" "both_N" "s0" "a700" "imagenet" "coco" "sup" "seg")
 VALID_FINETUNE=("f3" "f3_N" "seam_ai" "seam_ai_N")
 
 # Verifica datasets de pretreinamento
@@ -110,7 +110,7 @@ for REP in $(seq "$START_REP" "$END_REP"); do
         echo "Running: rep=$REP | cap=$CAP | finetune=$FINETUNE | pretrain=$PRE | gpus=${GPUS[*]}"
         
         CMD=(
-          python cli_finetune.py
+          python cli_finetune_linear.py
           --pretrain_data "$PRE"
           --finetune_data "$FINETUNE"
           --num_epochs "$NUM_EPOCHS"
@@ -120,7 +120,21 @@ for REP in $(seq "$START_REP" "$END_REP"); do
           --cap "$CAP"
           --gpus "${GPUS[@]}"
           --steps
+          --linear
         )
+
+        # CMD=(
+        #   python cli_finetune.py
+        #   --pretrain_data "$PRE"
+        #   --finetune_data "$FINETUNE"
+        #   --num_epochs "$NUM_EPOCHS"
+        #   --batch_size "$BATCH_SIZE"
+        #   --repetition "$REP"
+        #   --learning_rate "$LR"
+        #   --cap "$CAP"
+        #   --gpus "${GPUS[@]}"
+        #   --steps
+        # )
 
         if [ "$FREEZE" = True ]; then
           CMD+=(--freeze)

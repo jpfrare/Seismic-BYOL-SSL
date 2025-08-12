@@ -33,7 +33,7 @@ if __name__ == "__main__":
         "--finetune_data",
         type=str,
         required=True,
-        default="seam_ai_N",
+        default="seg",
         help="Dataset used for fine-tuning (e.g., f3, seam_ai, both)",
     )
     parser.add_argument(

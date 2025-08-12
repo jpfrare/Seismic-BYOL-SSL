@@ -11,7 +11,7 @@ import torchmetrics
 import torch.nn as nn
 
 import argparse
-from evaluate_copy import main  # seu main de avaliação
+from evaluate import main  # seu main de avaliação
 from functions import *
 from pathlib import Path
 import re
@@ -111,12 +111,12 @@ if __name__ == "__main__":
         help="List of GPU indices to use."
     )
     
-    ckpt_path = "/home/vinicius.soares/Seismic-Byol/dev-seismic-byol/ht_ckpt/train_02_unfreeze"
+    ckpt_path = "/home/vinicius.soares/Seismic-Byol/dev-seismic-byol/ht_ckpt/train_dlv3"
 
     args = parser.parse_args()
 
-    TEST_LOGS_PATH = f"ht_logs/test_02_unfreeze_rerun/{args.combination}"
-    TEST_CKPT_PATH = f"ht_ckpt/test_02_unfreeze_rerun/{args.combination}"
+    TEST_LOGS_PATH = f"ht_logs/test_dlv3/{args.combination}"
+    TEST_CKPT_PATH = f"ht_ckpt/test_dlv3/{args.combination}"
     
     logger.info(f"Target combination: {args.combination}")
     
@@ -190,4 +190,5 @@ if __name__ == "__main__":
             ckpt_path=TEST_CKPT_PATH,
             logs_path=TEST_LOGS_PATH,
             gpus=args.gpus,
+            linear=False,
         )

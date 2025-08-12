@@ -216,6 +216,17 @@ def get_model(pretrain_data, learning_rate, freeze, repetition, root_path=None, 
         logger.info("No model loaded!")
         
     elif pretrain_data == "seg":
+        model = DeepLabV3(
+            backbone=resnet50_backbone,
+            learning_rate=learning_rate,
+            num_classes=num_classes,
+            freeze_backbone=False
+        )
+
+        resnet50_backbone = FromPretrained(
+            model=model, ckpt_path=import_path, strict=False, error_on_missing_keys=False
+        ).backbone
+        
         logger.info("Default model loaded (seg)")
         
     elif pretrain_data == "teste":
@@ -470,66 +481,45 @@ class SeismicFullDataset(SimpleDataset):
 
 
 class SeismicDataModule(MinervaDataModule):
-
     def __init__(
         self,
         root: Path,
         batch_size: int = 32,
-        num_workers = os.cpu_count(),
+        num_workers: int = os.cpu_count(),
         cap: int = 256,
         drop_last: bool = False,
-        train_dataset = None,
-        val_dataset = None,
-        test_dataset = None,
-        transform = None,
-        test_transform = None,
+        train_dataset=None,
+        val_dataset=None,
+        test_dataset=None,
+        transform=None,
+        test_transform=None,
         *args,
         **kwargs,
     ):
+        # Defina os datasets caso não tenham sido passados
+        train_dataset = train_dataset or SeismicReducibleDataset(
+            root=root, size=cap, transform=transform
+        )
+        val_dataset = val_dataset or SeismicFullDataset(
+            root=root, partition="val", transform=test_transform
+        )
+        test_dataset = test_dataset or SeismicFullDataset(
+            root=root, partition="test", transform=test_transform
+        )
+
         super().__init__(
-            train_dataset=train_dataset if train_dataset else SeismicReducibleDataset(root=root, size=cap, transform=transform),
-            val_dataset=val_dataset if val_dataset else SeismicFullDataset(root=root, partition="val", transform=test_transform),
-            test_dataset=test_dataset if test_dataset else SeismicFullDataset(root=root, partition="test", transform=test_transform),
+            train_dataset=train_dataset,
+            val_dataset=val_dataset,
+            test_dataset=test_dataset,
+            batch_size=batch_size,
+            num_workers=num_workers,
+            drop_last=drop_last,
             *args,
             **kwargs,
         )
-        
-        self.batch_size = batch_size
-        self.num_workers = num_workers
-        self.drop_last=drop_last
-        
-    def train_dataloader(self):
-        return DataLoader(
-            self._train_dataset,
-            batch_size=self.batch_size,
-            num_workers=self.num_workers,
-            shuffle=True,
-            drop_last=self.drop_last
-        )
 
-    def val_dataloader(self):
-        return DataLoader(
-            self._val_dataset,
-            batch_size=self.batch_size,
-            num_workers=self.num_workers,
-            shuffle=False,
-        )
+        # Nenhuma redefinição dos dataloaders é necessária
 
-    def test_dataloader(self):
-        return DataLoader(
-            self._test_dataset,
-            batch_size=self.batch_size,
-            num_workers=self.num_workers,
-            shuffle=False,
-        )
-        
-    def predict_dataloader(self):
-        return DataLoader(
-            self._test_dataset,
-            batch_size=self.batch_size,
-            num_workers=self.num_workers,
-            shuffle=False,
-        )
 
 class CapDataModule(MinervaDataModule):
     def __init__(

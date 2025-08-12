@@ -34,19 +34,6 @@ if __name__ == "__main__":
     parser.add_argument(
         "--linear", action="store_true", help="If true uses a linear prediction head"
     )
-
-    args = parser.parse_args()
-
-    TEST_LOGS_PATH = f"logs/test/{args.repetition}"
-    TEST_CKPT_PATH = f"ckpt/test/{args.repetition}"
-    
-    logger.info(f"Target repetition: {args.repetition}")
-    
-    models_list = get_models_files(target_repetition=args.repetition)
-    
-    logger.info(f"Ammount of models found: {len(models_list)}")
-    
-    # Filter models based on user input
     
     parser.add_argument(
         "--filter_models",
@@ -67,6 +54,9 @@ if __name__ == "__main__":
         target_repetition=args.repetition, 
         base_dir=".ckpt/train" if not args.linear else "./ckpt_linear/train")
     
+    if args.filter_models:
+        models_list = [model for model in models_list if args.filter_models in model["model_name"]]
+        
     logger.info(f"Ammount of models found: {len(models_list)}")
     
     # Filter models based on user input

@@ -8,7 +8,7 @@ if __name__ == "__main__":
         description="Fine-tuning script for seismic segmentation using pretrained BYOL backbone."
     )
     parser.add_argument(
-        "--combination", type=int, default=0, help="Combination to run"
+        "--combination", type=int, default=46, help="Combination to run"
     )
     parser.add_argument(
         "--freeze", action="store_true", help="Whether to freeze the encoder backbone"
@@ -16,13 +16,16 @@ if __name__ == "__main__":
     parser.add_argument(
         "--gpus", type=int, nargs="+", default=[0], help="List of GPU indices to use"
     )
+    parser.add_argument(
+        "--linear", action="store_true", help="Whether to use the linear head"
+    )
 
     args = parser.parse_args()
     
     finetune_data = 'seam_ai'
     
-    PRETRAIN_LOGS_PATH = f"ht_logs/train_03_freeze/{args.combination}"
-    PRETRAIN_CKPT_PATH = f"ht_ckpt/train_03_freeze/{args.combination}"
+    PRETRAIN_LOGS_PATH = f"ht_logs/train_dlv3/{args.combination}"
+    PRETRAIN_CKPT_PATH = f"ht_ckpt/train_dlv3/{args.combination}"
     IMPORT_ROOT_PATH = f"ckpt_ht/pretrain/"
 
     dataset_mapping = {
@@ -69,5 +72,6 @@ if __name__ == "__main__":
             import_root_path=IMPORT_ROOT_PATH,
             import_path=row['ckpt_file'],
             gpus=args.gpus,
-            full_save_name=f'finetune_{row["model_name"]}_step_{row["epoch_save"]}'
+            full_save_name=f'finetune_{row["model_name"]}_step_{row["epoch_save"]}',
+            linear=args.linear,
         )
