@@ -10,7 +10,7 @@ from minerva.transforms.random_transform import *
 from torchvision.models.segmentation import deeplabv3_resnet50
 from lightning.pytorch.strategies import DDPStrategy
 
-from minerva.data.readers import TiffReader, PartialPatchedZarrReader, NumpyArrayReader
+from minerva.data.readers import TiffReader
 from minerva.data.datasets import SimpleDataset
 from minerva.data.data_modules import MinervaDataModule
 
@@ -99,16 +99,16 @@ def main(
     
     # Dataset
     
-    if dataset_name == 's0':
-        train_img_reader = PartialPatchedZarrReader(
-            path=data_path,
-            data_shape=(1, 512, 512),
-            stride=(1, 6625,  2001),
-            pad_width=None,
-            index_bounds=[(2000, 0, 0), (4000, 6625, 2001)],
-            )
+    # if dataset_name == 's0':
+    #     train_img_reader = PartialPatchedZarrReader(
+    #         path=data_path,
+    #         data_shape=(1, 512, 512),
+    #         stride=(1, 6625,  2001),
+    #         pad_width=None,
+    #         index_bounds=[(2000, 0, 0), (4000, 6625, 2001)],
+    #         )
         
-    elif dataset_name != 'a700':
+    if dataset_name != 'a700':
         train_img_reader = TiffReader(path=data_path)
         
     logger.info(f"Readers built!")

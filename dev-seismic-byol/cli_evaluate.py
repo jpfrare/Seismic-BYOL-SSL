@@ -47,15 +47,30 @@ if __name__ == "__main__":
     logger.info(f"Ammount of models found: {len(models_list)}")
     
     # Filter models based on user input
+    
     parser.add_argument(
         "--filter_models",
         type=str,
         nargs="*",
         default=None,
         help="List of model names to evaluate. If not provided, all models will be evaluated."
-    )   
+    )  
+
+    args = parser.parse_args()
+
+    TEST_LOGS_PATH = f"logs/test/{args.repetition}" if not args.linear else f"logs/test_linear/{args.repetition}"
+    TEST_CKPT_PATH = f"ckpt/test/{args.repetition}" if not args.linear else f"ckpt/test_linear/{args.repetition}"
     
+    logger.info(f"Target repetition: {args.repetition}")
     
+    models_list = get_models_files(
+        target_repetition=args.repetition, 
+        base_dir=".ckpt/train" if not args.linear else "./ckpt_linear/train")
+    
+    logger.info(f"Ammount of models found: {len(models_list)}")
+    
+    # Filter models based on user input
+ 
     for model in models_list:
         
         logger.info(model)
@@ -66,14 +81,21 @@ if __name__ == "__main__":
         pretrain_data = model["pretrain_data"]
         finetune_data = model["train_data"]
 
-        data_path_mapping = {
-            'seam_ai_N':'/home/vinicius.soares/asml/datasets/tiff_data/seam_ai_N',
-            'seam_ai':'/home/vinicius.soares/asml/datasets/tiff_data/seam_ai',
-            'f3':'/home/vinicius.soares/asml/datasets/tiff_data/f3_segmentation',
-            'f3_N':'/home/vinicius.soares/asml/datasets/tiff_data/f3_segmentation_N',
-        }
+        dataset_mapping = get_dataset_mapping()
 
-        data_path = data_path_mapping[finetune_data]
+        finetune_list = [
+            "f3",
+            "f3_N",
+            "seam_ai",
+            "seam_ai_N"
+        ]
+
+        if args.finetune_data not in finetune_list:
+            raise KeyError(
+                f"Dataset '{args.finetune_data}' not found in available options: {finetune_list}"
+            )
+
+        data_path = dataset_mapping[finetune_data]
 
         logger.info(f"Backbone loaded: {pretrain_data}")
         logger.info(f"Data Path :{data_path}")

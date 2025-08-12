@@ -67,20 +67,22 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    PRETRAIN_LOGS_PATH = f"logs/train/{args.repetition}"
-    PRETRAIN_CKPT_PATH = f"ckpt/train/{args.repetition}"
+    PRETRAIN_LOGS_PATH = f"logs/train/{args.repetition}" if not args.linear else f"logs/train_linear/{args.repetition}"
+    PRETRAIN_CKPT_PATH = f"ckpt/train/{args.repetition}" if not args.linear else f"ckpt/train_linear/{args.repetition}"
     IMPORT_ROOT_PATH = f"ckpt/pretrain/"
 
-    dataset_mapping = {
-        'seam_ai_N':'/home/vinicius.soares/asml/datasets/tiff_data/seam_ai_N',
-        'seam_ai':'/home/vinicius.soares/asml/datasets/tiff_data/seam_ai',
-        'f3':'/home/vinicius.soares/asml/datasets/tiff_data/f3_segmentation',
-        'f3_N':'/home/vinicius.soares/asml/datasets/tiff_data/f3_segmentation_N',
-    }
+    dataset_mapping = get_dataset_mapping()
+    
+    finetune_list = [
+        "f3",
+        "f3_N",
+        "seam_ai",
+        "seam_ai_N"
+    ]
 
-    if args.finetune_data not in dataset_mapping.keys():
+    if args.finetune_data not in finetune_list:
         raise KeyError(
-            f"Dataset '{args.finetune_data}' not found in available options: {list(dataset_mapping.keys())}"
+            f"Dataset '{args.finetune_data}' not found in available options: {finetune_list}"
         )
 
     pretrain_list = [
