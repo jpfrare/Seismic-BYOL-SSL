@@ -117,17 +117,17 @@ def collect_metrics_to_csv(logs_root, repetition, output_csv):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Export evaluation metrics to CSV (append/update mode)")
     # parser.add_argument("--repetition", type=int, required=True, help="Repetition number")
-    parser.add_argument("--logs_root", type=str, default="ht_logs/test_02_unfreeze_rerun", help="Root logs/test directory")
-    parser.add_argument("--output_csv", type=str, default="ht_eval_metrics_unfreeze.csv", help="Output CSV filename")
+    parser.add_argument("--logs_root", type=str, default="logs_ht/test_02_unfreeze_rerun", help="Root logs/test directory")
+    parser.add_argument("--output_csv", type=str, default="ht_eval_linear_unfreeze.csv", help="Output CSV filename")
 
     args = parser.parse_args()
     
     # list_of_combinations = [
-    #     0, 2, 4, 6, 7, 11, 13, 15, 16, 17, 18, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 
-    # ]
-    list_of_combinations = [
-        40, 41, 42, 43, 44, 45, 46, 47       
-        ]
+    #     40, 41, 42, 43, 44, 45, 46, 47       
+    #     ]
+    
+    list_of_combinations = [46]
+    
     
     for number in list_of_combinations:
 
