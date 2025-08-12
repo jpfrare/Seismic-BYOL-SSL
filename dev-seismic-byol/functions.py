@@ -707,4 +707,42 @@ class CapDataModule(MinervaDataModule):
         return dataloader
 
 
+import os
 
+def get_dataset_mapping():
+    
+    nodename = os.uname().nodename
+    
+    if 'sdumont' in nodename:
+        dataset_mapping = {
+            'seam_ai_N':'/workspaces/shared_data/seam_ai_datasets/seam_ai_N/images',
+            'seam_ai':'/workspaces/shared_data/seam_ai_datasets/seam_ai/images',
+            'f3':'/workspaces/shared_data/seismic/f3_segmentation/images',
+            'f3_N':'/workspaces/shared_data/seismic/f3_segmentation_N/images',
+            'both':'/workspaces/shared_data/seismic/both/images',
+            'both_N':'/workspaces/shared_data/seismic/both_N/images',
+        }
+    
+    elif 'node' in nodename:
+        dataset_mapping = {
+            'seam_ai_N':'/workspaces/shared_data/seam_ai_datasets/seam_ai_N/images',
+            'seam_ai':'/workspaces/shared_data/seam_ai_datasets/seam_ai/images',
+            'f3':'/workspaces/shared_data/seismic/f3_segmentation/images',
+            'f3_N':'/workspaces/shared_data/seismic/f3_segmentation_N/images',
+            'both':'/workspaces/shared_data/seismic/both/images',
+            'both_N':'/workspaces/shared_data/seismic/both_N/images',
+        }
+        
+    elif 'c' in nodename:
+        dataset_mapping = {
+            'seam_ai_N':'/workspaces/shared_data/seam_ai_datasets/seam_ai_N/images',
+            'seam_ai':'/workspaces/shared_data/seam_ai_datasets/seam_ai/images',
+            'f3':'/workspaces/shared_data/seismic/f3_segmentation/images',
+            'f3_N':'/workspaces/shared_data/seismic/f3_segmentation_N/images',
+            'both':'/workspaces/shared_data/seismic/both/images',
+            'both_N':'/workspaces/shared_data/seismic/both_N/images',
+        }
+    else:
+        raise RuntimeError(f"Unsupported nodename '{nodename}'. Unable to determine dataset mapping.")
+    
+    return dataset_mapping

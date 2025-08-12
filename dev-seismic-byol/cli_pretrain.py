@@ -37,23 +37,29 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    dataset_mapping = {
-    'seam_ai_N':'/workspaces/shared_data/seam_ai_datasets/seam_ai_N/images',
-    'seam_ai':'/workspaces/shared_data/seam_ai_datasets/seam_ai/images',
-    'f3':'/workspaces/shared_data/seismic/f3_segmentation/images',
-    'f3_N':'/workspaces/shared_data/seismic/f3_segmentation_N/images',
-    'both':'/workspaces/shared_data/seismic/both/images',
-    'both_N':'/workspaces/shared_data/seismic/both_N/images',
-   }
-
+    dataset_mapping = get_dataset_mapping()
+    
     logger.info(" =-=-=- Begining training =-=-=-")
 
     logger.info(f"Dataset path: {dataset_mapping[args.dataset_name]}")
 
-    if args.dataset_name not in dataset_mapping.keys():
-        logger.error("Dataset not available")
+    pretrain_list = [
+        "f3",
+        "f3_N",
+        "seam_ai",
+        "seam_ai_N",
+        "both",
+        "both_N",
+        "s0",
+        "a700",
+        "imagenet",
+        "coco",
+        "sup",
+    ]
+
+    if args.pretrain_data not in pretrain_list:
         raise KeyError(
-            f"Dataset '{args.dataset_name}' not found in available options: {list(dataset_mapping.keys())}"
+            f"Pretrain '{args.pretrain_data}' not found in available options: {pretrain_list}"
         )
 
     PRETRAIN_LOGS_PATH = f"logs/pretrain/{args.repetition}"
