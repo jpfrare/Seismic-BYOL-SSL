@@ -126,7 +126,7 @@ def main(
         save_run_status=True,
     )
 
-    # pipeline.run(data_module, task="fit")
+    pipeline.run(data_module, task="fit")
 
 
 if __name__ == "__main__":
