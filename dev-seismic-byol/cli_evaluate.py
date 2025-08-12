@@ -31,6 +31,9 @@ if __name__ == "__main__":
         default=[0],
         help="List of GPU indices to use."
     )
+    parser.add_argument(
+        "--linear", action="store_true", help="If true uses a linear prediction head"
+    )
     
     parser.add_argument(
         "--filter_models",
@@ -51,6 +54,9 @@ if __name__ == "__main__":
         target_repetition=args.repetition, 
         base_dir=".ckpt/train" if not args.linear else "./ckpt_linear/train")
     
+    if args.filter_models:
+        models_list = [model for model in models_list if args.filter_models in model["model_name"]]
+        
     logger.info(f"Ammount of models found: {len(models_list)}")
     
     # Filter models based on user input
@@ -98,4 +104,5 @@ if __name__ == "__main__":
             ckpt_path=TEST_CKPT_PATH,
             logs_path=TEST_LOGS_PATH,
             gpus=args.gpus,
+            linear=args.linear,
         )

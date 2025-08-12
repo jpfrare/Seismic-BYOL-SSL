@@ -28,6 +28,7 @@ def main(
     ckpt_path,
     logs_path,
     gpus,
+    linear,
 ):
 
     # Set general seed
@@ -39,61 +40,18 @@ def main(
     elif finetune_data == "seam_ai" or finetune_data == "seam_ai_N":
         padding = Padding(1008, 592)
 
-    # Dataset
-
-    image_path = f"{data_path}/images"
-    label_path = f"{data_path}/annotations"
-
-    train_data_reader = TiffReader(path=f"{image_path}/train")
-    train_label_reader = PNGReader(path=f"{label_path}/train")
-
-    val_data_reader = TiffReader(path=f"{image_path}/val")
-    val_label_reader = PNGReader(path=f"{label_path}/val")
-
-    test_data_reader = TiffReader(path=f"{image_path}/test")
-    test_label_reader = PNGReader(path=f"{label_path}/test") 
-
-    train_dataset = SimpleDataset(
-        readers=[
-            train_data_reader,
-            train_label_reader,
-        ],
-        transforms=padding,
-        return_single=False,
-    )
-
-    val_dataset = SimpleDataset(
-        readers=[
-            val_data_reader,
-            val_label_reader,
-        ],
-        transforms=padding,
-        return_single=False,
-    )
-
-    test_dataset = SimpleDataset(
-        readers=[
-            test_data_reader,
-            test_label_reader,
-        ],
-        transforms=padding,
-        return_single=False,
-    ) 
-
-
     # DataModule
-
-    data_module = CapDataModule(
-        cap_train=1,
-        cap_val=1,
-        cap_test=1,
-        seed=repetition,
-        train_dataset=train_dataset,
-        val_dataset=val_dataset,
-        test_dataset=test_dataset,
+    # Dataset instantiated inside of the datamodule class
+    data_module = SeismicDataModule(
+        root = data_path,
         batch_size=batch_size,
+        cap=1.0,
         drop_last=True,
-        shuffle_train=True,
+        transform=padding,
+        test_transform=padding,
+        train_dataset = None,
+        val_dataset = None,
+        test_dataset = None,
     )
 
     # Model
@@ -101,7 +59,8 @@ def main(
     model = get_eval_model(
         pretrain_data=pretrain_data,
         import_path=ckpt_file,
-        learning_rate=0.001
+        learning_rate=0.001,
+        linear=linear
         )
 
     num_classes = 6
@@ -137,7 +96,7 @@ def main(
         model=model,
         trainer=trainer,
         log_dir=log_dir,
-        save_run_status=False,
+        save_run_status=True,
         seed=repetition,
         apply_metrics_per_sample=False,
         classification_metrics=metrics,
@@ -147,17 +106,18 @@ def main(
 
 if __name__ == "__main__":
     main(
-        model_name="V10_pre_teste_train_seam_ai_cap_100%_01",
-        ckpt_file="/home/vinicius.soares/Seismic-Byol/dev-seismic-byol/ckpt/train/10/V10_pre_teste_train_seam_ai_cap_100%_01/seam_ai/epoch=3-step=560.ckpt",
-        pretrain_data="teste",
-        finetune_data="seam_ai",
-        data_path='/home/vinicius.soares/asml/datasets/tiff_data/seam_ai',
+        model_name="V0_pre_a700_train_f3_N_cap_100%",
+        ckpt_file="/home/vinicius.soares/Seismic-Byol/dev-seismic-byol/ckpt/train/0/V0_pre_a700_train_f3_N_cap_100%/f3_N/epoch=49-step=6200.ckpt",
+        pretrain_data="a700",
+        finetune_data="f3_N",
+        data_path='/home/vinicius.soares/asml/datasets/tiff_data/f3_segmentation_N',
         num_epochs=50,
         batch_size=8,
-        repetition=10,
-        ckpt_path="ckpt/test/10",
-        logs_path="logs/test/10",
+        repetition=0,
+        ckpt_path="ckpt/test/0",
+        logs_path="logs/test/0",
         gpus=[0],
+        linear=False,
     )
 
 

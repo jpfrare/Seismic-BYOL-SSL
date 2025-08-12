@@ -129,21 +129,31 @@ def get_state_dict(model):
     return renamed_state_dict    
 
 
-def get_model(pretrain_data, learning_rate, freeze, repetition, root_path=None, full_path=False, linear=False):
-    num_classes = 6
+def get_seg_file(root_path="/home/vinicius.soares/Seismic-Byol/dev-seismic-byol/ckpt/train", 
+                 repetition=0,
+                 seg_data="seam_ai_N",):
+    
+    folder_path = f"{root_path}/{repetition}/V{repetition}_pre_sup_train_{seg_data}_cap_100%/{seg_data}"
+    
+    files = [f for f in Path(folder_path).iterdir() if f.is_file() and f.name.startswith("epoch=")]
+    if files:
+        files.sort(key=lambda f: extract_epoch_number(f.name))
+        selected_file = files[0]
+        return str(selected_file.resolve())
 
-    if pretrain_data == "a700":
-        base_name = f"V{repetition}_pretrain_{pretrain_data}_In256_B32_E100"
-    else:
-        base_name = f"V{repetition}_pretrain_{pretrain_data}_In256_B32_E500"
+    return None
+
+
+def get_model(pretrain_data, learning_rate, freeze, repetition, root_path=None, full_path=False, linear=False, finetune_data=None):
+    num_classes = 6
 
     if full_path: 
         import_path = full_path
     else:
         if pretrain_data == "a700":
-            base_name = f"V{repetition}_pretrain_{pretrain_data}_In256_B32_E100"
+            base_name = f"V{repetition}_pretrain_{pretrain_data}_In256_B32_E200_lr1e-05"
         else:
-            base_name = f"V{repetition}_pretrain_{pretrain_data}_In256_B32_E500"
+            base_name = f"V{repetition}_pretrain_{pretrain_data}_In256_B32_E1200_lr1e-05"
 
         if root_path:
             import_path = f"{root_path}/{repetition}/{base_name}/{pretrain_data}/last.ckpt"
@@ -151,6 +161,25 @@ def get_model(pretrain_data, learning_rate, freeze, repetition, root_path=None, 
             import_path = (
                 f"ckpt/pretrain/{repetition}/{base_name}/{pretrain_data}/last.ckpt"
             )
+            
+    if pretrain_data == "seg":
+        seg_data_mapping = {
+            "f3_N": "seam_ai_N",
+            "f3": "seam_ai",
+            "seam_ai_N": "f3_N",
+            "seam_ai": "f3",
+        }
+        root_path = "/home/vinicius.soares/Seismic-Byol/dev-seismic-byol/ckpt/train"
+        if finetune_data in ["f3_N", "seam_ai_N", "f3", "seam_ai"]:
+            import_path = get_seg_file(
+                root_path=root_path,
+                repetition=repetition,
+                seg_data=seg_data_mapping[finetune_data],
+            )
+            logger.info(f"CKPT imported from:\n{import_path}")
+            logger.info(f"Imported pretrain for segmentation in {seg_data_mapping[finetune_data]}")
+        else:
+            raise ValueError("Invalid finetune_data for pretrain_data 'seg'")
 
     seg_data = ["f3", "f3_N", "seam_ai", "seam_ai_N", "both", "both_N", "s0", "a700"]
 
@@ -186,10 +215,24 @@ def get_model(pretrain_data, learning_rate, freeze, repetition, root_path=None, 
     elif pretrain_data == "sup":
         logger.info("No model loaded!")
         
+    elif pretrain_data == "seg":
+        model = DeepLabV3(
+            backbone=resnet50_backbone,
+            learning_rate=learning_rate,
+            num_classes=num_classes,
+            freeze_backbone=False
+        )
+
+        resnet50_backbone = FromPretrained(
+            model=model, ckpt_path=import_path, strict=False, error_on_missing_keys=False
+        ).backbone
+        
+        logger.info("Default model loaded (seg)")
+        
     elif pretrain_data == "teste":
         resnet50_backbone = deeplabv3_resnet50().backbone
         logger.info("Imported backbone from scratch loaded")
-        
+    
     else:
         raise KeyError("Pretrain data value wrong!")
 
@@ -221,78 +264,6 @@ def get_model(pretrain_data, learning_rate, freeze, repetition, root_path=None, 
     return model
 
 
-def get_model_linear(pretrain_data, learning_rate, freeze, repetition, root_path=None, full_path=False, linear=False):
-    num_classes = 6
-
-    if full_path: 
-        import_path = full_path
-    else:
-        if pretrain_data == "a700":
-            base_name = f"V{repetition}_pretrain_{pretrain_data}_In256_B32_E100"
-        else:
-            base_name = f"V{repetition}_pretrain_{pretrain_data}_In256_B32_E500"
-
-        if root_path:
-            import_path = f"{root_path}/{repetition}/{base_name}/{pretrain_data}/last.ckpt"
-        else:
-            import_path = (
-                f"ckpt/pretrain/{repetition}/{base_name}/{pretrain_data}/last.ckpt"
-            )
-
-    seg_data = ["f3", "f3_N", "seam_ai", "seam_ai_N", "both", "both_N", "s0", "a700"]
-
-    if pretrain_data in seg_data:
-        # backbone = deeplabv3_resnet50().backbone
-        backbone = DeepLabV3Backbone(num_classes=num_classes)
-        model = BYOL(backbone=backbone, learning_rate=learning_rate)
-
-        backbone = FromPretrained(
-            model=model,
-            ckpt_path=import_path,
-            strict=False,
-            error_on_missing_keys=False,
-        ).backbone
-        logger.info(f"{pretrain_data} backbone loaded")
-
-    elif pretrain_data == "imagenet":
-        weights = torchvision.models.ResNet50_Weights.IMAGENET1K_V2
-        backbone = resnet50(
-            replace_stride_with_dilation=[False, True, True], weights=weights
-        )
-        backbone = nn.Sequential(*list(backbone.children())[:-2])
-        logger.info("IMAGENET backbone loaded")
-
-    elif pretrain_data == "coco":      
-        weights = DeepLabV3_ResNet50_Weights.DEFAULT
-        backbone = deeplabv3_resnet50(weights=weights).backbone
-        logger.info("COCO backbone loaded")
-
-    elif pretrain_data == "sup":
-        backbone = DeepLabV3Backbone(num_classes=num_classes)
-        logger.info("No model loaded!")
-
-    else:
-        raise KeyError("Pretrain data value wrong!")
-
-    pred_head = LinearSegmentationHead(
-        in_channels=2048,
-        num_classes=num_classes
-    )
-
-    model = DeepLabV3(
-        backbone=backbone,
-        pred_head=pred_head,
-        learning_rate=learning_rate,
-        num_classes=num_classes,
-        freeze_backbone=freeze
-    )
-    
-    if freeze:
-        logger.info("Freezing backbone parameters via `freeze_weights`.")
-
-    return model
-
-
 def get_eval_model(pretrain_data, import_path, learning_rate, linear=False):
 
     num_classes = 6
@@ -310,6 +281,7 @@ def get_eval_model(pretrain_data, import_path, learning_rate, linear=False):
         "seg",
         "coco",
         "imagenet",
+        "seg"
     ]
 
     if pretrain_data in seg_data:
@@ -343,56 +315,6 @@ def get_eval_model(pretrain_data, import_path, learning_rate, linear=False):
             num_classes=num_classes,
             freeze_backbone=False
         )
-
-    model = FromPretrained(
-        model=model, ckpt_path=import_path, strict=False, error_on_missing_keys=False
-    )
-
-    return model
-
-
-def get_linear_eval_model(pretrain_data, import_path, learning_rate):
-
-    num_classes = 6
-
-    seg_data = [
-        "f3",
-        "f3_N",
-        "seam_ai",
-        "seam_ai_N",
-        "both",
-        "both_N",
-        "s0",
-        "a700",
-        "sup",
-        "seg",
-    ]
-
-    if pretrain_data in seg_data:
-        backbone = DeepLabV3Backbone(num_classes=num_classes)
-
-    elif pretrain_data == "imagenet":
-        backbone = resnet50(replace_stride_with_dilation=[False, True, True])
-        backbone = nn.Sequential(*list(backbone.children())[:-2])
-        
-    elif pretrain_data == "coco":      
-        weights = DeepLabV3_ResNet50_Weights.DEFAULT
-        backbone = deeplabv3_resnet50(weights=weights).backbone
-
-    else:
-        raise KeyError("Pretrain data value wrong!")
-    
-    pred_head = LinearSegmentationHead(
-        in_channels=2048,
-        num_classes=num_classes
-    )
-
-    model = DeepLabV3(
-        backbone=backbone,
-        pred_head=pred_head,
-        learning_rate=learning_rate,
-        num_classes=num_classes,
-    )
 
     model = FromPretrained(
         model=model, ckpt_path=import_path, strict=False, error_on_missing_keys=False
@@ -471,7 +393,7 @@ import os
 class SeismicReducibleDataset(Dataset):
 
     def __init__(self, root: Path, size: int, transform = None):
-        assert size > 0, f"`size` must be a positive integer, but got `{size=}`"
+        assert size > 0, f"`size` must be a positive integer, but got size = {size}"
 
         self.root = Path(root)
 
@@ -518,7 +440,7 @@ class SeismicReducibleDataset(Dataset):
         )
 
         max_size = len(xl_set) + len(il_set)
-        assert max_size >= size, f"There are only {max_size} samples in the dataset but got {size=}"
+        assert max_size >= size, f"There are only {max_size} samples in the dataset but got size = {size}"
 
         xl_size = min(size // 2, len(xl_set))
         il_size = min(size - xl_size, len(il_set))
@@ -559,58 +481,44 @@ class SeismicFullDataset(SimpleDataset):
 
 
 class SeismicDataModule(MinervaDataModule):
-
     def __init__(
         self,
         root: Path,
         batch_size: int = 32,
-        num_workers = os.cpu_count(),
+        num_workers: int = os.cpu_count(),
         cap: int = 256,
         drop_last: bool = False,
-        train_dataset = None,
-        val_dataset = None,
-        test_dataset = None,
-        transform = None,
-        test_transform = None,
+        train_dataset=None,
+        val_dataset=None,
+        test_dataset=None,
+        transform=None,
+        test_transform=None,
         *args,
         **kwargs,
     ):
+        # Defina os datasets caso não tenham sido passados
+        train_dataset = train_dataset or SeismicReducibleDataset(
+            root=root, size=cap, transform=transform
+        )
+        val_dataset = val_dataset or SeismicFullDataset(
+            root=root, partition="val", transform=test_transform
+        )
+        test_dataset = test_dataset or SeismicFullDataset(
+            root=root, partition="test", transform=test_transform
+        )
+
         super().__init__(
-            train_dataset=train_dataset if train_dataset else SeismicReducibleDataset(root=root, size=cap, transform=transform),
-            val_dataset=val_dataset if val_dataset else SeismicFullDataset(root=root, partition="val", transform=test_transform),
-            test_dataset=test_dataset if test_dataset else SeismicFullDataset(root=root, partition="test", transform=test_transform),
+            train_dataset=train_dataset,
+            val_dataset=val_dataset,
+            test_dataset=test_dataset,
+            batch_size=batch_size,
+            num_workers=num_workers,
+            drop_last=drop_last,
             *args,
             **kwargs,
         )
-        
-        self.batch_size = batch_size
-        self.num_workers = num_workers
-        self.drop_last=drop_last
-        
-    def train_dataloader(self):
-        return DataLoader(
-            self._train_dataset,
-            batch_size=self.batch_size,
-            num_workers=self.num_workers,
-            shuffle=True,
-            drop_last=self.drop_last
-        )
 
-    def val_dataloader(self):
-        return DataLoader(
-            self._val_dataset,
-            batch_size=self.batch_size,
-            num_workers=self.num_workers,
-            shuffle=False,
-        )
-
-    def test_dataloader(self):
-        return DataLoader(
-            self._test_dataset,
-            batch_size=self.batch_size,
-            num_workers=self.num_workers,
-            shuffle=False,
-        )
+        # Nenhuma redefinição dos dataloaders é necessária
 
 
 class CapDataModule(MinervaDataModule):

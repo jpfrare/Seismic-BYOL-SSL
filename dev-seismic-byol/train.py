@@ -14,6 +14,7 @@ from lightning.pytorch.loggers.csv_logs import CSVLogger
 from lightning.pytorch.callbacks import ModelCheckpoint
 from lightning import Trainer
 from lightning.fabric import seed_everything
+from lightning.pytorch.callbacks.early_stopping import EarlyStopping
 
 
 def main(
@@ -33,6 +34,7 @@ def main(
     import_path=False,  # Flag to tell if the import path is root or complete
     full_save_name=False,   # If want to save as a specific name
     linear=False,   # FC to choose from linear or default
+    steps=False,    # If num_epochs refer to steps
 ):
 
     # Set general seed**
@@ -60,7 +62,8 @@ def main(
         padding = Padding(1008, 592)
 
     # 100% dos dados
-    if cap == 1.0:
+    # print(f'Número: {cap}, tipo: {type(cap)}')
+    if cap == 1.0 and type(cap) == float:
         
         logger.info("Using 100% of train data")
         train_dataset = SeismicFullDataset(root=data_path, partition='train', transform=padding)
@@ -68,7 +71,7 @@ def main(
             root = data_path,
             batch_size=batch_size,
             cap=cap,
-            drop_last=False,
+            drop_last=True,
             transform=padding,
             test_transform=padding,
             train_dataset = train_dataset,
@@ -99,7 +102,8 @@ def main(
         repetition,
         import_root_path,
         full_path=import_path, 
-        linear=linear
+        linear=linear,
+        finetune_data=finetune_data
     )
 
     log_dir = Path(logs_path) / save_name / finetune_data
@@ -108,16 +112,37 @@ def main(
     ckpt_callback = ModelCheckpoint(
         save_top_k=1, save_last=True, dirpath=ckpt_dir, mode="min", monitor="val_loss"
     )
-
-    trainer = Trainer(
-        accelerator="gpu",
-        logger=csv_logger,
-        callbacks=[ckpt_callback],
-        max_epochs=num_epochs,
-        strategy="auto",
-        devices=gpus,
-        check_val_every_n_epoch=2,
+    early_stopping_callback = EarlyStopping(
+        monitor="val_loss",
+        patience=20,
+        mode="min",
+        # verbose=True
     )
+
+    if steps:
+        trainer = Trainer(
+            accelerator="gpu",
+            logger=csv_logger,
+            callbacks=[ckpt_callback, early_stopping_callback],
+            max_steps=num_epochs,
+            strategy="auto",
+            devices=gpus,
+            check_val_every_n_epoch=None,
+            val_check_interval=100,
+        )
+
+    else:
+
+        trainer = Trainer(
+            accelerator="gpu",
+            logger=csv_logger,
+            callbacks=[ckpt_callback, early_stopping_callback],
+            max_epochs=num_epochs,
+            strategy="auto",
+            devices=gpus,
+            check_val_every_n_epoch=None,
+            val_check_interval=100,
+        )
 
     pipeline = SimpleLightningPipeline(
         model=model,

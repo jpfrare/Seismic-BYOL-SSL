@@ -33,7 +33,7 @@ if __name__ == "__main__":
         "--finetune_data",
         type=str,
         required=True,
-        default="seam_ai_N",
+        default="seg",
         help="Dataset used for fine-tuning (e.g., f3, seam_ai, both)",
     )
     parser.add_argument(
@@ -60,6 +60,9 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--linear", action="store_true", help="If true uses a linear prediction head"
+    )
+    parser.add_argument(
+        "--steps", action="store_true", help="Defines if num_epochs refers to train steps"
     )
 
     args = parser.parse_args()
@@ -94,6 +97,7 @@ if __name__ == "__main__":
         "imagenet",
         "coco",
         "sup",
+        "seg",
     ]
 
     if args.pretrain_data not in pretrain_list:
@@ -125,5 +129,6 @@ if __name__ == "__main__":
         logs_path=PRETRAIN_LOGS_PATH,
         import_root_path=IMPORT_ROOT_PATH,
         gpus=args.gpus,
-        linear=args.linear
+        linear=args.linear,
+        steps=args.steps,
     )
