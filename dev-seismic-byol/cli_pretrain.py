@@ -31,7 +31,7 @@ if __name__ == "__main__":
         "--gpus",
         type=int,
         nargs="+",
-        default=[0, 1, 2, 3],
+        default=[0],
         help="List of GPU device indices to use",
     )
 

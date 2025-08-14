@@ -623,12 +623,13 @@ def get_dataset_mapping():
     
     if 'sdumont' in nodename:
         dataset_mapping = {
-            'seam_ai_N':'/workspaces/shared_data/seam_ai_datasets/seam_ai_N/images',
-            'seam_ai':'/workspaces/shared_data/seam_ai_datasets/seam_ai/images',
-            'f3':'/workspaces/shared_data/seismic/f3_segmentation/images',
-            'f3_N':'/workspaces/shared_data/seismic/f3_segmentation_N/images',
-            'both':'/workspaces/shared_data/seismic/both/images',
-            'both_N':'/workspaces/shared_data/seismic/both_N/images',
+            'seam_ai_N':'/petrobr/parceirosbr/home/vinicius.soares/workspace/spfm/datasets/tiff_data/seam_ai_N/images',
+            'seam_ai':'/petrobr/parceirosbr/home/vinicius.soares/workspace/spfm/datasets/tiff_data/seam_ai/images',
+            'f3':'/petrobr/parceirosbr/home/vinicius.soares/workspace/spfm/datasets/tiff_data/f3_segmentation/images',
+            'f3_N':'/petrobr/parceirosbr/home/vinicius.soares/workspace/spfm/datasets/tiff_data/f3_segmentation_N/images',
+            'both':'/petrobr/parceirosbr/home/vinicius.soares/workspace/spfm/datasets/tiff_data/both/images',
+            'both_N':'/petrobr/parceirosbr/home/vinicius.soares/workspace/spfm/datasets/tiff_data/both_N/images',
+            'a700':'/petrobr/parceirosbr/home/vinicius.soares/workspace/spfm/datasets/a700'
         }
     
     elif 'node' in nodename:
