@@ -57,9 +57,9 @@ if __name__ == "__main__":
         "sup",
     ]
 
-    if args.pretrain_data not in pretrain_list:
+    if args.dataset_name not in pretrain_list:
         raise KeyError(
-            f"Pretrain '{args.pretrain_data}' not found in available options: {pretrain_list}"
+            f"Pretrain '{args.dataset_name}' not found in available options: {pretrain_list}"
         )
 
     PRETRAIN_LOGS_PATH = f"logs/pretrain/{args.repetition}"
