@@ -28,7 +28,7 @@ if __name__ == "__main__":
         "--gpus",
         type=int,
         nargs="+",
-        default=[0],
+        default=[],
         help="List of GPU indices to use."
     )
     parser.add_argument(
@@ -45,17 +45,25 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    TEST_LOGS_PATH = f"logs/test/{args.repetition}" if not args.linear else f"logs/test_linear/{args.repetition}"
-    TEST_CKPT_PATH = f"ckpt/test/{args.repetition}" if not args.linear else f"ckpt/test_linear/{args.repetition}"
+    root = '/petrobr/parceirosbr/home/vinicius.soares/workspace/spfm/checkpoints'
+
+    TEST_LOGS_PATH = f"{root}/logs_vinicius/test_freeze_modules/{args.repetition}" if not args.linear else f"{root}/logs_vinicius/test_linear_freeze_modules/{args.repetition}"
+    TEST_CKPT_PATH = f"{root}/ckpt_vinicius/test_freeze_modules/{args.repetition}" if not args.linear else f"{root}/ckpt_vinicius/test_linear_freeze_modules/{args.repetition}"
+    
+    
+    # PRETRAIN_LOGS_PATH = f"{root}/logs_vinicius/train_freeze_modules/{args.repetition}" if not args.linear else f"{root}/logs_vinicius/train_linear_freeze_modules/{args.repetition}"
+    # PRETRAIN_CKPT_PATH = f"{root}/ckpt_vinicius/train_freeze_modules/{args.repetition}" if not args.linear else f"{root}/ckpt_vinicius/train_linear_freeze_modules/{args.repetition}"
+    # IMPORT_ROOT_PATH = f"/petrobr/parceirosbr/home/vinicius.soares/workspace/Seismic-Byol/dev-seismic-byol/ckpt/pretrain"
+
     
     logger.info(f"Target repetition: {args.repetition}")
     
     models_list = get_models_files(
         target_repetition=args.repetition, 
-        base_dir=".ckpt/train" if not args.linear else "./ckpt_linear/train")
+        base_dir=f"{root}/ckpt_vinicius/train_freeze_modules" if not args.linear else f"{root}/ckpt_vinicius/train_freeze_modules")
     
     if args.filter_models:
-        models_list = [model for model in models_list if args.filter_models in model["model_name"]]
+        models_list = [model for model in models_list if args.filter_models [0] in model["model_name"]]
         
     logger.info(f"Ammount of models found: {len(models_list)}")
     
@@ -73,17 +81,17 @@ if __name__ == "__main__":
 
         dataset_mapping = get_dataset_mapping()
 
-        finetune_list = [
-            "f3",
-            "f3_N",
-            "seam_ai",
-            "seam_ai_N"
-        ]
+        # finetune_list = [
+        #     "f3",
+        #     "f3_N",
+        #     "seam_ai",
+        #     "seam_ai_N"
+        # ]
 
-        if args.finetune_data not in finetune_list:
-            raise KeyError(
-                f"Dataset '{args.finetune_data}' not found in available options: {finetune_list}"
-            )
+        # if args.finetune_data not in finetune_list:
+        #     raise KeyError(
+        #         f"Dataset '{args.finetune_data}' not found in available options: {finetune_list}"
+        #     )
 
         data_path = dataset_mapping[finetune_data]
 

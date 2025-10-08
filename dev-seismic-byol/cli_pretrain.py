@@ -55,6 +55,7 @@ if __name__ == "__main__":
         "imagenet",
         "coco",
         "sup",
+        "namss",
     ]
 
     if args.dataset_name not in pretrain_list:
@@ -62,8 +63,11 @@ if __name__ == "__main__":
             f"Pretrain '{args.dataset_name}' not found in available options: {pretrain_list}"
         )
 
-    PRETRAIN_LOGS_PATH = f"logs/pretrain/{args.repetition}"
-    PRETRAIN_CKPT_PATH = f"ckpt/pretrain/{args.repetition}"
+    PRETRAIN_LOGS_PATH = f"checkpoints/logs_vinicius/pretrain/{args.repetition}"
+    PRETRAIN_CKPT_PATH = f"checkpoints/ckpt_vinicius/pretrain/{args.repetition}"
+    
+    # PRETRAIN_LOGS_PATH = f"ckpt/pretrain/{args.repetition}"
+    # PRETRAIN_CKPT_PATH = f"logs/pretrain/{args.repetition}"
 
     logger.info(f"Batches: {args.batch_size} - Input: {args.input_size}")
     logger.info(f"Pretrain Log Path: {PRETRAIN_LOGS_PATH}")

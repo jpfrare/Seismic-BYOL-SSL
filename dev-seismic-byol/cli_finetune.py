@@ -1,5 +1,5 @@
 import argparse
-from train import main
+from train_freeze import main
 from functions import *
 
 def parse_cap(value):
@@ -16,6 +16,26 @@ def parse_cap(value):
             return val
     except ValueError:
         raise argparse.ArgumentTypeError("Cap must be a float in (0, 1] or a positive int.")
+    
+    
+def parse_freeze_list(values):
+    # Se o argparse passou como lista (nargs=5)
+    if isinstance(values, list):
+        raw_list = values
+    else:
+        # Se veio como string única
+        raw_list = values.replace(",", " ").split()
+
+    try:
+        lst = [int(v) for v in raw_list]
+        if len(lst) != 5:
+            raise argparse.ArgumentTypeError("freeze_list must contain exactly 5 values (0 or 1).")
+        if any(v not in (0, 1) for v in lst):
+            raise argparse.ArgumentTypeError("freeze_list values must be either 0 or 1.")
+        return [bool(v) for v in lst]  # converte 0/1 → False/True
+    except ValueError:
+        raise argparse.ArgumentTypeError("freeze_list must be a list of integers (0 or 1).")
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
@@ -64,12 +84,22 @@ if __name__ == "__main__":
     parser.add_argument(
         "--steps", action="store_true", help="Defines if num_epochs refers to train steps"
     )
+    parser.add_argument(
+        "--freeze_list",
+        type=parse_freeze_list,
+        default=None,
+        help="Binary list of five values to freeze specific blocks (0 = train, 1 = freeze). "
+            "Example: --freeze_list 1 1 1 0 0 OR --freeze_list '1,1,1,0,0'"
+    )
 
     args = parser.parse_args()
 
-    PRETRAIN_LOGS_PATH = f"logs/train/{args.repetition}" if not args.linear else f"logs/train_linear/{args.repetition}"
-    PRETRAIN_CKPT_PATH = f"ckpt/train/{args.repetition}" if not args.linear else f"ckpt/train_linear/{args.repetition}"
-    IMPORT_ROOT_PATH = f"ckpt/pretrain/"
+    root = '/petrobr/parceirosbr/home/vinicius.soares/workspace/spfm/checkpoints'
+
+    PRETRAIN_LOGS_PATH = f"{root}/logs_vinicius/train_freeze_modules/{args.repetition}" if not args.linear else f"{root}/logs_vinicius/train_linear_freeze_modules/{args.repetition}"
+    PRETRAIN_CKPT_PATH = f"{root}/ckpt_vinicius/train_freeze_modules/{args.repetition}" if not args.linear else f"{root}/ckpt_vinicius/train_linear_freeze_modules/{args.repetition}"
+    # IMPORT_ROOT_PATH = f"/petrobr/parceirosbr/home/vinicius.soares/workspace/Seismic-Byol/dev-seismic-byol/ckpt/pretrain"
+    IMPORT_ROOT_PATH = f"/petrobr/parceirosbr/home/vinicius.soares/workspace/Seismic-Byol/dev-seismic-byol/checkpoints/ckpt_vinicius/pretrain"
 
     dataset_mapping = get_dataset_mapping()
     
@@ -98,6 +128,7 @@ if __name__ == "__main__":
         "coco",
         "sup",
         "seg",
+        "namss",
     ]
 
     if args.pretrain_data not in pretrain_list:
@@ -113,6 +144,8 @@ if __name__ == "__main__":
     logger.info(f"Cap: {args.cap}, Freeze: {args.freeze}")
     logger.info(f"Cap type: {type(args.cap)}")
     logger.info(f"Prediction head: {'linear' if args.linear == True else 'DLV3'}")
+    if args.freeze_list:
+        logger.info(f"Freeze mask: {args.freeze_list}")
 
     # Aqui você chama o método de treinamento
     main(
@@ -131,4 +164,6 @@ if __name__ == "__main__":
         gpus=args.gpus,
         linear=args.linear,
         steps=args.steps,
+        modules_frozen=args.freeze_list,   # <--- Novo parâmetro
+
     )
