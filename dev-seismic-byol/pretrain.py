@@ -23,7 +23,8 @@ from lightning.pytorch.callbacks import ModelCheckpoint
 from lightning import Trainer
 from lightning.fabric import seed_everything
 
-from a700 import A700DataModule
+from a700 import *
+from namss import *
 
 def main(
     input_size,
@@ -41,46 +42,38 @@ def main(
     seed_everything(repetition)
     model_name = f'V{repetition}_pretrain_{dataset_name}_In{str(input_size[0])}_B{batch_size}_E{num_epochs}_lr{learning_rate}'
     logger.info(f'Model name: {model_name}')
- 
- 
-    # Transforms
-    random_flip = RandomFlip(possible_axis=[1])
-    random_crop = RandomCrop(crop_size=input_size)
-    random_rotation = RandomRotation(degrees=25, prob=0.2)
-    transpose_to_HWC = Transpose([1, 2, 0])
-    transpose_to_CHW = Transpose([2, 0, 1])    
-    cast_to_tensor = CastTo(dtype=np.float32)
-    repeat = Repeat(axis=2, n_repetitions=3)
     
+    if dataset_name == 'a700' or dataset_name == 'namss':
+        aux_transform_pipeline = TransformPipeline(
+            [
+                RandomFlip(possible_axis=[0, 1]),   # 513, 513
+                RandomRotation(degrees=25, prob=0.2),
+                Unsqueeze(axis=0),  # 1, 513, 513
+                Repeat(axis=0, n_repetitions=3),    # 3, 513, 513
+                CastTo(dtype=np.float32),
+            ]
+        )
 
-    if dataset_name == 's0' or dataset_name == 'a700':
-        aux_transform_pipeline = TransformPipeline([
-
-            random_flip,
-            random_rotation,
-            transpose_to_CHW,
-        ])
         constrastive_transform = ContrastiveTransform(
             aux_transform_pipeline
         )
 
         byol_transform_pipeline = TransformPipeline(
             [
-                transpose_to_HWC,
-                repeat,
-                random_crop,
+                RandomCrop(crop_size=input_size),    # 3, crop_size, crop_size
                 constrastive_transform,
             ]
-        )
+        )   
+    
         
     else: 
         aux_transform_pipeline = TransformPipeline(
             [   
-                random_flip,
-                random_rotation,
-                transpose_to_CHW,
-                cast_to_tensor,
-                ]
+                RandomFlip(possible_axis=[1, 2]),        # H, W, C
+                RandomRotation(degrees=25, prob=0.2),
+                Transpose([2, 0, 1]),   # C, H, W
+                CastTo(dtype=np.float32),
+            ]
         ) 
 
         constrastive_transform = ContrastiveTransform(
@@ -89,24 +82,13 @@ def main(
 
         byol_transform_pipeline = TransformPipeline(
             [
-                random_crop,
+                RandomCrop(crop_size=input_size), # 3, crop_size, crop_size
                 constrastive_transform,
             ]
         )
         
 
     logger.info(f"Transforms built for {dataset_name}")
-    
-    # Dataset
-    
-    # if dataset_name == 's0':
-    #     train_img_reader = PartialPatchedZarrReader(
-    #         path=data_path,
-    #         data_shape=(1, 512, 512),
-    #         stride=(1, 6625,  2001),
-    #         pad_width=None,
-    #         index_bounds=[(2000, 0, 0), (4000, 6625, 2001)],
-    #         )
         
     if dataset_name != 'a700':
         train_img_reader = TiffReader(path=data_path)
@@ -123,14 +105,22 @@ def main(
         )
     
     if dataset_name == 'a700':
-        data_module = A700DataModule(
-            subset='both',
-            normalization_strategy='z-sample',
-            crop_size=0,
-            batch_size=batch_size,
-            transform=byol_transform_pipeline,
+        data_module = A150DataModule(
             root=data_path,
-            num_workers=os.cpu_count()
+            subset='both',
+            batch_size=batch_size,
+            transforms=byol_transform_pipeline,
+            num_workers=os.cpu_count() if os.cpu_count() < 24 else 24,
+            drop_last=True,
+        )
+    
+    elif dataset_name == 'namss':
+        data_module = NAMSSDataModule(
+            root_path=data_path,
+            batch_size=batch_size,
+            num_workers=os.cpu_count() if os.cpu_count() < 24 else 24 ,
+            drop_last=True,
+            transforms=byol_transform_pipeline,    
         )
 
     else:
@@ -147,7 +137,6 @@ def main(
 
     # Modelo
     backbone = DeepLabV3Backbone(num_classes=6)
-    # backbone = deeplabv3_resnet50().backbone
     model = BYOL(backbone=backbone, 
                  learning_rate=learning_rate,
                  )
@@ -162,29 +151,30 @@ def main(
         save_last=True, 
         dirpath=ckpt_dir,
         )
-    # ckpt_callback_every_50 = ModelCheckpoint(
-    #     save_top_k=-1,  # Save all checkpoints
-    #     # every_n_epochs=ckpt_epochs,  # Save every 50 epochs
-    #     # every_n_train_steps= num_epochs // 10,
-    #     dirpath=ckpt_dir,
-    #     filename="{step:03d}"  # Filename format
-    # )
+    
+    ckpt_callback_every_50 = ModelCheckpoint(
+        save_top_k=-1,  # Save all checkpoints
+        # every_n_epochs=ckpt_epochs,  # Save every 50 epochs
+        every_n_train_steps = num_epochs // 10,
+         dirpath=ckpt_dir,
+        filename="{step:03d}"  # Filename format
+    )
     
     logger.info("Loggers and checkpoints built")
 
     trainer = Trainer(
         accelerator='gpu',
+        devices="auto",
         logger=CSVlogger,
-        # callbacks=[ckpt_callback, ckpt_callback_every_50],
-        callbacks=[ckpt_callback],
+        callbacks=[ckpt_callback, ckpt_callback_every_50],
+        # callbacks=[ckpt_callback],
         max_epochs=num_epochs,
-        # max_steps=num_epochs,
+        max_steps=num_epochs,
         # strategy='auto',
         strategy=DDPStrategy(static_graph=True),
-        devices=gpus,
-        log_every_n_steps=10,
+        log_every_n_steps=30,
     )
-    # logger.info("Trainer instantiated")
+    logger.info("Trainer instantiated")
 
     pipeline = SimpleLightningPipeline(
         model=model,

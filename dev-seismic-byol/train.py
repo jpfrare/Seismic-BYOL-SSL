@@ -15,6 +15,8 @@ from lightning.pytorch.callbacks import ModelCheckpoint
 from lightning import Trainer
 from lightning.fabric import seed_everything
 from lightning.pytorch.callbacks.early_stopping import EarlyStopping
+from torchmetrics import Accuracy, JaccardIndex, F1Score
+
 
 
 def main(
@@ -96,15 +98,18 @@ def main(
     # Model
 
     model = get_model(
-        pretrain_data,
-        learning_rate,
-        freeze,
-        repetition,
-        import_root_path,
+        pretrain_data=pretrain_data,
+        learning_rate=learning_rate,
+        freeze=freeze,
+        repetition=repetition,
+        root_path=import_root_path,
         full_path=import_path, 
         linear=linear,
         finetune_data=finetune_data
     )
+    
+    if freeze:
+        logger.info("Freezing backbone ******************")
 
     log_dir = Path(logs_path) / save_name / finetune_data
     ckpt_dir = Path(ckpt_path) / save_name / finetune_data
@@ -141,7 +146,7 @@ def main(
             strategy="auto",
             devices=gpus,
             check_val_every_n_epoch=None,
-            val_check_interval=100,
+            val_check_interval=200,
         )
 
     pipeline = SimpleLightningPipeline(
@@ -152,6 +157,30 @@ def main(
     )
 
     pipeline.run(data_module, task="fit")
+    
+    num_classes = 6
+    
+    metrics = {
+        "mIoU": JaccardIndex(
+            num_classes=num_classes, average="macro", task="multiclass"
+        ),
+        "acc": Accuracy(num_classes=num_classes, task="multiclass"),
+        "f1-weighted": F1Score(
+            num_classes=num_classes, task="multiclass", average="weighted"
+        ),
+    }
+    
+    pipeline = SimpleLightningPipeline(
+        model=model,
+        trainer=trainer,
+        log_dir=log_dir,
+        save_run_status=True,
+        seed=repetition,
+        apply_metrics_per_sample=False,
+        classification_metrics=metrics,
+    )
+    
+    pipeline.run(data_module, task="evaluate")
 
 
 if __name__ == "__main__":
@@ -162,7 +191,7 @@ if __name__ == "__main__":
         num_epochs=50,
         batch_size=8,
         repetition=0,
-        learning_rate=0.001,
+    learning_rate=0.001,
         cap=1.0,
         freeze=True,
         ckpt_path="/home/vinicius.soares/Seismic-Byol/dev-seismic-byol/ht_logs/train/9",
@@ -170,3 +199,4 @@ if __name__ == "__main__":
         import_root_path='ckpt_ht/pretrain/',
         gpus=[0],
     )
+ 

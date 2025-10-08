@@ -82,6 +82,15 @@ def main(
         save_top_k=1, save_last=True, dirpath=ckpt_dir, mode="min", monitor="val_loss"
     )
 
+    # trainer = Trainer(
+    #     accelerator="cpu",
+    #     logger=logger,
+    #     callbacks=[ckpt_callback],
+    #     max_epochs=num_epochs,
+    #     strategy="auto",
+    #     check_val_every_n_epoch=2,
+    # )
+
     trainer = Trainer(
         accelerator="gpu",
         logger=logger,
