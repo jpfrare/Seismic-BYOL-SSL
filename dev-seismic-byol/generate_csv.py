@@ -24,6 +24,13 @@ def extract_model_metadata(model_name):
     repetition, pretrain_data, finetune_data, cap_raw = match.groups()
 
     # Determine cap_type and clean cap value
+    
+    modules = None
+    
+    if '[' in cap_raw:
+        modules = cap_raw.split('_')[-1]
+        cap_raw = '_'.join(cap_raw.split('_')[:-1])
+
     if cap_raw.endswith("_img"):
         cap_type = "images"
         cap_value = cap_raw.replace("_img", "")
@@ -44,7 +51,8 @@ def extract_model_metadata(model_name):
         "repetition": repetition,
         "pretrain_data": pretrain_data,
         "finetune_data": finetune_data,
-        "cap": cap_value
+        "cap": cap_value,
+        "modules": modules
     }
 
 def load_existing_csv(csv_path):
@@ -63,6 +71,7 @@ def save_to_csv(rows_dict, output_csv):
         "pretrain_data",
         "finetune_data",
         "cap", 
+        "modules",
         "acc", 
         "f1_weighted", 
         "mIoU"
@@ -85,11 +94,13 @@ def collect_metrics_to_csv(logs_root, repetition, output_csv):
     for model_dir in metrics_dir.iterdir():
         if not model_dir.is_dir():
             continue
-
+        
         metadata = extract_model_metadata(model_dir.name)
         metadata['repetition'] = repetition
+        # print(metadata)
 
-        for yaml_file in model_dir.glob("metrics_*.yaml"):
+        for yaml_file in model_dir.glob("metrics_*"):
+            # print(yaml_file)
             metrics = extract_metrics_from_yaml(yaml_file)
             row = {
             **metadata,
@@ -114,18 +125,18 @@ def collect_metrics_to_csv(logs_root, repetition, output_csv):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Export evaluation metrics to CSV (append/update mode)")
     # parser.add_argument("--repetition", type=int, required=True, help="Repetition number")
-    parser.add_argument("--logs_root", type=str, default="logs_ht/test_02_unfreeze_rerun", help="Root logs/test directory")
-    parser.add_argument("--output_csv", type=str, default="ht_eval_linear_unfreeze.csv", help="Output CSV filename")
+    parser.add_argument("--logs_root", type=str, default="checkpoints/logs_vinicius/test_freeze_modules", help="Root logs/test directory")
+    parser.add_argument("--output_csv", type=str, default="final_results_modules.csv", help="Output CSV filename")
     
     args = parser.parse_args()
     
-    list_of_combinations = [46]
+    list_of_combinations = [5, 6, 7]
     
     
     for number in list_of_combinations:
-
-    collect_metrics_to_csv(
-        logs_root=args.logs_root,
-        repetition=args.repetition,
-        output_csv=args.output_csv
-        )
+        collect_metrics_to_csv(
+            logs_root=args.logs_root,
+            # repetition=args.repetition,
+            repetition=number,
+            output_csv=args.output_csv
+            )

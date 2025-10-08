@@ -13,7 +13,7 @@ def extract_step_number(filename):
     return int(match.group(1)) if match else -1
 
 
-def get_models_files(base_dir="./ckpt/train", target_repetition=None):
+def get_models_files(base_dir="./checkpoints/ckpt_vinicius/pretrain", target_repetition=None):
     base_dir = Path(base_dir)
     results = []
     repetitions = (
@@ -72,12 +72,20 @@ def get_models_files(base_dir="./ckpt/train", target_repetition=None):
 
 
 # === Load model files and filter by pretrain data ===
-df = pd.DataFrame(get_models_files(base_dir="./ckpt_ht/pretrain"))
-filtered_df = df[df["pretrain_data"] == "seam_ai"]
+df = pd.DataFrame(get_models_files(base_dir="./checkpoints/ckpt_vinicius/pretrain/"))
+
+
+# filtered_df = df[df["pretrain_data"] == "namss"]
+filtered_df = df[df["repetition"] == 0]
+filtered_df = filtered_df[filtered_df['epochs'] == 125000]
+
+print(filtered_df)
 
 print(f"Tamanho do DataFrame filtered_df: {len(filtered_df)}")
 
 combination_df = pd.read_csv('temp_df.csv')
+
+# print(combination_df)
 
 # 🧼 Limpa os nomes das colunas
 combination_df.columns = combination_df.columns.str.strip()

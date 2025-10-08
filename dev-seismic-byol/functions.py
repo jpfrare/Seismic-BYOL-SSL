@@ -144,14 +144,195 @@ def get_seg_file(root_path="/home/vinicius.soares/Seismic-Byol/dev-seismic-byol/
     return None
 
 
-def get_model(pretrain_data, learning_rate, freeze, repetition, root_path=None, full_path=False, linear=False, finetune_data=None):
+# def get_model(pretrain_data, learning_rate, freeze, repetition, root_path=None, full_path=False, linear=False, finetune_data=None):
+#     num_classes = 6
+
+#     if full_path: 
+#         import_path = full_path
+#     else:
+#         if pretrain_data == "a700":
+#             base_name = f"V{repetition}_pretrain_{pretrain_data}_In256_B32_E200_lr1e-05"
+#         else:
+#             base_name = f"V{repetition}_pretrain_{pretrain_data}_In256_B32_E1200_lr1e-05"
+
+#         if root_path:
+#             import_path = f"{root_path}/{repetition}/{base_name}/{pretrain_data}/last.ckpt"
+#         else:
+#             import_path = (
+#                 f"ckpt/pretrain/{repetition}/{base_name}/{pretrain_data}/last.ckpt"
+#             )
+            
+#     if pretrain_data == "seg":
+#         seg_data_mapping = {
+#             "f3_N": "seam_ai_N",
+#             "f3": "seam_ai",
+#             "seam_ai_N": "f3_N",
+#             "seam_ai": "f3",
+#         }
+#         root_path = "/petrobr/parceirosbr/home/vinicius.soares/workspace/Seismic-Byol/dev-seismic-byol/checkpoints/ckpt_vinicius/train"
+#         if finetune_data in ["f3_N", "seam_ai_N", "f3", "seam_ai"]:
+#             import_path = get_seg_file(
+#                 root_path=root_path,
+#                 repetition=repetition,
+#                 seg_data=seg_data_mapping[finetune_data],
+#             )
+#             logger.info(f"CKPT imported from:\n{import_path}")
+#             logger.info(f"Imported pretrain for segmentation in {seg_data_mapping[finetune_data]}")
+#         else:
+#             raise ValueError("Invalid finetune_data for pretrain_data 'seg'")
+
+#     seg_data = ["f3", "f3_N", "seam_ai", "seam_ai_N", "both", "both_N", "s0", "a700"]
+
+#     resnet50_backbone = DeepLabV3Backbone(num_classes=num_classes)
+
+#     if pretrain_data in seg_data:
+#         # Builds the BYOL model, loads the weights and extracts the backbone
+#         model = BYOL(backbone=resnet50_backbone, learning_rate=learning_rate)
+#         resnet50_backbone = FromPretrained(
+#             model=model,
+#             ckpt_path=import_path,
+#             strict=False,
+#             error_on_missing_keys=False,
+#         ).backbone
+#         logger.info(f"{pretrain_data} backbone loaded")
+
+#     elif pretrain_data == "imagenet":
+#         # https://docs.pytorch.org/vision/main/_modules/torchvision/models/resnet.html
+#         weights = torchvision.models.ResNet50_Weights.IMAGENET1K_V2
+#         imagenet_backbone = resnet50(
+#             replace_stride_with_dilation=[False, True, True], weights=weights
+#         )
+#         imagenet_state_dict = get_state_dict(imagenet_backbone)
+#         resnet50_backbone.load_state_dict(imagenet_state_dict, strict=False)
+#         logger.info("IMAGENET backbone loaded")
+        
+#     elif pretrain_data == "coco":      
+#         weights = DeepLabV3_ResNet50_Weights.DEFAULT
+#         coco_backbone = deeplabv3_resnet50(weights=weights).backbone
+#         coco_state_dict = get_state_dict(coco_backbone)
+#         resnet50_backbone.load_state_dict(coco_state_dict, strict=False)
+#         logger.info("COCO backbone loaded")
+
+#     elif pretrain_data == "sup":
+#         logger.info("No model loaded!")
+        
+#     elif pretrain_data == "seg":
+#         model = DeepLabV3(
+#             backbone=resnet50_backbone,
+#             learning_rate=learning_rate,
+#             num_classes=num_classes,
+#             freeze_backbone=False
+#         )
+
+#         resnet50_backbone = FromPretrained(
+#             model=model, ckpt_path=import_path, strict=False, error_on_missing_keys=False
+#         ).backbone
+        
+#         logger.info("Default model loaded (seg)")
+        
+#     elif pretrain_data == "teste":
+#         resnet50_backbone = deeplabv3_resnet50().backbone
+#         logger.info("Imported backbone from scratch loaded")
+    
+#     else:
+#         raise KeyError("Pretrain data value wrong!")
+
+#     if linear:
+#         pred_head = LinearSegmentationHead(
+#             in_channels=2048,
+#             num_classes=num_classes
+#         )
+
+#         model = DeepLabV3(
+#             backbone=resnet50_backbone,
+#             pred_head=pred_head,
+#             learning_rate=learning_rate,
+#             num_classes=num_classes,
+#             freeze_backbone=freeze
+#         )
+        
+#     else:
+#         model = DeepLabV3(
+#             backbone=resnet50_backbone,
+#             learning_rate=learning_rate,
+#             num_classes=num_classes,
+#             freeze_backbone=freeze
+#         )
+    
+#     if freeze:
+#         logger.info("Freezing backbone parameters via `freeze_weights`.")
+
+#     return model
+
+
+def print_trainable_params(model: torch.nn.Module):
+    total_params = 0
+    print("\n=== Trainable parameters by layer ===")
+    for name, param in model.named_parameters():
+        if param.requires_grad:
+            num_params = param.numel()
+            total_params += num_params
+            print(f"{name:50} {str(tuple(param.shape)):20} -> {num_params:,}")
+    print("------------------------------------------------------------")
+    print(f"Total trainable parameters: {total_params:,}")
+
+
+
+def apply_freeze(backbone: DeepLabV3Backbone, freeze_list: list):
+    """
+    Aplica freeze seletivo nos blocos do DeepLabV3Backbone.
+    freeze_list = [conv1+bn1+relu+maxpool, layer1, layer2, layer3, layer4]
+    """
+    rn50 = backbone.RN50model
+
+    # Freeze stem (conv1 + bn1 + relu + maxpool)
+    if freeze_list[0]:
+        for param in rn50.conv1.parameters():
+            param.requires_grad = False
+        for param in rn50.bn1.parameters():
+            param.requires_grad = False
+        for param in rn50.fc.parameters():
+            param.requires_grad = False
+
+    # Freeze ResNet layers
+    for idx, layer_name in enumerate(["layer1", "layer2", "layer3", "layer4"], start=1):
+        if freeze_list[idx]:
+            layer = getattr(rn50, layer_name)
+            for param in layer.parameters():
+                param.requires_grad = False
+                
+    if freeze_list[4]:
+        for param in rn50.avgpool.parameters():
+            param.requires_grad = False
+                
+    # Print the backbone summary
+    # print_trainable_params(rn50)
+    # print("******************")
+    # trainable = sum(p.numel() for p in rn50.parameters() if p.requires_grad)
+
+    return backbone
+
+
+def get_model(
+    pretrain_data,
+    learning_rate,
+    freeze,
+    repetition,
+    root_path=None,
+    full_path=False,
+    linear=False,
+    finetune_data=None,
+    modules_frozen=None,   # <--- NEW ARG
+):
     num_classes = 6
 
     if full_path: 
         import_path = full_path
     else:
         if pretrain_data == "a700":
-            base_name = f"V{repetition}_pretrain_{pretrain_data}_In256_B32_E200_lr1e-05"
+            base_name = f"V{repetition}_pretrain_{pretrain_data}_In256_B128_E125000_lr1e-05"
+        elif pretrain_data == "namss":
+            base_name = f"V{repetition}_pretrain_{pretrain_data}_In256_B128_E125000_lr1e-05"
         else:
             base_name = f"V{repetition}_pretrain_{pretrain_data}_In256_B32_E1200_lr1e-05"
 
@@ -169,7 +350,7 @@ def get_model(pretrain_data, learning_rate, freeze, repetition, root_path=None, 
             "seam_ai_N": "f3_N",
             "seam_ai": "f3",
         }
-        root_path = "/home/vinicius.soares/Seismic-Byol/dev-seismic-byol/ckpt/train"
+        root_path = "/petrobr/parceirosbr/home/vinicius.soares/workspace/Seismic-Byol/dev-seismic-byol/checkpoints/ckpt_vinicius/train"
         if finetune_data in ["f3_N", "seam_ai_N", "f3", "seam_ai"]:
             import_path = get_seg_file(
                 root_path=root_path,
@@ -181,7 +362,7 @@ def get_model(pretrain_data, learning_rate, freeze, repetition, root_path=None, 
         else:
             raise ValueError("Invalid finetune_data for pretrain_data 'seg'")
 
-    seg_data = ["f3", "f3_N", "seam_ai", "seam_ai_N", "both", "both_N", "s0", "a700"]
+    seg_data = ["f3", "f3_N", "seam_ai", "seam_ai_N", "both", "both_N", "s0", "a700", "namss"]
 
     resnet50_backbone = DeepLabV3Backbone(num_classes=num_classes)
 
@@ -236,6 +417,7 @@ def get_model(pretrain_data, learning_rate, freeze, repetition, root_path=None, 
     else:
         raise KeyError("Pretrain data value wrong!")
 
+    # Build final model
     if linear:
         pred_head = LinearSegmentationHead(
             in_channels=2048,
@@ -258,8 +440,16 @@ def get_model(pretrain_data, learning_rate, freeze, repetition, root_path=None, 
             freeze_backbone=freeze
         )
     
-    if freeze:
+    # ------------------------------------------------------------------
+    # Selective freezing logic (if modules_frozen provided)
+    # ------------------------------------------------------------------
+    if modules_frozen is not None:
+        logger.info(f"Selective freezing applied: {modules_frozen}")
+        model.backbone = apply_freeze(model.backbone, modules_frozen)
+
+    elif freeze:
         logger.info("Freezing backbone parameters via `freeze_weights`.")
+        model.backbone = apply_freeze(model.backbone, [1, 1, 1, 1, 1])
 
     return model
 
@@ -485,7 +675,7 @@ class SeismicDataModule(MinervaDataModule):
         self,
         root: Path,
         batch_size: int = 32,
-        num_workers: int = os.cpu_count(),
+        num_workers: int = os.cpu_count() if os.cpu_count() < 24 else 24,
         cap: int = 256,
         drop_last: bool = False,
         train_dataset=None,
@@ -516,6 +706,9 @@ class SeismicDataModule(MinervaDataModule):
             drop_last=drop_last,
             *args,
             **kwargs,
+            additional_train_dataloader_kwargs={'pin_memory':True},
+            additional_val_dataloader_kwargs={'pin_memory':True}, 
+            additional_test_dataloader_kwargs={'pin_memory':True},
         )
 
         # Nenhuma redefinição dos dataloaders é necessária
@@ -623,13 +816,14 @@ def get_dataset_mapping():
     
     if 'sdumont' in nodename:
         dataset_mapping = {
-            'seam_ai_N':'/petrobr/parceirosbr/home/vinicius.soares/workspace/spfm/datasets/tiff_data/seam_ai_N/images',
-            'seam_ai':'/petrobr/parceirosbr/home/vinicius.soares/workspace/spfm/datasets/tiff_data/seam_ai/images',
-            'f3':'/petrobr/parceirosbr/home/vinicius.soares/workspace/spfm/datasets/tiff_data/f3_segmentation/images',
-            'f3_N':'/petrobr/parceirosbr/home/vinicius.soares/workspace/spfm/datasets/tiff_data/f3_segmentation_N/images',
-            'both':'/petrobr/parceirosbr/home/vinicius.soares/workspace/spfm/datasets/tiff_data/both/images',
-            'both_N':'/petrobr/parceirosbr/home/vinicius.soares/workspace/spfm/datasets/tiff_data/both_N/images',
-            'a700':'/petrobr/parceirosbr/home/vinicius.soares/workspace/spfm/datasets/a700'
+            'seam_ai_N':'/petrobr/parceirosbr/home/vinicius.soares/workspace/spfm/datasets/tiff_data/seam_ai_N',
+            'seam_ai':'/petrobr/parceirosbr/home/vinicius.soares/workspace/spfm/datasets/tiff_data/seam_ai',
+            'f3':'/petrobr/parceirosbr/home/vinicius.soares/workspace/spfm/datasets/tiff_data/f3_segmentation',
+            'f3_N':'/petrobr/parceirosbr/home/vinicius.soares/workspace/spfm/datasets/tiff_data/f3_segmentation_N',
+            'both':'/petrobr/parceirosbr/home/vinicius.soares/workspace/spfm/datasets/tiff_data/both',
+            'both_N':'/petrobr/parceirosbr/home/vinicius.soares/workspace/spfm/datasets/tiff_data/both_N',
+            'a700':'/petrobr/parceirosbr/home/vinicius.soares/workspace/spfm/datasets/a700',
+            'namss':'/petrobr/parceirosbr/home/vinicius.soares/workspace/spfm/datasets/NAMSS/Data/NAMSS/patch_512_0',
         }
     
     elif 'node' in nodename:

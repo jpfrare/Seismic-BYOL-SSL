@@ -2,16 +2,16 @@
 
 # Usage information
 if [ "$#" -lt 6 ]; then
-  echo "Usage: $0 --rep <start> <end> --pre <pretrain1> [...] --finetune <finetune1> [...] [--caps <cap1> ...] [--gpus <gpu1> ...] [--freeze]"
+  echo "Usage: $0 --rep <start> <end> --pre <pretrain1> [...] --finetune <finetune1> [...] [--caps <cap1> ...] [--gpus <gpu1> ...] [--freeze] [--linear]"
   exit 1
 fi
 
 # Default parameters
 BATCH_SIZE=8
 FREEZE=False
+LINEAR=False
 LR=0.001
 NUM_EPOCHS=6500
-# parihaka size: 1120 com batch 8 = 140 batches por 50 épocas = 7000 passos
 GPUS=(0)  # default GPU list
 
 # Parse arguments
@@ -59,6 +59,10 @@ while [[ $# -gt 0 ]]; do
       FREEZE=True
       shift
       ;;
+    --linear)
+      LINEAR=True
+      shift
+      ;;
     *)
       echo "Unknown argument: $1"
       exit 1
@@ -75,6 +79,7 @@ echo "Finetune datasets: ${FINETUNE_DATASETS[*]}"
 echo "Caps: ${CAPS[*]:-None (default=1.0)}"
 echo "GPUs: ${GPUS[*]}"
 echo "Freeze: $FREEZE"
+echo "Linear: $LINEAR"
 echo "Batch size: $BATCH_SIZE"
 echo "Learning rate: $LR"
 echo "Epochs: $NUM_EPOCHS"
@@ -108,9 +113,9 @@ for REP in $(seq "$START_REP" "$END_REP"); do
     for FINETUNE in "${FINETUNE_DATASETS[@]}"; do
       for CAP in "${CAPS[@]:-1.0}"; do
         echo "Running: rep=$REP | cap=$CAP | finetune=$FINETUNE | pretrain=$PRE | gpus=${GPUS[*]}"
-        
+
         CMD=(
-          python cli_finetune_linear.py
+          python cli_finetune.py
           --pretrain_data "$PRE"
           --finetune_data "$FINETUNE"
           --num_epochs "$NUM_EPOCHS"
@@ -120,24 +125,13 @@ for REP in $(seq "$START_REP" "$END_REP"); do
           --cap "$CAP"
           --gpus "${GPUS[@]}"
           --steps
-          --linear
         )
-
-        # CMD=(
-        #   python cli_finetune.py
-        #   --pretrain_data "$PRE"
-        #   --finetune_data "$FINETUNE"
-        #   --num_epochs "$NUM_EPOCHS"
-        #   --batch_size "$BATCH_SIZE"
-        #   --repetition "$REP"
-        #   --learning_rate "$LR"
-        #   --cap "$CAP"
-        #   --gpus "${GPUS[@]}"
-        #   --steps
-        # )
 
         if [ "$FREEZE" = True ]; then
           CMD+=(--freeze)
+        fi
+        if [ "$LINEAR" = True ]; then
+          CMD+=(--linear)
         fi
 
         "${CMD[@]}"

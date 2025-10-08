@@ -8,7 +8,7 @@ if __name__ == "__main__":
         description="Fine-tuning script for seismic segmentation using pretrained BYOL backbone."
     )
     parser.add_argument(
-        "--combination", type=int, default=46, help="Combination to run"
+        "--combination", type=int, default=50, help="Combination to run"
     )
     parser.add_argument(
         "--freeze", action="store_true", help="Whether to freeze the encoder backbone"
@@ -22,18 +22,24 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     
-    finetune_data = 'seam_ai'
+    finetune_data = 'seam_ai_N'
     
-    PRETRAIN_LOGS_PATH = f"ht_logs/train_dlv3/{args.combination}"
-    PRETRAIN_CKPT_PATH = f"ht_ckpt/train_dlv3/{args.combination}"
-    IMPORT_ROOT_PATH = f"ckpt_ht/pretrain/"
+    # PRETRAIN_LOGS_PATH = f"ht_logs/train_dlv3/{args.combination}"
+    # PRETRAIN_CKPT_PATH = f"ht_ckpt/train_dlv3/{args.combination}"
+    # IMPORT_ROOT_PATH = f"ckpt_ht/pretrain/"
 
-    dataset_mapping = {
-    'seam_ai_N':'/home/vinicius.soares/asml/datasets/tiff_data/seam_ai_N',
-    'seam_ai':'/home/vinicius.soares/asml/datasets/tiff_data/seam_ai',
-    'f3':'/home/vinicius.soares/asml/datasets/tiff_data/f3_segmentation',
-    'f3_N':'/home/vinicius.soares/asml/datasets/tiff_data/f3_segmentation_N',
-    }
+    PRETRAIN_LOGS_PATH = f"checkpoints/logs_vinicius/linear_readout_train/{args.combination}"
+    PRETRAIN_CKPT_PATH = f"checkpoints/ckpt_vinicius/linear_readout_train/{args.combination}"
+    IMPORT_ROOT_PATH = f"checkpoints/ckpt_vinicius/pretrain/"
+
+    # dataset_mapping = {
+    # 'seam_ai_N':'/home/vinicius.soares/asml/datasets/tiff_data/seam_ai_N',
+    # 'seam_ai':'/home/vinicius.soares/asml/datasets/tiff_data/seam_ai',
+    # 'f3':'/home/vinicius.soares/asml/datasets/tiff_data/f3_segmentation',
+    # 'f3_N':'/home/vinicius.soares/asml/datasets/tiff_data/f3_segmentation_N',
+    # }
+    
+    dataset_mapping = get_dataset_mapping()
     
     combination_df = pd.read_csv('temp_df.csv')
     models_df = pd.read_csv('df_filtered_combinations.csv')
