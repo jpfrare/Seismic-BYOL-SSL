@@ -76,7 +76,7 @@ df = pd.DataFrame(get_models_files(base_dir="./checkpoints/ckpt_vinicius/pretrai
 
 
 # filtered_df = df[df["pretrain_data"] == "namss"]
-filtered_df = df[df["repetition"] == 0]
+filtered_df = df[df["repetition"] == 4]
 filtered_df = filtered_df[filtered_df['epochs'] == 125000]
 
 print(filtered_df)

@@ -111,12 +111,16 @@ if __name__ == "__main__":
         help="List of GPU indices to use."
     )
     
-    ckpt_path = "/home/vinicius.soares/Seismic-Byol/dev-seismic-byol/ht_ckpt/train_dlv3"
+    # ckpt_path = "/home/vinicius.soares/Seismic-Byol/dev-seismic-byol/ht_ckpt/train_dlv3"
+    ckpt_path = "/petrobr/parceirosbr/home/vinicius.soares/workspace/Seismic-Byol/dev-seismic-byol/checkpoints/ckpt_vinicius/linear_readout_train"
 
     args = parser.parse_args()
 
-    TEST_LOGS_PATH = f"ht_logs/test_dlv3/{args.combination}"
-    TEST_CKPT_PATH = f"ht_ckpt/test_dlv3/{args.combination}"
+    # TEST_LOGS_PATH = f"ht_logs/test_dlv3/{args.combination}"
+    # TEST_CKPT_PATH = f"ht_ckpt/test_dlv3/{args.combination}"
+    
+    TEST_LOGS_PATH = f"checkpoints/logs_vinicius/test_linear_readout/{args.combination}"
+    TEST_CKPT_PATH = f"checkpoints/ckpt_vinicius/test_linear_readout/{args.combination}"
     
     logger.info(f"Target combination: {args.combination}")
     
@@ -147,7 +151,7 @@ if __name__ == "__main__":
         ckpt_file = model["ckpt_file"]
         model_name = model["model_name"]
         pretrain_data = model["pretrain_data"]
-        finetune_data = 'seam_ai'
+        finetune_data = 'seam_ai_N'
         
         # "model_name": model_dir.name,
         # "combination": int(repetition_dir),
@@ -159,14 +163,14 @@ if __name__ == "__main__":
         # "epoch_save": epoch_save,
         # "epoch_trained": int(ckpt_epoch),
         
+        # data_path_mapping = {
+        # 'seam_ai_N':'/home/vinicius.soares/asml/datasets/tiff_data/seam_ai_N',
+        # 'seam_ai':'/home/vinicius.soares/asml/datasets/tiff_data/seam_ai',
+        # 'f3':'/home/vinicius.soares/asml/datasets/tiff_data/f3_segmentation',
+        # 'f3_N':'/home/vinicius.soares/asml/datasets/tiff_data/f3_segmentation_N',
+        # }
         
-
-        data_path_mapping = {
-        'seam_ai_N':'/home/vinicius.soares/asml/datasets/tiff_data/seam_ai_N',
-        'seam_ai':'/home/vinicius.soares/asml/datasets/tiff_data/seam_ai',
-        'f3':'/home/vinicius.soares/asml/datasets/tiff_data/f3_segmentation',
-        'f3_N':'/home/vinicius.soares/asml/datasets/tiff_data/f3_segmentation_N',
-        }
+        data_path_mapping = get_dataset_mapping()
 
         data_path = data_path_mapping[finetune_data]
         
@@ -190,5 +194,5 @@ if __name__ == "__main__":
             ckpt_path=TEST_CKPT_PATH,
             logs_path=TEST_LOGS_PATH,
             gpus=args.gpus,
-            linear=False,
+            linear=True,
         )

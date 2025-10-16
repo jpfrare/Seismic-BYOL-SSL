@@ -1,5 +1,5 @@
 import argparse
-from train import main
+from train_freeze import main
 from functions import *
 import pandas as pd
 
@@ -26,11 +26,11 @@ if __name__ == "__main__":
     
     # PRETRAIN_LOGS_PATH = f"ht_logs/train_dlv3/{args.combination}"
     # PRETRAIN_CKPT_PATH = f"ht_ckpt/train_dlv3/{args.combination}"
-    # IMPORT_ROOT_PATH = f"ckpt_ht/pretrain/"
+    IMPORT_ROOT_PATH = f"ckpt/pretrain/"
 
     PRETRAIN_LOGS_PATH = f"checkpoints/logs_vinicius/linear_readout_train/{args.combination}"
     PRETRAIN_CKPT_PATH = f"checkpoints/ckpt_vinicius/linear_readout_train/{args.combination}"
-    IMPORT_ROOT_PATH = f"checkpoints/ckpt_vinicius/pretrain/"
+    # IMPORT_ROOT_PATH = f"checkpoints/ckpt_vinicius/pretrain/"
 
     # dataset_mapping = {
     # 'seam_ai_N':'/home/vinicius.soares/asml/datasets/tiff_data/seam_ai_N',
@@ -69,13 +69,14 @@ if __name__ == "__main__":
             data_path=dataset_mapping[finetune_data],
             num_epochs=50,
             batch_size=8,
-            repetition=0,
+            repetition=row['repetition'],
             learning_rate=0.001,
             cap=1.0,
             freeze=args.freeze,
             ckpt_path=PRETRAIN_CKPT_PATH,
             logs_path=PRETRAIN_LOGS_PATH,
-            import_root_path=IMPORT_ROOT_PATH,
+            # import_root_path=IMPORT_ROOT_PATH,
+            import_root_path=None,
             import_path=row['ckpt_file'],
             gpus=args.gpus,
             full_save_name=f'finetune_{row["model_name"]}_step_{row["epoch_save"]}',

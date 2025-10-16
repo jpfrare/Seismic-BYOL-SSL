@@ -87,29 +87,14 @@ def main(
             ]
         )
         
-
     logger.info(f"Transforms built for {dataset_name}")
-        
-    if dataset_name != 'a700':
-        train_img_reader = TiffReader(path=data_path)
-        
-    logger.info(f"Readers built!")
-    
-    
-    if dataset_name != 'a700':
-    
-        pretrain_dataset = SimpleDataset(
-            readers=train_img_reader,
-            transforms=byol_transform_pipeline,
-            return_single=True
-        )
     
     if dataset_name == 'a700':
         data_module = A150DataModule(
             root=data_path,
             subset='both',
             batch_size=batch_size,
-            transforms=byol_transform_pipeline,
+            transforms=j,
             num_workers=os.cpu_count() if os.cpu_count() < 24 else 24,
             drop_last=True,
         )
@@ -124,6 +109,18 @@ def main(
         )
 
     else:
+    
+        train_img_reader = TiffReader(path=data_path)
+        logger.info(f"Readers built!")
+       
+        pretrain_dataset = SimpleDataset(
+            readers=train_img_reader,
+            transforms=byol_transform_pipeline,
+            return_single=True
+        )
+        logger.info(f"Dataset built!")
+
+        
         data_module = MinervaDataModule(
             train_dataset=pretrain_dataset,
             batch_size=batch_size,
@@ -132,6 +129,7 @@ def main(
             name=dataset_name,
             num_workers=os.cpu_count()
         )
+        
 
     logger.info(f'DataModule assembled')
 
@@ -164,14 +162,15 @@ def main(
 
     trainer = Trainer(
         accelerator='gpu',
-        devices="auto",
+        # devices="auto",
+        devices=[0],
         logger=CSVlogger,
         callbacks=[ckpt_callback, ckpt_callback_every_50],
         # callbacks=[ckpt_callback],
         max_epochs=num_epochs,
         max_steps=num_epochs,
-        # strategy='auto',
-        strategy=DDPStrategy(static_graph=True),
+        strategy='auto',
+        # strategy=DDPStrategy(static_graph=True),
         log_every_n_steps=30,
     )
     logger.info("Trainer instantiated")
