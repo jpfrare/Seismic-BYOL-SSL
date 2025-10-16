@@ -10,17 +10,15 @@
 
 #!/bin/bash
 
-SCRIPT_PATH="/petrobr/parceirosbr/home/vinicius.soares/workspace/Seismic-Byol/dev-seismic-byol/cli_evaluate.py"
+# SCRIPT_PATH="/petrobr/parceirosbr/home/vinicius.soares/workspace/Seismic-Byol/dev-seismic-byol/cli_evaluate.py"
+SCRIPT_PATH="/petrobr/parceirosbr/home/vinicius.soares/workspace/Seismic-Byol/dev-seismic-byol/ht_evaluate.py"
 WORKSPACE=/petrobr/parceirosbr/home/vinicius.soares/workspace
 SIF=/petrobr/parceirosbr/home/vinicius.soares/singularity/minerva_dev.sif
 
 
 FLAGS=(
-  "--repetition 5"
-  # "--repetition 6"
-  # "--repetition 7"
-  # "--repetition 8"
-  # "--repetition 9"
+  # "--repetition 5"
+  "--combination 50"
 )
 
 # Loop para enviar um job por flag
@@ -37,7 +35,6 @@ for f in "${FLAGS[@]}"; do
 #SBATCH --output=jobs_out/finetune_%j.out
 #SBATCH --error=jobs_out/finetune_%j.err
 
-mkdir jobs_out
 cd \$SLURM_SUBMIT_DIR
 
 echo "Nó(s) alocado(s): \$SLURM_JOB_NODELIST"
@@ -47,6 +44,6 @@ nvidia-smi
 singularity exec --nv \
     --bind $WORKSPACE \
     --bind /petrobr/parceirosbr/spfm \
-    $SIF bash $WORKSPACE/Seismic-Byol/dev-seismic-byol/finetune_combinations.sh $f
+    $SIF python $SCRIPT_PATH $f
 EOT
 done

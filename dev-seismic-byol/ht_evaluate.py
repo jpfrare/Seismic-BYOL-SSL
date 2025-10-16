@@ -163,13 +163,6 @@ if __name__ == "__main__":
         # "epoch_save": epoch_save,
         # "epoch_trained": int(ckpt_epoch),
         
-        # data_path_mapping = {
-        # 'seam_ai_N':'/home/vinicius.soares/asml/datasets/tiff_data/seam_ai_N',
-        # 'seam_ai':'/home/vinicius.soares/asml/datasets/tiff_data/seam_ai',
-        # 'f3':'/home/vinicius.soares/asml/datasets/tiff_data/f3_segmentation',
-        # 'f3_N':'/home/vinicius.soares/asml/datasets/tiff_data/f3_segmentation_N',
-        # }
-        
         data_path_mapping = get_dataset_mapping()
 
         data_path = data_path_mapping[finetune_data]
