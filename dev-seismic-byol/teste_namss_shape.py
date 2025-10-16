@@ -33,22 +33,13 @@ dataset_mapping = get_dataset_mapping()
 data_path = dataset_mapping[test_dataset]
 print(data_path)
 
-random_flip = RandomFlip(possible_axis=[0, 1])
-random_crop = RandomCrop(crop_size=(256,256))
-random_rotation = RandomRotation(degrees=25, prob=0.2)
-transpose_to_HWC = Transpose([1, 2, 0])
-transpose_to_CHW = Transpose([2, 0, 1])    
-cast_to_tensor = CastTo(dtype=np.float32)
-repeat = Repeat(axis=0, n_repetitions=3)
-unsqueeze = Unsqueeze(axis=0)
-
-
 aux_transform_pipeline = TransformPipeline(
     [
-        random_flip,
-        random_rotation,
-        unsqueeze,
-        repeat,
+        RandomFlip(possible_axis=[0, 1]),   # 513, 513
+        RandomRotation(degrees=25, prob=0.2),
+        Unsqueeze(axis=0),  # 1, 513, 513
+        Repeat(axis=0, n_repetitions=3),    # 3, 513, 513
+        CastTo(dtype=np.float32),
     ]
 )
 
@@ -58,9 +49,10 @@ constrastive_transform = ContrastiveTransform(
 
 transform_pipeline = TransformPipeline(
     [
+        RandomCrop(crop_size=(256, 256)),    # 3, crop_size, crop_size
         constrastive_transform,
     ]
-)
+)  
 
 
 data_module = NAMSSDataModule(
@@ -75,6 +67,13 @@ data_module.setup(stage='train')
 sample_batch = next(iter(data_module.train_dataloader()))
 print("Sample batch:", sample_batch[0].shape)
 print("Type: ", type(sample_batch))
+
+# Save an example from the dataset
+example_image = sample_batch[0][0].permute(1, 2, 0).numpy()  # Convert CHW to HWC for visualization
+plt.imshow(example_image, cmap='gray')
+plt.axis('off')
+plt.savefig('namss_example.png')
+print("Saved example image as namss_example.png")
 
 
 

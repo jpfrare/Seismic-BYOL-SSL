@@ -202,12 +202,12 @@ class A150DataModule(L.LightningDataModule):
             drop_last=self.drop_last
         )
 
-    def val_dataloader(self):
-        """Return the validation DataLoader."""
-        return DataLoader(
-            self.val_dataset,
-            batch_size=self.batch_size,
-            num_workers=self.num_workers,
-            shuffle=False,
-            drop_last=self.drop_last
-        )
+    # def val_dataloader(self):
+    #     """Return the validation DataLoader."""
+    #     return DataLoader(
+    #         self.val_dataset,
+    #         batch_size=self.batch_size,
+    #         num_workers=self.num_workers,
+    #         shuffle=False,
+    #         drop_last=self.drop_last
+    #     )

@@ -33,17 +33,6 @@ dataset_mapping = get_dataset_mapping()
 data_path = dataset_mapping[test_dataset]
 print(data_path)
 
-random_flip = RandomFlip(possible_axis=[0, 1])
-random_crop = RandomCrop(crop_size=(256,256))
-random_rotation = RandomRotation(degrees=25, prob=0.2)
-transpose_to_HWC = Transpose([1, 2, 0])
-transpose_to_CHW = Transpose([2, 0, 1])    
-cast_to_tensor = CastTo(dtype=np.float32)
-repeat = Repeat(axis=0, n_repetitions=3)
-unsqueeze = Unsqueeze(axis=0)
-
-
-
 aux_transform_pipeline = TransformPipeline(
     [
         RandomFlip(possible_axis=[0, 1]),   # 513, 513
@@ -60,10 +49,11 @@ constrastive_transform = ContrastiveTransform(
 
 transform_pipeline = TransformPipeline(
     [
-        RandomCrop(crop_size=input_size),    # 3, crop_size, crop_size
+        RandomCrop(crop_size=(256,256)),    # 3, crop_size, crop_size
         constrastive_transform,
     ]
-) 
+)   
+logger.info(f"Transforms built for a700")
 
 
 data_module = A150DataModule(
@@ -76,9 +66,25 @@ data_module = A150DataModule(
 )
 
 data_module.setup(stage='train')
-sample_batch = next(iter(data_module.train_dataloader()))
+sample_batch = next(iter(data_module.val_dataloader()))
 print("Sample batch:", sample_batch[0].shape)
-print("Type: ", type(sample_batch))
+import matplotlib.pyplot as plt
+
+print("Type: ", type(sample_batch), len(sample_batch))
+
+# Save an example from the dataset
+example_image = sample_batch[0][0].permute(1, 2, 0).numpy()  # Convert CHW to HWC for visualization
+plt.imshow(example_image, cmap='gray')
+plt.axis('off')
+plt.savefig('a700_example.png')
+# print("Saved example image as a700_example.png")
 
 
 
+backbone = DeepLabV3Backbone(num_classes=6)
+model = BYOL(backbone=backbone, 
+                learning_rate=1e-5,
+                )
+
+out = model.validation_step(sample_batch, batch_idx=0)
+print(out)
