@@ -62,20 +62,28 @@ def main(
     elif finetune_data == "seam_ai" or finetune_data == "seam_ai_N":
         logger.info("Using padding of (1008,592)")
         padding = Padding(1008, 592)
+        
+    transform_pipeline = TransformPipeline(
+        [
+            padding,
+            Transpose([2, 0, 1]),   # C, H, W
+            CastTo(dtype=np.float32),
+        ]
+    )
 
     # 100% dos dados
     # print(f'Número: {cap}, tipo: {type(cap)}')
     if cap == 1.0 and type(cap) == float:
         
         logger.info("Using 100% of train data")
-        train_dataset = SeismicFullDataset(root=data_path, partition='train', transform=padding)
+        train_dataset = SeismicFullDataset(root=data_path, partition='train', transform=transform_pipeline)
         data_module = SeismicDataModule(
             root = data_path,
             batch_size=batch_size,
             cap=cap,
             drop_last=True,
-            transform=padding,
-            test_transform=padding,
+            transform=transform_pipeline,
+            test_transform=transform_pipeline,
             train_dataset = train_dataset,
             val_dataset = None,
             test_dataset = None,
@@ -180,7 +188,7 @@ def main(
         classification_metrics=metrics,
     )
     
-    pipeline.run(data_module, task="evaluate")
+    # pipeline.run(data_module, task="evaluate")
 
 
 if __name__ == "__main__":
@@ -191,7 +199,7 @@ if __name__ == "__main__":
         num_epochs=50,
         batch_size=8,
         repetition=0,
-    learning_rate=0.001,
+        learning_rate=0.001,
         cap=1.0,
         freeze=True,
         ckpt_path="/home/vinicius.soares/Seismic-Byol/dev-seismic-byol/ht_logs/train/9",

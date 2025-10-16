@@ -18,30 +18,6 @@ from lightning.pytorch.callbacks.early_stopping import EarlyStopping
 from torchmetrics import Accuracy, JaccardIndex, F1Score
 
 
-def apply_freeze(backbone: DeepLabV3Backbone, freeze_list: list):
-    """
-    Aplica freeze seletivo nos blocos do DeepLabV3Backbone.
-    freeze_list = [conv1+bn1+relu+maxpool, layer1, layer2, layer3, layer4]
-    """
-    rn50 = backbone.RN50model
-
-    # Freeze stem (conv1 + bn1 + relu + maxpool)
-    if freeze_list[0]:
-        for param in rn50.conv1.parameters():
-            param.requires_grad = False
-        for param in rn50.bn1.parameters():
-            param.requires_grad = False
-
-    # Freeze ResNet layers
-    for idx, layer_name in enumerate(["layer1", "layer2", "layer3", "layer4"], start=1):
-        if freeze_list[idx]:
-            layer = getattr(rn50, layer_name)
-            for param in layer.parameters():
-                param.requires_grad = False
-
-    return backbone
-
-
 def main(
     pretrain_data,  # Where the model was pretrained
     finetune_data,  # Where the model is going to be trained
@@ -86,20 +62,37 @@ def main(
     elif finetune_data == "seam_ai" or finetune_data == "seam_ai_N":
         logger.info("Using padding of (1008,592)")
         padding = Padding(1008, 592)
+        
+    crop = RandomCrop(
+        crop_size=(224, 224),
+        num_samples=2
+        )
+    
+    # transform_pipeline = TransformPipeline([
+    #     padding,
+    #     crop,
+    #     Transpose([2, 0, 1]),   # C, H, W
+    # ])
+    
+    transform_pipeline = TransformPipeline([
+        padding,
+        Transpose([2, 0, 1]),   # C, H, W
 
+    ])
+    
     # 100% dos dados
     # print(f'Número: {cap}, tipo: {type(cap)}')
     if cap == 1.0 and type(cap) == float:
         
         logger.info("Using 100% of train data")
-        train_dataset = SeismicFullDataset(root=data_path, partition='train', transform=padding)
+        train_dataset = SeismicFullDataset(root=data_path, partition='train', transform=transform_pipeline)
         data_module = SeismicDataModule(
             root = data_path,
             batch_size=batch_size,
             cap=cap,
             drop_last=True,
-            transform=padding,
-            test_transform=padding,
+            transform=transform_pipeline,
+            test_transform=transform_pipeline,
             train_dataset = train_dataset,
             val_dataset = None,
             test_dataset = None,
@@ -112,8 +105,8 @@ def main(
             batch_size=batch_size,
             cap=cap,
             drop_last=False,
-            transform=padding,
-            test_transform=padding,
+            transform=transform_pipeline,
+            test_transform=transform_pipeline,
             train_dataset = None,
             val_dataset = None,
             test_dataset = None,
@@ -154,8 +147,8 @@ def main(
             max_steps=num_epochs,
             strategy="auto",
             devices=gpus,
-            check_val_every_n_epoch=None,
-            val_check_interval=100,
+            check_val_every_n_epoch=True,
+            # val_check_interval=100,
         )
 
     else:
@@ -167,8 +160,8 @@ def main(
             max_epochs=num_epochs,
             strategy="auto",
             devices=gpus,
-            check_val_every_n_epoch=None,
-            val_check_interval=200,
+            check_val_every_n_epoch=True,
+            val_check_interval=140,
         )
 
     pipeline = SimpleLightningPipeline(

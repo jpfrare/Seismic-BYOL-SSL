@@ -36,9 +36,17 @@ def main(
 
     # Transforms
     if finetune_data == "f3" or finetune_data == "f3_N":
-        padding = Padding(256, 704)
+        padding = Padding(256, 704, padding_mode='reflect')
     elif finetune_data == "seam_ai" or finetune_data == "seam_ai_N":
-        padding = Padding(1008, 592)
+        padding = Padding(1008, 592, padding_mode='reflect')
+        
+    transform_pipeline = TransformPipeline(
+        [
+            padding,
+            Transpose([2, 0, 1]),   # C, H, W
+            CastTo(dtype=np.float32),
+        ]
+    )
 
     # DataModule
     # Dataset instantiated inside of the datamodule class
@@ -47,8 +55,8 @@ def main(
         batch_size=batch_size,
         cap=1.0,
         drop_last=True,
-        transform=padding,
-        test_transform=padding,
+        transform=transform_pipeline,
+        test_transform=transform_pipeline,
         train_dataset = None,
         val_dataset = None,
         test_dataset = None,
@@ -97,7 +105,7 @@ def main(
         callbacks=[ckpt_callback],
         max_epochs=num_epochs,
         strategy="auto",
-        devices=gpus,
+        devices=[0],
         check_val_every_n_epoch=2,
     )
 
@@ -111,6 +119,7 @@ def main(
         classification_metrics=metrics,
     )
 
+    # @torch.no_grad()
     pipeline.run(data_module, task="evaluate")
 
 if __name__ == "__main__":
