@@ -96,10 +96,11 @@ if __name__ == "__main__":
 
     root = '/petrobr/parceirosbr/home/vinicius.soares/workspace/spfm/checkpoints'
 
-    PRETRAIN_LOGS_PATH = f"{root}/logs_vinicius/train_freeze_modules/{args.repetition}" if not args.linear else f"{root}/logs_vinicius/train_linear_freeze_modules/{args.repetition}"
-    PRETRAIN_CKPT_PATH = f"{root}/ckpt_vinicius/train_freeze_modules/{args.repetition}" if not args.linear else f"{root}/ckpt_vinicius/train_linear_freeze_modules/{args.repetition}"
-    # IMPORT_ROOT_PATH = f"/petrobr/parceirosbr/home/vinicius.soares/workspace/Seismic-Byol/dev-seismic-byol/ckpt/pretrain"
-    IMPORT_ROOT_PATH = f"/petrobr/parceirosbr/home/vinicius.soares/workspace/Seismic-Byol/dev-seismic-byol/checkpoints/ckpt_vinicius/pretrain"
+    PRETRAIN_LOGS_PATH = f"{root}/logs_vinicius/train_patch/{args.repetition}" if not args.linear else f"{root}/logs_vinicius/train_linear_patch/{args.repetition}"
+    PRETRAIN_CKPT_PATH = f"{root}/ckpt_vinicius/train_patch/{args.repetition}" if not args.linear else f"{root}/ckpt_vinicius/train_linear_patch/{args.repetition}"
+    
+    IMPORT_ROOT_PATH = f"/petrobr/parceirosbr/home/vinicius.soares/workspace/Seismic-Byol/dev-seismic-byol/ckpt/pretrain"
+    # IMPORT_ROOT_PATH = f"/petrobr/parceirosbr/home/vinicius.soares/workspace/Seismic-Byol/dev-seismic-byol/checkpoints/ckpt_vinicius/pretrain"
 
     dataset_mapping = get_dataset_mapping()
     

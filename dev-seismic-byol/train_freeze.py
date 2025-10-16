@@ -36,7 +36,7 @@ def main(
     full_save_name=False,   # If want to save as a specific name
     linear=False,   # FC to choose from linear or default
     steps=False,    # If num_epochs refer to steps
-    modules_frozen=None,
+    layer_lrs=None,
 ):
 
     # Set general seed**
@@ -46,11 +46,11 @@ def main(
     else:
         if isinstance(cap, float):
             save_name = (
-                f"V{repetition}_pre_{pretrain_data}_train_{finetune_data}_cap_{cap*100:.0f}%_{modules_frozen}"
+                f"V{repetition}_pre_{pretrain_data}_train_{finetune_data}_cap_{cap*100:.0f}%_{layer_lrs}"
             )
         elif isinstance(cap, int):
             save_name = (
-                f"V{repetition}_pre_{pretrain_data}_train_{finetune_data}_cap_{cap}_img_{modules_frozen}"
+                f"V{repetition}_pre_{pretrain_data}_train_{finetune_data}_cap_{cap}_img_{layer_lrs}"
             )
         
     logger.info(f"Saving model {save_name}")
@@ -114,7 +114,7 @@ def main(
 
     # Model
 
-    model = get_model(
+    model = new_get_model(
         pretrain_data,
         learning_rate,
         freeze,
@@ -123,7 +123,7 @@ def main(
         full_path=import_path, 
         linear=linear,
         finetune_data=finetune_data,
-        modules_frozen=modules_frozen,
+        lr_config=layer_lrs,
     )
 
     log_dir = Path(logs_path) / save_name / finetune_data
@@ -161,7 +161,7 @@ def main(
             strategy="auto",
             devices=gpus,
             check_val_every_n_epoch=True,
-            val_check_interval=140,
+            # val_check_interval=140,
         )
 
     pipeline = SimpleLightningPipeline(
