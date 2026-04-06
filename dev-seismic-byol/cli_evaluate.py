@@ -45,7 +45,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    root = '/petrobr/parceirosbr/home/vinicius.soares/workspace/spfm/checkpoints'
+    root = '/petrobr/parceirosbr/home/joao.frare/spfm/Seismic-Byol/dev-seismic-byol/checkpoints'
 
     TEST_LOGS_PATH = f"{root}/logs_vinicius/test_freeze_modules/{args.repetition}" if not args.linear else f"{root}/logs_vinicius/test_linear_freeze_modules/{args.repetition}"
     TEST_CKPT_PATH = f"{root}/ckpt_vinicius/test_freeze_modules/{args.repetition}" if not args.linear else f"{root}/ckpt_vinicius/test_linear_freeze_modules/{args.repetition}"

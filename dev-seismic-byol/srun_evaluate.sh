@@ -12,9 +12,8 @@
 
 # SCRIPT_PATH="/petrobr/parceirosbr/home/vinicius.soares/workspace/Seismic-Byol/dev-seismic-byol/cli_evaluate.py"
 SCRIPT_PATH="/petrobr/parceirosbr/home/vinicius.soares/workspace/Seismic-Byol/dev-seismic-byol/ht_evaluate.py"
-WORKSPACE=/petrobr/parceirosbr/home/vinicius.soares/workspace
-SIF=/petrobr/parceirosbr/home/vinicius.soares/singularity/minerva_dev.sif
-
+WORKSPACE="/petrobr/parceirosbr/home/joao.frare/spfm/Seismic-Byol"
+SIF="/petrobr/parceirosbr/home/joao.frare/singularity/minerva_dev.sif"
 
 FLAGS=(
   # "--repetition 5"

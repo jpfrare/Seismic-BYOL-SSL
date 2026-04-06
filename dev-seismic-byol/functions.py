@@ -410,7 +410,7 @@ def new_get_model(
         elif pretrain_data == "namss":
             base_name = f"V{repetition}_pretrain_{pretrain_data}_In256_B128_E125000_lr1e-05"
         else:
-            base_name = f"V{repetition}_pretrain_{pretrain_data}_In256_B32_E1200_lr1e-05"
+            base_name = f"V{repetition}_pretrain_{pretrain_data}_In256_B32_E125000_lr1e-05" #mudei de 1200 pra 125000
 
         if root_path:
             import_path = f"{root_path}/{repetition}/{base_name}/{pretrain_data}/last.ckpt"
@@ -533,6 +533,8 @@ def new_get_model(
         model.backbone, _ = apply_layerwise_lr(model.backbone, {
             "stem": 0.0, "layer1": 0.0, "layer2": 0.0, "layer3": 0.0, "layer4": 0.0, "avgpool": 0.0
         })
+    else:
+        logger.info("No freeze!")
 
     return model
 
@@ -910,7 +912,7 @@ def get_dataset_mapping():
             'namss':'/petrobr/parceirosbr/home/vinicius.soares/workspace/spfm/datasets/NAMSS/Data/NAMSS/patch_512_0',
         }
     
-    elif 'node' in nodename:
+    elif '4be00dc0e281' in nodename:
         dataset_mapping = {
             'seam_ai_N':'/workspaces/shared_data/seam_ai_datasets/seam_ai_N/images',
             'seam_ai':'/workspaces/shared_data/seam_ai_datasets/seam_ai/images',
@@ -920,7 +922,7 @@ def get_dataset_mapping():
             'both_N':'/workspaces/shared_data/seismic/both_N/images',
         }
         
-    elif 'c' in nodename:
+    elif 'node' in nodename:
         dataset_mapping = {
             'seam_ai_N':'/home/vinicius.soares/asml/datasets/tiff_data/seam_ai_N/images',
             'seam_ai':'/home/vinicius.soares/asml/datasets/tiff_data/seam_ai/images',

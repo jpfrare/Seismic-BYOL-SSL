@@ -4,10 +4,9 @@
 # Configuration
 # --------------------------
 # SCRIPT_PATH="/petrobr/parceirosbr/home/vinicius.soares/workspace/Seismic-Byol/dev-seismic-byol/cli_finetune.py"
-SCRIPT_PATH="/petrobr/parceirosbr/home/vinicius.soares/workspace/Seismic-Byol/dev-seismic-byol/ht_train.py"
-WORKSPACE="/petrobr/parceirosbr/home/vinicius.soares/workspace"
-SIF="/petrobr/parceirosbr/home/vinicius.soares/singularity/minerva_dev.sif"
-
+SCRIPT_PATH="/petrobr/parceirosbr/home/joao.frare/workspace/spfm/Seismic-Byol/dev-seismic-byol/ht_train.py"
+WORKSPACE="/petrobr/parceirosbr/home/joao.frare/workspace"
+SIF="/petrobr/parceirosbr/home/joao.frare/singularity/minerva_dev.sif"
 # Training flags
 FLAGS=(
   "--linear --freeze --combination 50"

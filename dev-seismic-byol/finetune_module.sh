@@ -1,14 +1,14 @@
 #!/bin/bash
 
 # Caminho para o contêiner Singularity
-SIF_PATH="/petrobr/parceirosbr/home/vinicius.soares/singularity/minerva_dev.sif"
+SIF_PATH= "/petrobr/parceirosbr/home/joao.frare/singularity/minerva_dev.sif""
 
 # Caminho para o script que você quer rodar
 SCRIPT_PATH="/petrobr/parceirosbr/home/vinicius.soares/workspace/Seismic-Byol/dev-seismic-byol/finetune_combinations.sh"
 
 
-WORKSPACE=/petrobr/parceirosbr/home/vinicius.soares/workspace
-SIF=/petrobr/parceirosbr/home/vinicius.soares/singularity/minerva_dev.sif
+WORKSPACE="/petrobr/parceirosbr/home/joao.frare/spfm/Seismic-Byol"
+SIF="/petrobr/parceirosbr/home/joao.frare/singularity/minerva_dev.sif"
 # Flags/argumentos do script (exemplo)
 FLAGS=(
   #

@@ -75,7 +75,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    root = '/petrobr/parceirosbr/home/vinicius.soares/workspace/spfm/checkpoints'
+    root = '/petrobr/parceirosbr/home/joao.frare/spfm/Seismic-Byol/dev-seismic-byol/checkpoints'
 
     PRETRAIN_LOGS_PATH = (
         f"{root}/logs_vinicius/train_patch/{args.repetition}"
@@ -89,8 +89,10 @@ if __name__ == "__main__":
         f"{root}/ckpt_vinicius/train_linear_patch/{args.repetition}"
     )
 
+    #caminho de import de checkpoints do pré-treino
     IMPORT_ROOT_PATH = (
-        "/petrobr/parceirosbr/home/vinicius.soares/workspace/Seismic-Byol/dev-seismic-byol/ckpt/pretrain"
+        #"/petrobr/parceirosbr/home/vinicius.soares/workspace/Seismic-Byol/dev-seismic-byol/ckpt/pretrain"
+        f"{root}/ckpt_vinicius/pretrain"
     )
 
     dataset_mapping = get_dataset_mapping()

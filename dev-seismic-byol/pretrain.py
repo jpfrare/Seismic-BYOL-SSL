@@ -127,7 +127,7 @@ def main(
             drop_last=True,
             shuffle_train=True,
             name=dataset_name,
-            num_workers=os.cpu_count()
+            num_workers=min(os.cpu_count(), 24)
         )
         
 
@@ -162,8 +162,8 @@ def main(
 
     trainer = Trainer(
         accelerator='gpu',
-        # devices="auto",
-        devices=[0],
+        devices="auto",
+        #devices=[0],
         logger=CSVlogger,
         callbacks=[ckpt_callback, ckpt_callback_every_50],
         # callbacks=[ckpt_callback],

@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # Caminho para o contêiner Singularity
-SIF=/petrobr/parceirosbr/home/vinicius.soares/singularity/minerva_dev.sif
-WORKSPACE=/petrobr/parceirosbr/home/vinicius.soares/workspace
+WORKSPACE="/petrobr/parceirosbr/home/joao.frare/spfm/Seismic-Byol"
+SIF="/petrobr/parceirosbr/home/joao.frare/singularity/minerva_dev.sif"
 # Flags/argumentos do script (exemplo)
 FLAGS=(
   "--repetition 5 --gpus 0"

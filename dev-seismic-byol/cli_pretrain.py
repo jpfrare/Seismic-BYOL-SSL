@@ -52,8 +52,6 @@ if __name__ == "__main__":
         "both_N",
         "s0",
         "a700",
-        "imagenet",
-        "coco",
         "sup",
         "namss",
     ]
