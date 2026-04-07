@@ -75,7 +75,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    root = '/petrobr/parceirosbr/home/joao.frare/spfm/Seismic-Byol/dev-seismic-byol/checkpoints'
+    root = '/petrobr/parceirosbr/home/joao.frare/workspace/spfm/Seismic-Byol/dev-seismic-byol/checkpoints'
 
     PRETRAIN_LOGS_PATH = (
         f"{root}/logs_vinicius/train_patch/{args.repetition}"

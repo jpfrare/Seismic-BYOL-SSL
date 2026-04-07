@@ -410,7 +410,7 @@ def new_get_model(
         elif pretrain_data == "namss":
             base_name = f"V{repetition}_pretrain_{pretrain_data}_In256_B128_E125000_lr1e-05"
         else:
-            base_name = f"V{repetition}_pretrain_{pretrain_data}_In256_B32_E125000_lr1e-05" #mudei de 1200 pra 125000
+            base_name = f"V{repetition}_pretrain_{pretrain_data}_In256_B32_E85000_lr1e-05" #mudei de 1200 pra 85000
 
         if root_path:
             import_path = f"{root_path}/{repetition}/{base_name}/{pretrain_data}/last.ckpt"
