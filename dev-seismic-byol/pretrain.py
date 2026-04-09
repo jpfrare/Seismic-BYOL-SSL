@@ -150,14 +150,15 @@ def main(
         dirpath=ckpt_dir,
         )
     
-    ckpt_callback_every_50 = ModelCheckpoint(
+    """ckpt_callback_every_50 = ModelCheckpoint(
         save_top_k=-1,  # Save all checkpoints
         # every_n_epochs=ckpt_epochs,  # Save every 50 epochs
         every_n_train_steps = num_epochs // 10,
          dirpath=ckpt_dir,
         filename="{step:03d}"  # Filename format
     )
-    
+    """
+
     logger.info("Loggers and checkpoints built")
 
     trainer = Trainer(
@@ -165,7 +166,8 @@ def main(
         devices="auto",
         #devices=[0],
         logger=CSVlogger,
-        callbacks=[ckpt_callback, ckpt_callback_every_50],
+        callbacks= [ckpt_callback],
+        #callbacks=[ckpt_callback, ckpt_callback_every_50],
         # callbacks=[ckpt_callback],
         max_epochs=num_epochs,
         max_steps=num_epochs,

@@ -19,7 +19,6 @@ for p in "${PRETRAINS[@]}"; do
     for r in "${REPETITIONS[@]}"; do
 
     FLAGS="--pretrain_data ${p} --finetune_data ${f} --num_epochs 50 --batch_size 8 --repetition ${r} --learning_rate 1e-5 --cap 1.0"
-    CKPT="/petrobr/parceirosbr/home/joao.frare/workspace/spfm/Seismic-Byol/dev-seismic-byol/checkpoints/ckpt_vinicius/pretrain/0/V0_pretrain_${p}_In256_B32_E85000_lr1e-05/${p}/last.ckpt"
     
     sbatch <<EOT
 #!/bin/bash
@@ -46,9 +45,8 @@ singularity exec --nv \
     --bind /petrobr/parceirosbr/spfm \
     "$SIF" \
     bash -c "
-        chmod 644 "$CKPT"
         export PYTHONPATH=/petrobr/parceirosbr/home/joao.frare/workspace/spfm/Seismic-Byol/Minerva-dev:\$PYTHONPATH
-        python3 "$SCRIPT_PATH" $FLAGS
+        python3 $SCRIPT_PATH $FLAGS
     "
 EOT
 

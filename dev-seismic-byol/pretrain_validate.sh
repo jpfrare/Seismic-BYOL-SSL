@@ -3,37 +3,31 @@
 # --------------------------
 # Configuration
 # --------------------------
-SCRIPT_PATH="/petrobr/parceirosbr/home/joao.frare/workspace/spfm/Seismic-Byol/dev-seismic-byol/new_cli_finetune.py"
+SCRIPT_PATH="/petrobr/parceirosbr/home/joao.frare/workspace/spfm/Seismic-Byol/dev-seismic-byol/pretrain_validate.py"
 WORKSPACE="/petrobr/parceirosbr/home/joao.frare/workspace"
 export SIF="/petrobr/parceirosbr/spfm/singularity/amd64/deeprock/ngc/MINERVA_v0_3_9-beta-SPINN_v0_0_1.sif"
 
+
 mkdir -p jobs_out
-mkdir -p jobs_out/full_finetune
+mkdir -p jobs_out/teste
 
-PRETRAIN=("imagenet" "f3_N")
-FINETUNE="seam_ai_N"
-
-for p in "${PRETRAIN[@]}"; do
-FLAGS="--pretrain_data ${p} --finetune_data ${FINETUNE} --num_epochs 1 --batch_size 8 --repetition 0 --learning_rate 1e-5 --cap 1.0"
 
 sbatch <<EOT
 #!/bin/bash
-#SBATCH --job-name=full_finetune_job_p${p}_fboth_N_r0
+#SBATCH --job-name=teste
 #SBATCH --nodes=1
 #SBATCH --gpus-per-node=1       
 #SBATCH --partition=ict-h100
 #SBATCH --account=spfm
-#SBATCH --time=04:00:00
-#SBATCH --output=jobs_out/full_finetune/teste_%j.out
-#SBATCH --error=jobs_out/full_finetune/teste_%j.err
+#SBATCH --time=00:01:00
+#SBATCH --output=jobs_out/teste/lr_%j.out
+#SBATCH --error=jobs_out/teste/lr_%j.err
 
 cd "\$SLURM_SUBMIT_DIR"
 
 echo "Allocated nodes: \$SLURM_JOB_NODELIST"
-echo "Running flags: $FLAGS"
-echo "pretrain: $p; fine_tune_data: seam_ai_N; repetition: 3"
+echo "Running flags: $f"
 nvidia-smi
-
 
 singularity exec --nv \
     --bind "$WORKSPACE":"$WORKSPACE" \
@@ -42,10 +36,7 @@ singularity exec --nv \
     "$SIF" \
     bash -c "
         export PYTHONPATH=/petrobr/parceirosbr/home/joao.frare/workspace/spfm/Seismic-Byol/Minerva-dev:\$PYTHONPATH
-        python3 $SCRIPT_PATH $FLAGS
+        python3 "$SCRIPT_PATH" $f
     "
+
 EOT
-
-done
-
-
