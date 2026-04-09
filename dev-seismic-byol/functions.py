@@ -487,10 +487,19 @@ def new_get_model(
         
         logger.info("Default model loaded (seg)")
         
-    elif pretrain_data == "teste":
-        resnet50_backbone = deeplabv3_resnet50().backbone
-        logger.info("Imported backbone from scratch loaded")
-    
+    elif pretrain_data == "scratch":
+        # Cria modelo completo DeeplabV3 com backbone do zero
+        model = DeepLabV3(
+            backbone=deeplabv3_resnet50(weights=None).backbone,
+            learning_rate=learning_rate,
+            num_classes=num_classes,
+            freeze_backbone=False  # não faz sentido congelar, treino do zero
+        )
+        logger.info("SCRATCH backbone loaded (random init)")
+        
+        # Pula apply_layerwise_lr no scratch
+        return model
+        
     else:
         raise KeyError("Pretrain data value wrong!")
 

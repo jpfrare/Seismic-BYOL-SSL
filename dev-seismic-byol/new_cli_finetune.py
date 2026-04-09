@@ -98,7 +98,7 @@ if __name__ == "__main__":
     dataset_mapping = get_dataset_mapping()
     
     finetune_list = ["f3", "f3_N", "seam_ai", "seam_ai_N"]
-    pretrain_list = ["f3", "f3_N", "seam_ai", "seam_ai_N", "both", "both_N", "s0", "a700", "imagenet", "coco", "sup", "seg", "namss"]
+    pretrain_list = ["f3", "f3_N", "seam_ai", "seam_ai_N", "both", "both_N", "s0", "a700", "imagenet", "coco", "sup", "seg", "namss", "scratch"]
 
     if args.finetune_data not in finetune_list:
         raise KeyError(f"Dataset '{args.finetune_data}' not found in available options: {finetune_list}")
