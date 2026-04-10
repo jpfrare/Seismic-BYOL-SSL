@@ -57,6 +57,11 @@ agg["result"] = agg.apply(
 # 🔹 tabela final
 table = agg.pivot(index="finetune", columns="pretrain", values="result")
 
-print("\n TABELA FINAL:\n")
-print(table) 
-o path está certo
+
+output_path = "/petrobr/parceirosbr/home/joao.frare/workspace/spfm/Seismic-Byol/dev-seismic-byol/results/validate_experiments/tabela.md"
+table = table.reset_index()
+
+with open(output_path, "w") as f:
+    f.write(table.to_markdown(index=False))
+
+print("✅ Tabela salva!")
