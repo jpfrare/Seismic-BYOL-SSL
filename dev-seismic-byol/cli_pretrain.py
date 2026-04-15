@@ -5,6 +5,7 @@ from pretrain import main
 from functions import *
 
 if __name__ == "__main__":
+    #argumentos e hiperparâmetros do pré-treino
     parser = argparse.ArgumentParser(
         description="Pretraining script for seismic segmentation with BYOL."
     )
@@ -37,7 +38,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    dataset_mapping = get_dataset_mapping()
+    dataset_mapping = get_dataset_mapping() #retorna o path do dataset especificado baseado no ambiente de execução do código
     
     logger.info(" =-=-=- Begining training =-=-=-")
 
@@ -61,6 +62,7 @@ if __name__ == "__main__":
             f"Pretrain '{args.dataset_name}' not found in available options: {pretrain_list}"
         )
 
+    #localização dos logs e dos checkpoints
     PRETRAIN_LOGS_PATH = f"checkpoints/logs_vinicius/pretrain/{args.repetition}"
     PRETRAIN_CKPT_PATH = f"checkpoints/ckpt_vinicius/pretrain/{args.repetition}"
     

@@ -39,8 +39,9 @@ def main(
     gpus,
 ):
     
-    seed_everything(repetition)
-    model_name = f'V{repetition}_pretrain_{dataset_name}_In{str(input_size[0])}_B{batch_size}_E{num_epochs}_lr{learning_rate}'
+    seed_everything(repetition) #garantir reprodução, as transformações e splits que são aleatórios são trackeados pela seed toda vez que ela é usada
+    #são retornadas as mesmas coisas
+    model_name = f'V{repetition}_pretrain_{dataset_name}_In{str(input_size[0])}_B{batch_size}_E{num_epochs}_lr{learning_rate}' #nome do diertório do treino
     logger.info(f'Model name: {model_name}')
     
     if dataset_name == 'a700' or dataset_name == 'namss':
@@ -66,7 +67,8 @@ def main(
         )   
     
         
-    else: 
+    else:
+        #transformações realizadas nos dados como pipeline
         aux_transform_pipeline = TransformPipeline(
             [   
                 RandomFlip(possible_axis=[1, 2]),        # H, W, C
@@ -80,6 +82,7 @@ def main(
             aux_transform_pipeline
         )
 
+        #transformações que o BYOL realizará
         byol_transform_pipeline = TransformPipeline(
             [
                 RandomCrop(crop_size=input_size), # 3, crop_size, crop_size
@@ -110,9 +113,10 @@ def main(
 
     else:
     
-        train_img_reader = TiffReader(path=data_path)
+        train_img_reader = TiffReader(path=data_path) #transforma os dados em discos em legíveis para o código (array numpy e etc)
         logger.info(f"Readers built!")
-       
+
+        #aqui a varável ja contem o dataset pronto (com as devidas transformações e legíveis pelo código para o pré-treino)
         pretrain_dataset = SimpleDataset(
             readers=train_img_reader,
             transforms=byol_transform_pipeline,
@@ -120,7 +124,11 @@ def main(
         )
         logger.info(f"Dataset built!")
 
-        
+        #dataModule é o que orquestra a criação dos dataloaders (entidades que, por meio do __getitem__, tansformam os dados brutos do dataset nos batches)
+        #além de lidar com o métricas, splits (validação treino e teste) e validação supervisionada.
+        #como estamos no pré treino, o datamodule tende a ser bem simples, ele ganha mais protagonismo no treino, aqui ele é basicamente um encapsulamento
+        #do DataLoader
+        #workers: paralelizam o processo de transformação de dataset em batches para que o treino e as transformações ocorram concomitantemente
         data_module = MinervaDataModule(
             train_dataset=pretrain_dataset,
             batch_size=batch_size,
@@ -130,11 +138,18 @@ def main(
             num_workers=min(os.cpu_count(), 24)
         )
         
-
+        # ao inves de usar os pesos da imagente no backbone, pegar uma parte do dataset da imagenet comparável com o tamanho dos demais datasets e treinar do zero, em vias de classificação
+        # mesmo número de classes
+        # deeplab
+        # com resnet
+        # estou usando a imagenet 1k
+        
     logger.info(f'DataModule assembled')
 
     # Modelo
-    backbone = DeepLabV3Backbone(num_classes=6)
+    backbone = DeepLabV3Backbone(num_classes=6) #instanciando o backbone com o número de classes existentes
+
+    #incorporando o backbone no modelo do qual o BYOL será utilizado
     model = BYOL(backbone=backbone, 
                  learning_rate=learning_rate,
                  )
@@ -144,6 +159,7 @@ def main(
     ckpt_dir = Path(ckpt_path) / model_name / dataset_name
     CSVlogger = CSVLogger(log_dir, name=model_name, version=dataset_name)
     
+    #model checkpoints: condições de salvamento das características do modelo (todo contexto necessário para retomá-lo, loss, pesos, lr, embeddings e etc)
     ckpt_callback = ModelCheckpoint(
         save_top_k=1, 
         save_last=True, 
@@ -161,6 +177,7 @@ def main(
 
     logger.info("Loggers and checkpoints built")
 
+    #coordena o loop principal e faz a integração dele com as operações dos dataloaders, registro de métricas e de checkpoints
     trainer = Trainer(
         accelerator='gpu',
         devices="auto",
@@ -168,7 +185,6 @@ def main(
         logger=CSVlogger,
         callbacks= [ckpt_callback],
         #callbacks=[ckpt_callback, ckpt_callback_every_50],
-        # callbacks=[ckpt_callback],
         max_epochs=num_epochs,
         max_steps=num_epochs,
         strategy='auto',
@@ -177,6 +193,7 @@ def main(
     )
     logger.info("Trainer instantiated")
 
+    #faz a conexão de tudo: trainer, datamodule e modelo, a parte mais externa do treino
     pipeline = SimpleLightningPipeline(
         model=model,
         trainer=trainer,
