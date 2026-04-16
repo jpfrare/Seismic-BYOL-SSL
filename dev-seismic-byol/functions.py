@@ -119,6 +119,16 @@ class LinearSegmentationHead(nn.Module):
 
 
 def get_state_dict(model):
+        # O state_dict é um dicionário que representa o estado atual do modelo,
+    # contendo seus parâmetros treináveis (pesos e bias) e buffers internos
+    # (como estatísticas de BatchNorm).
+    #
+    # Ele NÃO inclui informações como época, estado do otimizador ou scheduler.
+    # Esses elementos fazem parte de um checkpoint completo de treinamento.
+    #
+    # Aqui, os nomes das chaves são ajustados para incluir o prefixo "RN50model.",
+    # garantindo compatibilidade com outros state_dicts ou arquiteturas esperadas.
+
     state_dict = model.state_dict()
     renamed_state_dict = {}
     for key in state_dict.keys():
@@ -135,6 +145,8 @@ def get_seg_file(root_path="/home/vinicius.soares/Seismic-Byol/dev-seismic-byol/
     
     folder_path = f"{root_path}/{repetition}/V{repetition}_pre_sup_train_{seg_data}_cap_100%/{seg_data}"
     
+    #Path().iterdir é basicamente um jeito de listar tudo que está dentro de um diretório de forma que você consiga acessar
+
     files = [f for f in Path(folder_path).iterdir() if f.is_file() and f.name.startswith("epoch=")]
     if files:
         files.sort(key=lambda f: extract_epoch_number(f.name))
@@ -225,6 +237,8 @@ def new_get_model(
         lr_config=None,   # <--- NEW ARG
     ):
     num_classes = 6
+
+    #escolha do arquivo
 
     if full_path: 
         import_path = full_path

@@ -125,7 +125,7 @@ def main(
         logger.info(f"Dataset built!")
 
         #dataModule é o que orquestra a criação dos dataloaders (entidades que, por meio do __getitem__, tansformam os dados brutos do dataset nos batches)
-        #além de lidar com o métricas, splits (validação treino e teste) e validação supervisionada.
+        #além de lidar com  métricas, splits (validação treino e teste) e validação supervisionada.
         #como estamos no pré treino, o datamodule tende a ser bem simples, ele ganha mais protagonismo no treino, aqui ele é basicamente um encapsulamento
         #do DataLoader
         #workers: paralelizam o processo de transformação de dataset em batches para que o treino e as transformações ocorram concomitantemente
