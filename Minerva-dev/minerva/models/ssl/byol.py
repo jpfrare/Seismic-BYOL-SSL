@@ -12,6 +12,27 @@ from minerva.models.nets.base import SimpleSupervisedModel
 
 
 class BYOL(SimpleSupervisedModel):
+
+    """Notas (comentários próprios):
+
+    - Esta classe herda de LightningModule (via SimpleSupervisedModel),
+      que por sua vez herda de torch.nn.Module.
+
+    - Em PyTorch, todo objeto que é um nn.Module é automaticamente registrado
+      como parte do modelo. Isso significa que seus parâmetros entram no state_dict.
+
+    - Portanto, o state_dict deste modelo contém tanto:
+        * Rede online (backbone, projection_head, prediction_head)
+        * Rede target/momentum (backbone_momentum, projection_head_momentum)
+
+    - A rede online é atualizada via gradiente (optimizer).
+
+    - A rede momentum NÃO é atualizada por gradiente, mas sim manualmente
+      usando EMA (Exponential Moving Average) dos pesos da rede online.
+
+    - Isso explica por que o checkpoint do BYOL contém duas redes ao mesmo tempo.
+    """
+    
     """
     Bootstrap Your Own Latent (BYOL) model for self-supervised representation learning.
 
