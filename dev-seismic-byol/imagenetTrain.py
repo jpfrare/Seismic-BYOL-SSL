@@ -71,7 +71,7 @@ seed_everything(args.repetition)
 
 #--------------------------------------PATHS IMPORTANTES-----------------------------------------------
 DATASET_ROOT = "/petrobr/parceirosbr/spfm/datasets/ImageNet_2012/train"
-TRAIN_ENTRIES = "/petrobr/parceirosbr/spfm/datasets/ImageNet_2012/extras_v3/entries-TRAIN.npy""
+TRAIN_ENTRIES = "/petrobr/parceirosbr/spfm/datasets/ImageNet_2012/extras_v3/entries-TRAIN.npy"
 VAL_ROOT = "/petrobr/parceirosbr/spfm/datasets/ImageNet_2012/val"
 VAL_ENTRIES = "/petrobr/parceirosbr/spfm/datasets/ImageNet_2012/extras/entries-VAL.npy"
 PRETRAIN_LOGS_PATH = f"checkpoints/logs_vinicius/pretrain/{args.repetition}"

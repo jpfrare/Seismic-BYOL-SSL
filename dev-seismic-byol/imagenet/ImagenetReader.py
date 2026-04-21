@@ -4,7 +4,12 @@ import os
 from pathlib import Path
 from PIL import Image
 
-
+#por alguma razão mistica, tanto o dataset de validação como de treino sao arrays estruturados do numpy
+#pra cada linha do array do treino:
+#linha[0] é o id do arquivo ex: 10026
+#linha[1] é a label dele
+#linha[2] é o prefixo/subpasta ex: n01440764
+#você consegue fazer o caminho da imagem juntando essas informações e a label obviamente está na linha[1], ai você forma uma sample
 class ImagenetReader:
     def __init__(self, root, entries_path):
         self.root = Path(root)
@@ -31,36 +36,27 @@ class ImagenetReader:
         img = Image.open(img_path).convert("RGB")
         return img, label
 
+#a diferença da estrutura da validação é um tanto diferente, funciona como se fosse um dicionário
+#para cada linha do array de validação:
+#linha["filename"] = o exato nome do arquivo no disco
+#linha["actual_index"] = o label da imagem descrita
+#linha["wnid"] = prefixo (ex n01440764)
 class ImagenetValReader:
     def __init__(self, root, entries_path):
         self.root = Path(root)
-        # Carrega o array estruturado
         self.data = np.load(entries_path, allow_pickle=True)
-        
-        # Lista as imagens exatamente como o teste do terminal fez
-        self.image_files = sorted([
-            f for f in os.listdir(root) if f.endswith('.JPEG')
-        ])
-        
-        if len(self.image_files) != len(self.data):
-            raise ValueError(
-                f"Mismatch: {len(self.image_files)} imagens no disco vs "
-                f"{len(self.data)} entradas no .npy"
-            )
+        # 'actual_index' é a coluna que vimos no seu teste de validação
+        self.targets = [int(row['actual_index']) for row in self.data]
 
     def __len__(self):
-        return len(self.image_files)
+        return len(self.data)
 
     def __getitem__(self, idx):
-        # Pega o nome do arquivo pela ordem alfabética
-        img_name = self.image_files[idx]
+        row = self.data[idx]
+        img_name = row['file_name']
         img_path = self.root / img_name
         
-        # Pega o label usando o nome da coluna que o terminal nos deu
-        # Usamos 'actual_index' como o ID da classe para o PyTorch
-        label = int(self.data[idx]['actual_index'])
+        label = row["actual_index"]
         
-        # Abre a imagem
         img = Image.open(img_path).convert("RGB")
-        
         return img, label
