@@ -7,21 +7,38 @@ SCRIPT_PATH="/petrobr/parceirosbr/home/joao.frare/workspace/spfm/Seismic-Byol/de
 WORKSPACE="/petrobr/parceirosbr/home/joao.frare/workspace"
 export SIF="/petrobr/parceirosbr/spfm/singularity/amd64/deeprock/ngc/MINERVA_v0_3_9-beta-SPINN_v0_0_1.sif"
 
-FLAGS="--teste"
-
-mkdir -p jobs_out
 mkdir -p jobs_out/imagenetTraining
 
-sbatch <<EOT
+repetition=(0 1 2)
+per_class="10"
+
+for r in "${repetition[@]}"; do
+
+    FLAGS="--per_class ${per_class} --repetition ${r}"
+
+    sbatch <<EOT
 #!/bin/bash
-#SBATCH --job-name=imagenettraining
+
+#SBATCH --job-name=imgnet_${per_class}_r${r}
 #SBATCH --nodes=1
+#SBATCH --ntasks-per-node=1
+#SBATCH --cpus-per-task=24
 #SBATCH --gpus-per-node=1       
 #SBATCH --partition=ict-h100
 #SBATCH --account=spfm
 #SBATCH --time=02:00:00
-#SBATCH --output=jobs_out/imagenetTraining/train_%j.out
-#SBATCH --error=jobs_out/imagenetTraining/train_%j.err
+#SBATCH --output=jobs_out/imagenetTraining/train_${per_class}_r${r}_%j.out
+#SBATCH --error=jobs_out/imagenetTraining/train_${per_class}_r${r}_%j.err
+
+cd "\$SLURM_SUBMIT_DIR"
+
+echo "=== Informações do Job ==="
+echo "ID do Job: \$SLURM_JOB_ID"
+echo "Nós alocados: \$SLURM_JOB_NODELIST"
+echo "Flags utilizadas: $FLAGS"
+echo "Data de início: \$(date)"
+echo "=========================="
+
 nvidia-smi
 
 singularity exec --nv \
@@ -34,3 +51,4 @@ singularity exec --nv \
         python3 $SCRIPT_PATH $FLAGS
     "
 EOT
+done

@@ -20,8 +20,8 @@ class ImagenetModel(SimpleSupervisedModel):
                 "lr_scheduler": {
                     "scheduler": scheduler,
                     "monitor": "val_loss", # Métrica logada no _single_step
-                    "interval": "step",    # Checa a cada validação (step do scheduler)
-                    "frequency": 1,
+                    "interval": "epoch", # Mude para epoch (ele sincroniza com a validação)
+                    "strict": True,      # Garante que ele avise se a métrica sumir
                 },
             }
         

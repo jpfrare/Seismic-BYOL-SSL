@@ -51,20 +51,26 @@ parser.add_argument(
 args = parser.parse_args()
 
 if args.teste:
+    print("🚀 Running in FAST TEST mode")
     args.repetition = 9
-    print("Running in TEST mode")
-    args.per_class = 10
-    max_steps = 10000
+    args.per_class = 5          # 5 imagens por classe = 5.000 imagens total => com o batch size de 512 => 9 steps
+    max_steps = 10              # Suficiente para ver o log e 2 validações
     devices = 1
     strategy = "auto"
-    precision = 32
+    precision = 32              # 32-bit para evitar instabilidade em passos curtos
+    
+    # Parâmetros cruciais para não dar erro de "interval"
+    log_every_n_steps = 5       # Loga rápido para você ver no terminal
+    limit_val_batches = 10      # Não precisa validar as 50k imagens no teste!
 else:
     max_steps = 217717
     devices = 1
     strategy = "auto"
-    precision = "16-mixed"
+    precision = "bf16-mixed"
+    log_every_n_steps = 30
+    limit_val_batches = 1.0
 
-if args.per_class < 0 or args.per_class > 1300000:
+if args.per_class < 0 or args.per_class > 1200:
     raise KeyError("error, incorrect amount of samples")
 
 seed_everything(args.repetition)
@@ -77,7 +83,7 @@ VAL_ENTRIES = "/petrobr/parceirosbr/spfm/datasets/ImageNet_2012/extras/entries-V
 PRETRAIN_LOGS_PATH = f"checkpoints/logs_vinicius/pretrain/{args.repetition}"
 PRETRAIN_CKPT_PATH = f"checkpoints/ckpt_vinicius/pretrain/{args.repetition}"
 #--------------------------------------NOME DO MODELO-------------------------------------------------
-model_name = f"V{args.repetition}_pretrain_imagenet_{args.per_class}"
+model_name = f"V{args.repetition}_pretrain_imagenet_{args.per_class}_per_class"
 
 #--------------------------------------DADOS----------------------------------------------------------
 train_transform_pipeline = transforms.Compose([
@@ -89,12 +95,12 @@ train_transform_pipeline = transforms.Compose([
 ])
 train_reader = ImagenetReader(DATASET_ROOT, TRAIN_ENTRIES)
 train_dataset = ImagenetDataset(
-    readers= train_reader,
-    transforms= train_transform_pipeline,
+    ImagenetReader= train_reader,
+    transform= train_transform_pipeline,
 )
 train_subset = StratifiedSubset(train_dataset, args.per_class, args.repetition)
 
-
+#a validação funciona da seguinte forma, a cada x steps o trainer pega um dado da validação e aplica no modelo para inferir se o aprendizado está fluindo
 
 val_transform_pipeline = transforms.Compose([
     transforms.Resize(256),
@@ -107,8 +113,8 @@ val_transform_pipeline = transforms.Compose([
 ])
 val_reader = ImagenetValReader(VAL_ROOT, VAL_ENTRIES)
 val_dataset = ImagenetDataset(
-    readers= val_reader,
-    transforms= val_transform_pipeline
+    ImagenetReader= val_reader,
+    transform= val_transform_pipeline
 )
 
 data_module = MinervaDataModule(
@@ -159,10 +165,14 @@ ckpt_callback = ModelCheckpoint(
 early_stop_callback = EarlyStopping(
     monitor= 'val_loss',                 #métrica vigiada
     min_delta = 0.001,                   #minima variação aceitável
-    patience= 8,                         #quantas variações menores que min ele tolera antes de parar o treino
+    patience= 15,                        #quantas variações menores que min_delta consecutivas ele tolera antes de parar o treino
     verbose= True,
     mode= 'min'                         #mode min = minimização de perda
 )
+
+callbacks = [ckpt_callback]
+if not args.teste:
+    callbacks.append(early_stop_callback)
 
 #-------------------------------------TRAINER E PIPELINE--------------------------------------
 
@@ -173,11 +183,13 @@ trainer = Trainer(
     strategy=strategy,
     precision=precision,
     logger=CSVlogger,
-    callbacks=[ckpt_callback, early_stop_callback],
+    callbacks= callbacks,
     max_steps= max_steps,
-    log_every_n_steps=100,
-    val_check_interval=1000, # Valida a cada 1000 iterações
-    benchmark=True           # Ganho de performance na H100
+    val_check_interval=1.0,                                             #vai validar depois de uma época
+    limit_val_batches=limit_val_batches,                                #quantos batches serão usados na validação
+    log_every_n_steps=log_every_n_steps,              
+    benchmark=True,
+    gradient_clip_val = 1.0                                             #não deixa o gradiente estourar
 )
 
 pipeline = SimpleLightningPipeline(

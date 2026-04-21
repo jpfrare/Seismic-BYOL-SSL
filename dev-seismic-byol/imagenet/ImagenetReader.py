@@ -37,26 +37,27 @@ class ImagenetReader:
         return img, label
 
 #a diferença da estrutura da validação é um tanto diferente, funciona como se fosse um dicionário
-#para cada linha do array de validação:
-#linha["filename"] = o exato nome do arquivo no disco
-#linha["actual_index"] = o label da imagem descrita
-#linha["wnid"] = prefixo (ex n01440764)
+# Validação: acesso por nomes de colunas (dtype names)
+# linha['class_index'] -> Label oficial (0-999) - USAR ESTE PARA O LOSS
+# linha['actual_index'] -> ID sequencial da imagem (1-50000)
 class ImagenetValReader:
     def __init__(self, root, entries_path):
         self.root = Path(root)
         self.data = np.load(entries_path, allow_pickle=True)
-        # 'actual_index' é a coluna que vimos no seu teste de validação
-        self.targets = [int(row['actual_index']) for row in self.data]
+        # 'actual_index' é o que o seu dtype confirmou que existe
+        self.targets = [int(row['class_index']) for row in self.data]
 
     def __len__(self):
         return len(self.data)
 
     def __getitem__(self, idx):
-        row = self.data[idx]
-        img_name = row['file_name']
+        # Como não existe a coluna 'file_name', montamos o nome padrão:
+        # ILSVRC2012_val_00000001.JPEG, etc.
+        img_name = f"ILSVRC2012_val_{idx+1:08d}.JPEG"
         img_path = self.root / img_name
         
-        label = row["actual_index"]
+        # Pega a label pela coluna confirmada
+        label = int(self.data[idx]['class_index'])
         
         img = Image.open(img_path).convert("RGB")
         return img, label
