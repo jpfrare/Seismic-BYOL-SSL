@@ -5,18 +5,30 @@ from pathlib import Path
 from PIL import Image
 
 
-class ImagenetReader():
-    def __init__(self, root):
-        self.ds = ImageFolder(root)
-        self.samples = self.ds.samples #uma lista de tuplas  (caminho_imagem, label)
-        self.targets = self.ds.targets    #apenas as labels
+class ImagenetReader:
+    def __init__(self, root, entries_path):
+        self.root = Path(root)
+        # Carrega o array estruturado 
+        self.data = np.load(entries_path, allow_pickle=True)
+        
+        # Mapeia as labels (coluna index 1) para o StratifiedSubset
+        # Fazemos isso no init para o subset não precisar iterar depois
+        self.targets = [int(row[1]) for row in self.data]
 
     def __len__(self):
-        return len(self.samples)
+        return len(self.data)
         
     def __getitem__(self, idx):
-        path, label = self.ds.samples[idx]
-        img = self.ds.loader(path)      #carregando imagem pra poder mandar no getitem
+        row = self.data[idx]
+        img_idx = row[0]
+        label = int(row[1])
+        wnid = row[2]
+        
+        # Reconstrói o caminho validado no teste: wnid/wnid_idx.JPEG
+        img_path = self.root / wnid / f"{wnid}_{img_idx}.JPEG"
+        
+        # Abre a imagem de forma segura
+        img = Image.open(img_path).convert("RGB")
         return img, label
 
 class ImagenetValReader:

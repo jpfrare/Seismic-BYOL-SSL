@@ -71,6 +71,7 @@ seed_everything(args.repetition)
 
 #--------------------------------------PATHS IMPORTANTES-----------------------------------------------
 DATASET_ROOT = "/petrobr/parceirosbr/spfm/datasets/ImageNet_2012/train"
+TRAIN_ENTRIES = "/petrobr/parceirosbr/spfm/datasets/ImageNet_2012/extras_v3/entries-TRAIN.npy""
 VAL_ROOT = "/petrobr/parceirosbr/spfm/datasets/ImageNet_2012/val"
 VAL_ENTRIES = "/petrobr/parceirosbr/spfm/datasets/ImageNet_2012/extras/entries-VAL.npy"
 PRETRAIN_LOGS_PATH = f"checkpoints/logs_vinicius/pretrain/{args.repetition}"
@@ -86,12 +87,14 @@ train_transform_pipeline = transforms.Compose([
     transforms.Normalize(mean=[0.485, 0.456, 0.406],
                          std=[0.229, 0.224, 0.225])
 ])
-train_reader = ImagenetReader(DATASET_ROOT)
+train_reader = ImagenetReader(DATASET_ROOT, TRAIN_ENTRIES)
 train_dataset = ImagenetDataset(
     readers= train_reader,
     transforms= train_transform_pipeline,
 )
 train_subset = StratifiedSubset(train_dataset, args.per_class, args.repetition)
+
+
 
 val_transform_pipeline = transforms.Compose([
     transforms.Resize(256),
@@ -154,10 +157,10 @@ ckpt_callback = ModelCheckpoint(
     )
 
 early_stop_callback = EarlyStopping(
-    monitor= 'val_loss'                 #métrica vigiada
-    min_delta = 0.001                   #minima variação aceitável
-    patience= 8                         #quantas variações menores que min ele tolera antes de parar o treino
-    verbose= True
+    monitor= 'val_loss',                 #métrica vigiada
+    min_delta = 0.001,                   #minima variação aceitável
+    patience= 8,                         #quantas variações menores que min ele tolera antes de parar o treino
+    verbose= True,
     mode= 'min'                         #mode min = minimização de perda
 )
 

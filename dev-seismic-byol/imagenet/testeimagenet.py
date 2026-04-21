@@ -1,52 +1,56 @@
 import numpy as np
 import os
 from pathlib import Path
+from PIL import Image
 
-# Configurações - AJUSTE O CAMINHO DA PASTA 'VAL' AQUI
-VAL_IMAGES_PATH = "/petrobr/parceirosbr/spfm/datasets/ImageNet_2012/val"
-ENTRIES_PATH = "/petrobr/parceirosbr/spfm/datasets/ImageNet_2012/extras/entries-VAL.npy"
+# Configurações de Path (ajuste se necessário)
+DATASET_ROOT = "/petrobr/parceirosbr/spfm/datasets/ImageNet_2012/train"
+TRAIN_ENTRIES = "/petrobr/parceirosbr/spfm/datasets/ImageNet_2012/extras_v3/entries-TRAIN.npy"
 
-def test_structure():
-    print("--- Inspecionando Estrutura do .npy ---")
-    data = np.load(ENTRIES_PATH, allow_pickle=True)
+def test_hard_access():
+    print("--- TESTE DE ACESSO DIRETO AO TREINO ---")
     
-    # 1. Tenta ver os nomes das colunas (dtype names)
-    if data.dtype.names:
-        print(f"Colunas encontradas: {data.dtype.names}")
-    else:
-        print("O array não tem nomes de colunas, usaremos índices numéricos.")
+    # 1. Carrega o array estruturado
+    data = np.load(TRAIN_ENTRIES, allow_pickle=True)
+    total_samples = len(data)
+    print(f"Total de entradas no .npy: {total_samples}")
 
-    # 2. Pega a primeira linha
-    first_row = data[0]
-    print(f"\nPrimeira linha completa: {first_row}")
+    # 2. Amostras para testar: início, meio (crítico) e fim
+    test_indices = [0, total_samples // 2, total_samples - 1]
     
-    # 3. Teste de mapeamento com o disco
-    print("\n--- Teste de Mapeamento de Imagem ---")
-    # Lista as imagens da pasta real (ordem alfabética é o padrão ImageNet)
-    all_imgs = sorted([f for f in os.listdir(VAL_IMAGES_PATH) if f.endswith('.JPEG')])
-    
-    if len(all_imgs) == 0:
-        print(f"ERRO: Nenhuma imagem .JPEG encontrada em {VAL_IMAGES_PATH}")
-        return
-
-    print(f"Total de imagens na pasta: {len(all_imgs)}")
-    
-    # Simula o que o Reader faria
-    sample_idx = 0
-    img_name = all_imgs[sample_idx]
-    label_id = first_row[0] # O 293 que você viu
-    wnid = first_row[2]     # O 'n01440764' que você viu
-    
-    print(f"Índice [{sample_idx}]:")
-    print(f"  Arquivo no disco: {img_name}")
-    print(f"  Label (ID): {label_id}")
-    print(f"  Classe (WNID): {wnid}")
-    
-    full_path = os.path.join(VAL_IMAGES_PATH, img_name)
-    if os.path.exists(full_path):
-        print(f"\nSUCESSO: O arquivo {full_path} existe!")
-    else:
-        print(f"\nFALHA: O arquivo {full_path} não foi encontrado.")
+    for idx in test_indices:
+        row = data[idx]
+        img_idx = row[0]
+        label = row[1]
+        wnid = row[2]
+        
+        # Reconstrói o caminho que o Reader vai usar: raiz/wnid/wnid_idx.JPEG
+        rel_path = os.path.join(wnid, f"{wnid}_{img_idx}.JPEG")
+        full_path = os.path.join(DATASET_ROOT, rel_path)
+        
+        print(f"\n[Índice {idx}]")
+        print(f"  WNID: {wnid} | Label: {label}")
+        print(f"  Caminho gerado: {full_path}")
+        
+        # Teste 1: Existência
+        if os.path.exists(full_path):
+            print("  ✅ Arquivo encontrado no disco.")
+            
+            # Teste 2: Permissão de Leitura (Onde o Permission Denied morre)
+            try:
+                with Image.open(full_path) as img:
+                    img.verify() # Verifica se o arquivo não está corrompido
+                    print(f"  ✅ Permissão de LEITURA OK. Formato: {img.format}")
+            except Exception as e:
+                print(f"  ❌ ERRO DE PERMISSÃO/LEITURA: {e}")
+        else:
+            print("  ❌ FALHA: Arquivo não existe. Verifique se o DATASET_ROOT está correto.")
+            # Verificação extra: listar a subpasta do WNID para ver o que tem lá
+            subpath = os.path.join(DATASET_ROOT, wnid)
+            if os.path.exists(subpath):
+                print(f"  ℹ️ A subpasta {wnid} existe. Conteúdo (primeiros 3): {os.listdir(subpath)[:3]}")
+            else:
+                print(f"  ❌ A subpasta {wnid} sequer existe.")
 
 if __name__ == "__main__":
-    test_structure()
+    test_hard_access()
