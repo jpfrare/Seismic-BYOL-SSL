@@ -157,10 +157,13 @@ ckpt_dir = Path(PRETRAIN_CKPT_PATH)/model_name/"imagenet"
 CSVlogger = CSVLogger(log_dir, name=model_name, version="imagenet")
 
 ckpt_callback = ModelCheckpoint(
-    save_top_k=1,                      #salvar o melhor checkpoint
-    save_last=True,                     #salvar o último checkpoint
+    monitor='val_loss',                # monitorar a val_loss
+    save_top_k=1,                      # Salva apenas o menor val_loss
+    save_last=True,                    # Salva o estado final para resume
     dirpath=ckpt_dir,
-    )
+    filename='best'                    
+    auto_insert_metric_name=False
+)
 
 early_stop_callback = EarlyStopping(
     monitor= 'val_loss',                 #métrica vigiada

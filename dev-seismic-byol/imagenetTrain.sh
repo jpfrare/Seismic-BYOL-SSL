@@ -7,14 +7,14 @@ SCRIPT_PATH="/petrobr/parceirosbr/home/joao.frare/workspace/spfm/Seismic-Byol/de
 WORKSPACE="/petrobr/parceirosbr/home/joao.frare/workspace"
 export SIF="/petrobr/parceirosbr/spfm/singularity/amd64/deeprock/ngc/MINERVA_v0_3_9-beta-SPINN_v0_0_1.sif"
 
-mkdir -p jobs_out/imagenetTraining
 
 repetition=(0 1 2)
-per_class="10"
+per_class="100"
 
 for r in "${repetition[@]}"; do
 
     FLAGS="--per_class ${per_class} --repetition ${r}"
+    mkdir -p jobs_out/imagenetTraining/repetition_${r}
 
     sbatch <<EOT
 #!/bin/bash
@@ -26,9 +26,9 @@ for r in "${repetition[@]}"; do
 #SBATCH --gpus-per-node=1       
 #SBATCH --partition=ict-h100
 #SBATCH --account=spfm
-#SBATCH --time=02:00:00
-#SBATCH --output=jobs_out/imagenetTraining/train_${per_class}_r${r}_%j.out
-#SBATCH --error=jobs_out/imagenetTraining/train_${per_class}_r${r}_%j.err
+#SBATCH --time=10:00:00
+#SBATCH --output=jobs_out/imagenetTraining/repetition_${r}/train_${per_class}_r${r}_%j.out
+#SBATCH --error=jobs_out/imagenetTraining/repetition_${r}/train_${per_class}_r${r}_%j.err
 
 cd "\$SLURM_SUBMIT_DIR"
 
