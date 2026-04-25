@@ -6,7 +6,7 @@ from pathlib import Path
 # -------------------- PyTorch --------------------
 import torch
 import torch.nn as nn
-from torch.optim.lr_scheduler import ReduceLROnPlateau
+from torch.optim.lr_scheduler import OneCycleLR
 
 # -------------------- Torchvision --------------------
 from torchvision.models import resnet50
@@ -19,7 +19,7 @@ from lightning.fabric import seed_everything
 
 # Logger e checkpoint
 from lightning.pytorch.loggers.csv_logs import CSVLogger
-from lightning.pytorch.callbacks import ModelCheckpoint, EarlyStopping
+from lightning.pytorch.callbacks import ModelCheckpoint, EarlyStopping, LearningRateMonitor
 
 # -------------------- Minerva --------------------
 from minerva.models.nets import SimpleSupervisedModel
@@ -49,6 +49,7 @@ parser.add_argument(
 )
 
 args = parser.parse_args()
+batch_size = 1024
 
 if args.teste:
     print("🚀 Running in FAST TEST mode")
@@ -67,8 +68,9 @@ else:
     devices = 1
     strategy = "auto"
     precision = "bf16-mixed"
-    log_every_n_steps = 30
     limit_val_batches = 1.0
+
+    log_every_n_steps = args.per_class*200//batch_size
 
 if args.per_class < 0 or args.per_class > 1200:
     raise KeyError("error, incorrect amount of samples")
@@ -79,7 +81,8 @@ seed_everything(args.repetition)
 DATASET_ROOT = "/petrobr/parceirosbr/spfm/datasets/ImageNet_2012/train"
 TRAIN_ENTRIES = "/petrobr/parceirosbr/spfm/datasets/ImageNet_2012/extras_v3/entries-TRAIN.npy"
 VAL_ROOT = "/petrobr/parceirosbr/spfm/datasets/ImageNet_2012/val"
-VAL_ENTRIES = "/petrobr/parceirosbr/spfm/datasets/ImageNet_2012/extras/entries-VAL.npy"
+GT_ROOT = "/petrobr/parceirosbr/home/joao.frare/workspace/spfm/sharedata/datasets/ImageNet_2012/extra_files/ILSVRC2012_devkit_t12/data/ILSVRC2012_validation_ground_truth.txt"
+MAT_ROOT = "/petrobr/parceirosbr/home/joao.frare/workspace/spfm/sharedata/datasets/ImageNet_2012/extra_files/ILSVRC2012_devkit_t12/data/meta.mat"
 PRETRAIN_LOGS_PATH = f"checkpoints/logs_vinicius/pretrain/{args.repetition}"
 PRETRAIN_CKPT_PATH = f"checkpoints/ckpt_vinicius/pretrain/{args.repetition}"
 #--------------------------------------NOME DO MODELO-------------------------------------------------
@@ -111,7 +114,7 @@ val_transform_pipeline = transforms.Compose([
         std=[0.229, 0.224, 0.225]
     )
 ])
-val_reader = ImagenetValReader(VAL_ROOT, VAL_ENTRIES)
+val_reader = ImagenetValReader(VAL_ROOT, GT_ROOT, MAT_ROOT)
 val_dataset = ImagenetDataset(
     ImagenetReader= val_reader,
     transform= val_transform_pipeline
@@ -120,7 +123,7 @@ val_dataset = ImagenetDataset(
 data_module = MinervaDataModule(
             train_dataset=train_subset,
             val_dataset= val_dataset,
-            batch_size=512,
+            batch_size=batch_size,
             drop_last=True,
             shuffle_train=True,
             name="imagenet",
@@ -131,7 +134,10 @@ data_module = MinervaDataModule(
 backbone = resnet50(weights=None)
 backbone.fc = nn.Identity()
 fc = nn.Linear(2048, 1000)
-loss_fn = nn.CrossEntropyLoss()
+loss_fn = nn.CrossEntropyLoss(label_smoothing= 0.1)
+
+steps_to_10_epochs = (10*args.per_class*1000)/batch_size
+ratio = steps_to_10_epochs/max_steps
 
 model = ImagenetModel(
     backbone=backbone,
@@ -139,16 +145,18 @@ model = ImagenetModel(
     loss_fn=loss_fn,
     optimizer=torch.optim.SGD,
     optimizer_kwargs={
-        "lr": 0.2,
+        "lr": 0.4,
         "momentum": 0.9,
         "weight_decay": 1e-4
     },
-    lr_scheduler=torch.optim.lr_scheduler.ReduceLROnPlateau,
+    lr_scheduler=torch.optim.lr_scheduler.OneCycleLR,
     lr_scheduler_kwargs={
-        "mode": "min",
-        "factor": 0.1,
-        "patience": 5,
-        "verbose": True
+        "max_lr": 0.4,
+        "total_steps": max_steps, 
+        "pct_start": ratio,               
+        "anneal_strategy": 'cos',       #forma como o learning rate vai osclinar -> em cosseno mesmo
+        "div_factor": 25.0,             # learning_rate inicial = max/div_factor
+        "final_div_factor": 1000.0      # learning_rate_final = max/final_div_factor
     }
 )
 #-----------------------------------DIRETORIOS, LOGGERS E CALLBACKS----------------------------------------
@@ -161,19 +169,21 @@ ckpt_callback = ModelCheckpoint(
     save_top_k=1,                      # Salva apenas o menor val_loss
     save_last=True,                    # Salva o estado final para resume
     dirpath=ckpt_dir,
-    filename='best'                    
+    filename='best',                    
     auto_insert_metric_name=False
 )
 
 early_stop_callback = EarlyStopping(
     monitor= 'val_loss',                 #métrica vigiada
-    min_delta = 0.001,                   #minima variação aceitável
-    patience= 15,                        #quantas variações menores que min_delta consecutivas ele tolera antes de parar o treino
+    min_delta = 0.0001,                   #minima variação aceitável
+    patience= 50,                        #quantas variações menores que min_delta consecutivas ele tolera antes de parar o treino
     verbose= True,
     mode= 'min'                         #mode min = minimização de perda
 )
 
-callbacks = [ckpt_callback]
+lr_monitor = LearningRateMonitor(logging_interval= 'step', log_momentum= True)
+
+callbacks = [ckpt_callback, lr_monitor]
 if not args.teste:
     callbacks.append(early_stop_callback)
 
@@ -202,5 +212,10 @@ pipeline = SimpleLightningPipeline(
     save_run_status=True,
 )
 
-pipeline.run(data_module, task="fit")
+last_ckpt = ckpt_dir/"last.ckpt"
+
+if last_ckpt.exists():
+    pipeline.run(data_module, task="fit", ckpt_path= last_ckpt)
+else:
+    pipeline.run(data_module, task="fit")
 

@@ -3,6 +3,7 @@ import numpy as np
 import os
 from pathlib import Path
 from PIL import Image
+from scipy.io import loadmat
 
 #por alguma razão mistica, tanto o dataset de validação como de treino sao arrays estruturados do numpy
 #pra cada linha do array do treino:
@@ -36,28 +37,35 @@ class ImagenetReader:
         img = Image.open(img_path).convert("RGB")
         return img, label
 
-#a diferença da estrutura da validação é um tanto diferente, funciona como se fosse um dicionário
-# Validação: acesso por nomes de colunas (dtype names)
-# linha['class_index'] -> Label oficial (0-999) - USAR ESTE PARA O LOSS
-# linha['actual_index'] -> ID sequencial da imagem (1-50000)
-class ImagenetValReader:
-    def __init__(self, root, entries_path):
+class ImagenetValReader():
+    def __init__(self, root, gt_path, meta_path):
         self.root = Path(root)
-        self.data = np.load(entries_path, allow_pickle=True)
-        # 'actual_index' é o que o seu dtype confirmou que existe
-        self.targets = [int(row['class_index']) for row in self.data]
+        
+        # 1. Mapeamento ID TXT -> WNID -> Índice Alfabético (Treino)
+        meta = loadmat(meta_path)['synsets']
+        id_to_wnid = {int(m[0][0][0][0]): str(m[0][1][0]) for m in meta[:1000]}
+        
+        all_wnids = sorted([str(m[0][1][0]) for m in meta[:1000]])
+        wnid_to_idx = {wnid: i for i, wnid in enumerate(all_wnids)}
+        
+        self.id_to_label = {comp_id: wnid_to_idx[wnid] for comp_id, wnid in id_to_wnid.items()}
+        
+        # 2. Carrega labels do ground_truth.txt
+        with open(gt_path, 'r') as f:
+            raw_ids = [int(line.strip()) for line in f.readlines()]
+            
+        self.targets = [self.id_to_label[id_bruto] for id_bruto in raw_ids]
 
     def __len__(self):
-        return len(self.data)
+        return len(self.targets)
 
     def __getitem__(self, idx):
-        # Como não existe a coluna 'file_name', montamos o nome padrão:
-        # ILSVRC2012_val_00000001.JPEG, etc.
+        # Localiza a imagem (ILSVRC2012_val_00000001.JPEG)
         img_name = f"ILSVRC2012_val_{idx+1:08d}.JPEG"
         img_path = self.root / img_name
         
-        # Pega a label pela coluna confirmada
-        label = int(self.data[idx]['class_index'])
-        
+        # Retorna a imagem bruta (PIL) e a label traduzida
         img = Image.open(img_path).convert("RGB")
+        label = self.targets[idx]
+        
         return img, label

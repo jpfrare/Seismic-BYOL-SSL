@@ -9,26 +9,27 @@ export SIF="/petrobr/parceirosbr/spfm/singularity/amd64/deeprock/ngc/MINERVA_v0_
 
 
 repetition=(0 1 2)
-per_class="100"
+per_class=(1200)
 
 for r in "${repetition[@]}"; do
+    for p in "${per_class[@]}"; do
 
-    FLAGS="--per_class ${per_class} --repetition ${r}"
+    FLAGS="--per_class ${p} --repetition ${r}"
     mkdir -p jobs_out/imagenetTraining/repetition_${r}
 
     sbatch <<EOT
 #!/bin/bash
 
-#SBATCH --job-name=imgnet_${per_class}_r${r}
+#SBATCH --job-name=imgnet_${p}_r${r}
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=24
 #SBATCH --gpus-per-node=1       
 #SBATCH --partition=ict-h100
 #SBATCH --account=spfm
-#SBATCH --time=10:00:00
-#SBATCH --output=jobs_out/imagenetTraining/repetition_${r}/train_${per_class}_r${r}_%j.out
-#SBATCH --error=jobs_out/imagenetTraining/repetition_${r}/train_${per_class}_r${r}_%j.err
+#SBATCH --time=24:00:00
+#SBATCH --output=jobs_out/imagenetTraining/repetition_${r}/train_${p}_r${r}_%j.out
+#SBATCH --error=jobs_out/imagenetTraining/repetition_${r}/train_${p}_r${r}_%j.err
 
 cd "\$SLURM_SUBMIT_DIR"
 
@@ -51,4 +52,5 @@ singularity exec --nv \
         python3 $SCRIPT_PATH $FLAGS
     "
 EOT
+done
 done

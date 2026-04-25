@@ -13,7 +13,7 @@ mkdir -p jobs_out/testeimagenet
 #SBATCH --gpus-per-node=1       
 #SBATCH --partition=ict-h100
 #SBATCH --account=spfm
-#SBATCH --time=24:00:00
+#SBATCH --time=00:02:00
 #SBATCH --output=jobs_out/testeimagenet/teste_%j.out
 #SBATCH --error=jobs_out/testeimagenet/teste_%j.err
 
