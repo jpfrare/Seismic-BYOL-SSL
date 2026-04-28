@@ -7,6 +7,7 @@ from pathlib import Path
 import torch
 import torch.nn as nn
 from torch.optim.lr_scheduler import OneCycleLR
+import torchmetrics
 
 # -------------------- Torchvision --------------------
 from torchvision.models import resnet50
@@ -64,7 +65,8 @@ if args.teste:
     log_every_n_steps = 5       # Loga rápido para você ver no terminal
     limit_val_batches = 10      # Não precisa validar as 50k imagens no teste!
 else:
-    max_steps = 217717
+    num_epochs= 100
+    max_steps = 1000*args.per_class*num_epochs//batch_size
     devices = 1
     strategy = "auto"
     precision = "bf16-mixed"
@@ -153,11 +155,14 @@ model = ImagenetModel(
     lr_scheduler_kwargs={
         "max_lr": 0.4,
         "total_steps": max_steps, 
-        "pct_start": ratio,               
+        "pct_start": 0.1,               
         "anneal_strategy": 'cos',       #forma como o learning rate vai osclinar -> em cosseno mesmo
         "div_factor": 25.0,             # learning_rate inicial = max/div_factor
         "final_div_factor": 1000.0      # learning_rate_final = max/final_div_factor
-    }
+    },
+    train_metrics= {'acc': torchmetrics.Accuracy(task="multiclass", num_classes=1000)},
+    val_metrics= {'acc1': torchmetrics.Accuracy(task="multiclass", num_classes=1000),
+                "acc5": torchmetrics.Accuracy(task="multiclass", num_classes=1000, top_k=5)}
 )
 #-----------------------------------DIRETORIOS, LOGGERS E CALLBACKS----------------------------------------
 log_dir = Path(PRETRAIN_LOGS_PATH)/model_name/"imagenet"
@@ -173,19 +178,19 @@ ckpt_callback = ModelCheckpoint(
     auto_insert_metric_name=False
 )
 
-early_stop_callback = EarlyStopping(
-    monitor= 'val_loss',                 #métrica vigiada
-    min_delta = 0.0001,                   #minima variação aceitável
-    patience= 50,                        #quantas variações menores que min_delta consecutivas ele tolera antes de parar o treino
-    verbose= True,
-    mode= 'min'                         #mode min = minimização de perda
-)
+#early_stop_callback = EarlyStopping(
+#    monitor= 'val_loss',                 #métrica vigiada
+#    min_delta = 0.0001,                   #minima variação aceitável
+#    patience= 50,                        #quantas variações menores que min_delta consecutivas ele tolera antes de parar o treino
+#    verbose= True,
+#    mode= 'min'                         #mode min = minimização de perda
+#)
 
 lr_monitor = LearningRateMonitor(logging_interval= 'step', log_momentum= True)
 
 callbacks = [ckpt_callback, lr_monitor]
-if not args.teste:
-    callbacks.append(early_stop_callback)
+#if not args.teste:
+#    callbacks.append(early_stop_callback)
 
 #-------------------------------------TRAINER E PIPELINE--------------------------------------
 

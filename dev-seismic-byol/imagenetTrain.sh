@@ -9,7 +9,7 @@ export SIF="/petrobr/parceirosbr/spfm/singularity/amd64/deeprock/ngc/MINERVA_v0_
 
 
 repetition=(0 1 2)
-per_class=(1200)
+per_class=(1300)
 
 for r in "${repetition[@]}"; do
     for p in "${per_class[@]}"; do
