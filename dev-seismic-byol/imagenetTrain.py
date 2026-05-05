@@ -74,8 +74,10 @@ else:
 
     log_every_n_steps = args.per_class*200//batch_size
 
-if args.per_class < 0 or args.per_class > 1200:
+if args.per_class < 0:
     raise KeyError("error, incorrect amount of samples")
+elif args.per_class > 1200:
+    print("using full imagenet dataset!")
 
 seed_everything(args.repetition)
 

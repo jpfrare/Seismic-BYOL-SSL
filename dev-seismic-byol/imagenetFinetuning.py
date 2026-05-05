@@ -1,29 +1,62 @@
+# -------------------- Python base --------------------
+import os
 import argparse
 from pathlib import Path
-#--------------------------------------
-from functions import *
+from typing import Optional, Union, Literal
 
 # -------------------- PyTorch --------------------
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+from torch.optim.lr_scheduler import OneCycleLR
+import torchmetrics
 from torchmetrics import Accuracy, JaccardIndex, F1Score
+
+# -------------------- Torchvision --------------------
+import torchvision.models
+from torchvision.models import resnet50
+from torchvision.models.segmentation import deeplabv3_resnet50
+
 # -------------------- Lightning --------------------
 import lightning as L
 from lightning import Trainer
 from lightning.fabric import seed_everything
+from lightning.pytorch.loggers.csv_logs import CSVLogger
+from lightning.pytorch.callbacks import ModelCheckpoint, EarlyStopping, LearningRateMonitor
 
-parser = argparser.ArgumentParser(
+# -------------------- Minerva --------------------
+from minerva.models.nets import SimpleSupervisedModel
+from minerva.models.nets.image.deeplabv3 import DeepLabV3Backbone, DeepLabV3
+from minerva.models.loaders import FromPretrained
+from minerva.pipelines.lightning_pipeline import SimpleLightningPipeline
+
+# Data & Transforms (Padding incluído aqui)
+from minerva.data.readers import TiffReader, PNGReader
+from minerva.data.datasets import SimpleDataset
+from minerva.transforms.transform import TransformPipeline, Transpose, Padding
+from minerva.transforms.random_transform import RandomCrop
+
+#--------------------- Locais & Custom -----------------------
+from functions import *  
+
+from imagenet.ImagenetDataset import ImagenetDataset, StratifiedSubset
+from imagenet.ImagenetReader import ImagenetReader, ImagenetValReader
+from imagenet.ImagenetModel import ImagenetModel
+
+parser = argparse.ArgumentParser(
     description= "Finetuning on Imagenet"
 )
 
 parser.add_argument(
-    "per_class", type= int, description= "per_class_model used in pretrain"
+    "--per_class", type= int, help= "per_clas model used in pretrain"
 )
 
 parser.add_argument(
-    "repetition", type= int, description= "repetition used"
+    "--repetition", type= int, help= "repetition used"
 )
 
 parser.add_argument(
-    "finetune_dataset", type= str, description= "dataset used in finetuning (seam_ai_N or f3_N)"
+    "--finetune_dataset", type= str, help= "dataset used in finetuning (seam_ai_N or f3_N)"
 )
 
 args = parser.parse_args()
@@ -40,7 +73,17 @@ log_path = f"{root}/checkpoints/logs_vinicius/train_patch/{args.repetition}/{mod
 
 #----------------------------------MODELO - Transfer Learning---------------------------
 num_classes = 6
-deeplab_backbone = DeepLabV3Backbone(num_classes=num_classes, pretrained= True, weigths_path= f"{pretrain_ckpt_path}/best.ckpt")
+deeplab_backbone = DeepLabV3Backbone(num_classes=num_classes)
+
+#importing_pretrained_model
+resnet50_backbone = resnet50(replace_stride_with_dilation=[False, True, True], weights= None)
+resnet50_backbone.fc = nn.Identity()
+fc = nn.Linear(2048, 1000)
+pretrained_model = ImagenetModel(backbone= resnet50_backbone, fc= fc)
+
+weighted_backbone = FromPretrained(model= pretrained_model, ckpt_path= f'{pretrain_ckpt_path}/best.ckpt', strict= False, error_on_missing_keys= False).backbone
+weighted_state_dict= get_state_dict(weighted_backbone)
+deeplab_backbone.load_state_dict(weighted_state_dict, strict= False)
 
 model = DeepLabV3(
     backbone=deeplab_backbone,
@@ -52,7 +95,7 @@ model = DeepLabV3(
 #----------------------------Dados - Modelagem----------------------------------------
 dataset_path = mapping[args.finetune_dataset]
 
-if agrs.finetune_dataset == 'seam_ai_N':
+if args.finetune_dataset == 'seam_ai_N':
     print("Using padding of (256,704)")
     padding = Padding(256, 704)
 elif args.finetune_dataset == 'f3_N':
@@ -64,10 +107,9 @@ transform_pipeline = TransformPipeline([
     Transpose([2,0,1])
 ])
 
-logger.info("Using 100% of train data")
-train_dataset = SeismicFullDataset(root=data_path, partition='train', transform=transform_pipeline)
+train_dataset = SeismicFullDataset(root=dataset_path, partition='train', transform=transform_pipeline)
 data_module = SeismicDataModule(
-    root = mapping[args.finetune_dataset],
+    root = dataset_path,
     batch_size=8,
     cap=1.0,
     drop_last=True,
@@ -78,10 +120,9 @@ data_module = SeismicDataModule(
     test_dataset = None,
     )
 
-csv_logger = CSVLogger(log_dir, name=save_name, version=finetune_data)
+csv_logger = CSVLogger(log_path, name=model_name, version= args.finetune_dataset)
 #------------------------TRAINER----------------------------------------------------------
 trainer = Trainer(
-    model= model,
     logger= csv_logger,
     max_epochs= 50,
     limit_val_batches = 1.0,
@@ -93,7 +134,7 @@ trainer = Trainer(
 pipeline = SimpleLightningPipeline(
     model=model,
     trainer=trainer,
-    log_dir=log_dir,
+    log_dir=log_path,
     save_run_status=True,
 )
 
@@ -114,9 +155,9 @@ metrics = {
 pipeline = SimpleLightningPipeline(
     model=model,
     trainer=trainer,
-    log_dir=log_dir,
+    log_dir=log_path,
     save_run_status=True,
-    seed=repetition,
+    seed=args.repetition,
     apply_metrics_per_sample=False,
     classification_metrics=metrics,
 )
