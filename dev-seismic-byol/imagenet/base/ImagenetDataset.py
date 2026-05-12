@@ -34,7 +34,7 @@ class StratifiedSubset(Subset):
             else:
                 class_to_indices[labels[idx]] = [idx]
 
-        classes = list(class_to_indices.keys())
+        classes = sorted(list(class_to_indices.keys()))
         n_classes = len(classes)
 
         selected = []
@@ -42,8 +42,9 @@ class StratifiedSubset(Subset):
         # amostra balanceada
         for c in classes:
             idxs = class_to_indices[c]
+            rng.shuffle(idxs)
             k = min(per_class, len(idxs))
-            selected.extend(rng.sample(idxs, k))
+            selected.extend(idxs[:k])
 
         # embaralha ordem final
         rng.shuffle(selected)
