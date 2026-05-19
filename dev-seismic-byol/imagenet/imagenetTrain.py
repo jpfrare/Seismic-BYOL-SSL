@@ -29,24 +29,14 @@ from lightning.pytorch.callbacks import ModelCheckpoint, LearningRateMonitor
 from minerva.pipelines.lightning_pipeline import SimpleLightningPipeline
 from minerva.data.data_modules import MinervaDataModule
 
-# Certifique-se de que os nomes dos arquivos e classes batem com seu sistema de arquivos
+#--------------------Base-------------------------------------------------------
 from base.ImagenetDataset import ImagenetDataset, StratifiedSubset
 from base.ImagenetReader import ImagenetReader, ImagenetValReader
 from base.ImagenetModel import ImagenetModel
+from
 
 #---------------------------------ARGUMENTOS DO TREINO------------------------
-parser = argparse.ArgumentParser(
-    description= "Initializing Supervised PreTrain..."
-)
-parser.add_argument(
-    "--per_class", type= int, default= 1000, help= "how many images per class are we going to use?"
-)
-parser.add_argument(
-    "--repetition", type= int, default= 9, help= "repetition"
-)
-parser.add_argument(
-    "--num_classes", type= int, default= 1000, help= "how many classes are we going to use?"
-)
+
 #------------------------------------------------------------------------------
 args = parser.parse_args()
 batch_size = 1024

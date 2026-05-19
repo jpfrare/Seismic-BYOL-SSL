@@ -17,6 +17,7 @@ class ImagenetReader:
         self.root = Path(root)
         # Carrega o array estruturado 
         self.data = np.load(entries_path, allow_pickle=True)
+        print(f' tamanho das entries do treino: {len(self.data)}')
         
         # Mapeia as labels (coluna index 1) para o StratifiedSubset
         # Fazemos isso no init para o subset não precisar iterar depois
@@ -40,7 +41,7 @@ class ImagenetReader:
         return img, label
     
     def to_coarse_classes(self, top_down: bool, level: int, mat_path: str):
-        unique_winds = list(set(row[2] for row in self.data))
+        unique_winds = sorted(list(set(row[2] for row in self.data)))
 
         self.wind_to_coarse, num_classes = reduce_taxonomic_diversity(unique_winds, top_down, level, mat_path)
         self.targets = [self.wind_to_coarse[row[2]] for row in self.data]
