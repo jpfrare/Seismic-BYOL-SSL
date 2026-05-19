@@ -22,8 +22,8 @@ class ImagenetDataset(SimpleDataset):
         return sample
 
 class StratifiedSubset(Subset):
-    def __init__(self, dataset, per_class, seed=42):
-        labels = dataset.readers[0].targets  # assume seu reader
+    def __init__(self, dataset, per_class, seed=42, num_classes):
+        labels = dataset.readers[0].targets  
 
         rng = random.Random(seed)
 
@@ -35,13 +35,18 @@ class StratifiedSubset(Subset):
                 class_to_indices[labels[idx]] = [idx]
 
         classes = sorted(list(class_to_indices.keys()))
-        n_classes = len(classes)
-
+        rng.shuffle(classes)
+        
+        if num_classes == 1000:
+            selected_classes = classes
+        else:
+            selected_classes = classes[:num_classes]
+        
         selected = []
 
         # amostra balanceada
-        for c in classes:
-            idxs = class_to_indices[c]
+        for c in selected_classes:
+            idxs = list(class_to_indices[c])
             rng.shuffle(idxs)
             k = min(per_class, len(idxs))
             selected.extend(idxs[:k])

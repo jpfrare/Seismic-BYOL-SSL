@@ -2,26 +2,34 @@ import argparse
 import os
 from pathlib import Path
 
+# -------------------- Torch & TorchVision --------------------
+import torch
+import torch.nn as nn
 import torch.nn.functional as F
 import torchmetrics
 
-# -------------------- Timm (Otimização e Augmentation) --------------------
+# -------------------- Lightning Strategies --------------------
+from lightning.pytorch.strategies import DDPStrategy
+
+# -------------------- Timm (Modelos, Otimização e Augmentation) --------------------
 import timm
 import timm.optim
 import timm.scheduler
-from timm.data import create_transform
+from timm.data import Mixup, create_transform
+from timm.loss import BinaryCrossEntropy
 
 # -------------------- Lightning --------------------
 import lightning as L
 from lightning import Trainer
-from lightning.fabric import seed_everything
+from lightning.pytorch import seed_everything
 from lightning.pytorch.loggers.csv_logs import CSVLogger
 from lightning.pytorch.callbacks import ModelCheckpoint, LearningRateMonitor
 
-# -------------------- Minerva & Custom Modules --------------------
+# -------------------- Minerva & Custom Modules (Seus Módulos) --------------------
 from minerva.pipelines.lightning_pipeline import SimpleLightningPipeline
 from minerva.data.data_modules import MinervaDataModule
 
+# Certifique-se de que os nomes dos arquivos e classes batem com seu sistema de arquivos
 from base.ImagenetDataset import ImagenetDataset, StratifiedSubset
 from base.ImagenetReader import ImagenetReader, ImagenetValReader
 from base.ImagenetModel import ImagenetModel
@@ -43,11 +51,10 @@ parser.add_argument(
 args = parser.parse_args()
 batch_size = 1024
 train_imagenet_size = 1281167
-
 max_steps = train_imagenet_size*150//batch_size + 30          #número de passos para se treinar uma imagenet completa por 200 épocas
-devices = 2
-strategy = "ddp"
-precision = "bf16-mixed"
+devices = [0,1]
+strategy= DDPStrategy(find_unused_parameters=True)
+precision= "16-mixed" if torch.cuda.is_available() else "32"
 limit_val_batches = 1.0
 log_every_n_steps = 100
 
@@ -114,7 +121,24 @@ data_module = MinervaDataModule(
         )
 
 #------------------------------------MODELO-----------------------------------------------------------
-backbone = timm.create_model('resnet_50', num_classes= 0)
+backbone = timm.create_model('resnet50', num_classes= 0, pretrained= False)
+fc = nn.Linear(2048, args.num_classes)
+batch_level_transforms = Mixup(
+    mixup_alpha= 0.1,
+    cutmix_alpha= 1.0,
+    prob= 1.0,
+    mode= 'batch',
+    switch_prob= 0.5,
+    num_classes= args.num_classes
+)
+train_loss_fn = BinaryCrossEntropy(smoothing= 0.1)
+val_loss_fn = train_loss_fn
+
+train_metrics = {}
+val_metrics = {
+    'val_acc1': torchmetrics.Accuracy(task= 'multiclass', num_classes= args.num_classes, top_k= 1),
+    'val_acc5': torchmetrics.Accuracy(task= 'multiclass', num_classes= args.num_classes, top_k= 5)}
+
 model = ImagenetModel(
     num_classes= args.num_classes,
     optimizer=timm.optim.Lamb,
@@ -129,7 +153,16 @@ model = ImagenetModel(
         "warmup_lr_init": 2e-6,       
         "lr_min": 1e-6,             
         "t_in_epochs": False     
-    }
+    },
+
+    batch_level_transforms= batch_level_transforms,
+    train_loss_fn = train_loss_fn,
+    train_metrics= train_metrics,
+    val_loss_fn= val_loss_fn,
+    val_metrics= val_metrics,
+    backbone= backbone,
+    fc= fc,
+    num_gpus= devices
 )
 #-----------------------------------DIRETORIOS, LOGGERS E CALLBACKS----------------------------------------
 log_dir = Path(PRETRAIN_LOGS_PATH)/model_name/"imagenet"

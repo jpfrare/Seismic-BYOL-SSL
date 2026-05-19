@@ -15,16 +15,16 @@ class ImagenetModel(L.LightningModule):
     optimizer_kwargs: dict, 
     lr_scheduler, 
     lr_scheduler_kwargs: dict,
-    batch_level_transforms= None,
     train_loss_fn,
     train_metrics: dict,
     val_loss_fn,
     val_metrics: dict,
     backbone,
     num_gpus,
-    fc):
+    fc,
+    batch_level_transforms= None):
         super().__init__()
-        self.save_hyperparameters(ignore=['backbone', 'fc', 'train_metrics', 'val_metrics'])
+        self.save_hyperparameters(ignore=['backbone', 'fc', 'train_metrics', 'val_metrics', 'train_loss_fn', 'val_loss_fn', 'batch_level_transforms'])
         self.num_classes = num_classes
 
         self.optimizer = optimizer
@@ -43,8 +43,14 @@ class ImagenetModel(L.LightningModule):
         self.backbone = backbone
         self.fc = fc
 
-        self.sync_dist = num_gpus > 1
-    
+        if isinstance(num_gpus, list) and len(num_gpus) > 1:
+            self.sync_dist = True
+        elif isinstance(num_gpus, int) and num_gpus > 1:
+            self.sync_dist = True
+        else:
+            self.sync_dist = False
+
+
     def forward(self, x):
         return self.fc(self.backbone(x))
     
