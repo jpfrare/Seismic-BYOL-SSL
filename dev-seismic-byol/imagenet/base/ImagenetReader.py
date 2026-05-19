@@ -39,19 +39,19 @@ class ImagenetReader:
         img = Image.open(img_path).convert("RGB")
         return img, label
     
-    def to_coarse_classes(self, top_down: bool, level: int):
+    def to_coarse_classes(self, top_down: bool, level: int, mat_path: str):
         unique_winds = list(set(row[2] for row in self.data))
 
-        self.wind_to_coarse, num_classes = reduce_taxonomic_diversity(unique_winds, top_down, level)
+        self.wind_to_coarse, num_classes = reduce_taxonomic_diversity(unique_winds, top_down, level, mat_path)
         self.targets = [self.wind_to_coarse[row[2]] for row in self.data]
     
         return num_classes
 
 class ImagenetValReader():
-    def __init__(self, root, gt_path, meta_path):
+    def __init__(self, root, gt_path, mat_path):
         self.root = Path(root)
         
-        meta = loadmat(meta_path)['synsets']
+        meta = loadmat(mat_path)['synsets']
         id_to_wnid = {int(m[0][0][0][0]): str(m[0][1][0]) for m in meta[:1000]} #ids arbitrários (1 a 1000) para o wnid respectivo
         
         self.all_wnids = sorted([str(m[0][1][0]) for m in meta[:1000]]) #ordena os winds
@@ -79,8 +79,8 @@ class ImagenetValReader():
         
         return img, label
     
-    def to_coarse_classes(self, top_down: bool, level: int):
-        wnid_to_coarse, num_classes = reduce_taxonomic_diversity(self.all_wnids, top_down, level)
+    def to_coarse_classes(self, top_down: bool, level: int, mat_path: str):
+        wnid_to_coarse, num_classes = reduce_taxonomic_diversity(self.all_wnids, top_down, level, mat_path)
         
         old_label_to_new_label = {self.wnid_to_label[wnid] : wnid_to_coarse[wnid] for wnid in self.all_wnids}
         self.targets = [old_label_to_new_label[label] for label in self.targets]

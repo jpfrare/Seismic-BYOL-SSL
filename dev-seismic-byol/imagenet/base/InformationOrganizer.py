@@ -21,7 +21,8 @@ class Organizer():
         raise NotImplementedError
 
 class TrainOrganizer(Organizer):
-
+    #no caso de redução taxonomica, o número de classes está completamente errado, é necessário a instanciação dos readers
+    #para que o número real de classes apareça
     def __init__(self, data_root: str):
         super().__init__('Train', data_root)
         self._parse_args()

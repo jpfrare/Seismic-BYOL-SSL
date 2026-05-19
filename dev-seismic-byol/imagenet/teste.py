@@ -1,73 +1,108 @@
 import sys
 from pathlib import Path
-import numpy as np
 
-# Garante que o Python localize seus arquivos locais no diretório atual
-sys.path.append(str(Path(__file__).parent))
 
-from base.ImagenetReader import ImagenetReader, ImagenetValReader
 
-# Caminhos absolutos reais fornecidos do cluster
-DATASET_ROOT = "/petrobr/parceirosbr/spfm/datasets/ImageNet_2012/train"
-TRAIN_ENTRIES = "/petrobr/parceirosbr/spfm/datasets/ImageNet_2012/extras_v3/entries-TRAIN.npy"
-VAL_ROOT = "/petrobr/parceirosbr/spfm/datasets/ImageNet_2012/val"
-GT_ROOT = "/petrobr/parceirosbr/home/joao.frare/workspace/spfm/sharedata/datasets/ImageNet_2012/extra_files/ILSVRC2012_devkit_t12/data/ILSVRC2012_validation_ground_truth.txt"
-MAT_ROOT = "/petrobr/parceirosbr/home/joao.frare/workspace/spfm/sharedata/datasets/ImageNet_2012/extra_files/ILSVRC2012_devkit_t12/data/meta.mat"
-
-def test_real_pipeline():
-    print("🚀 Iniciando verificação com dados reais do ImageNet no Santos Dumont...")
-    
-    # 1. Testando Carregamento do Treino (1.2 Milhão de imagens)
-    print("\n📂 Instanciando ImagenetReader (Treino)...")
-    try:
-        train_reader = ImagenetReader(root=DATASET_ROOT, entries_path=TRAIN_ENTRIES)
-        print(f"  [OK] Dataset carregado. Total de instâncias: {len(train_reader)}")
-        img, label = train_reader[0]
-        print(f"  [OK] Leitura física bem-sucedida! Resolução: {img.size} | Label Original: {label}")
-    except Exception as e:
-        print(f"  ❌ FALHA ao ler dados de treino: {e}")
-        return
-
-    # 2. Testando Carregamento da Validação (50k imagens)
-    print("\n📂 Instanciando ImagenetValReader (Validação)...")
-    try:
-        val_reader = ImagenetValReader(root=VAL_ROOT, gt_path=GT_ROOT, meta_path=MAT_ROOT)
-        print(f"  [OK] Dataset carregado. Total de instâncias: {len(val_reader)}")
-        img_val, label_val = val_reader[0]
-        print(f"  [OK] Leitura física bem-sucedida! Resolução: {img_val.size} | Label Inicial: {label_val}")
-    except Exception as e:
-        print(f"  ❌ FALHA ao ler dados de validação: {e}")
-        return
-
-    # 3. Testando a Compressão Taxonômica em Larga Escala
-    print("\n🧬 Aplicando colapso de granularidade (Bottom-Up, Level=3)...")
-    print("⏳ Consultando WordNet via NLTK (Aguarde alguns segundos)...")
-    
-    try:
-        num_classes_train = train_reader.to_coarse_classes(top_down=False, level=5)
-        print(f"  [OK] Treino reduzido para {num_classes_train} superclasses.")
-        
-        num_classes_val = val_reader.to_coarse_classes(top_down=False, level=5)
-        print(f"  [OK] Validação reduzida para {num_classes_val} superclasses.")
-        
-        # O teste mais importante do seu pipeline científico:
-        print("\n⚖️  Validando alinhamento de partições...")
-        assert num_classes_train == num_classes_val, (
-            f"Divergência detectada! Treino gerou {num_classes_train} classes e Validação gerou {num_classes_val}."
-        )
-        print(f"  [OK] Excelente! Ambas as partições alinharam perfeitamente em {num_classes_train} classes.")
-        
-        # Testando __getitem__ pós-mudança taxonômica
-        _, label_coarse_train = train_reader[0]
-        _, label_coarse_val = val_reader[0]
-        print(f"  [OK] Chaveamento dinâmico funcionando! Novas Coarse Labels -> Treino: {label_coarse_train} | Val: {label_coarse_val}")
-        
-        print("\n🎯 [SUCESSO TOTAL] O pipeline real está consistente, rápido e pronto para o cluster!")
-        
-    except AssertionError as ae:
-        print(f"\n🚨 ERRO CRÍTICO DE ALINHAMENTO: {ae}")
-    except Exception as e:
-        print(f"\n❌ ERRO NA OPERAÇÃO TAXONÔMICA: {e}")
+# Importa as suas funções e os seus Readers reais do seu projeto
+# Ajuste o caminho do import caso a estrutura de pastas seja diferente
+from base.utils import reduce_taxonomic_diversity
+from base.ImagenetReader import ImagenetReader, ImagenetValReader  # substitua pelo nome do seu arquivo de readers
 
 if __name__ == "__main__":
-    test_real_pipeline()
+    # --- CONFIGURAÇÃO DOS CAMINHOS REAIS DO CLUSTER ---
+    
+    meta_mat = "/petrobr/parceirosbr/home/joao.frare/workspace/spfm/sharedata/datasets/ImageNet_2012/extra_files/ILSVRC2012_devkit_t12/data/meta.mat"
+    gt_txt = "/petrobr/parceirosbr/home/joao.frare/workspace/spfm/sharedata/datasets/ImageNet_2012/extra_files/ILSVRC2012_devkit_t12/data/ILSVRC2012_validation_ground_truth.txt"
+    
+    # Caminhos das pastas de imagens (coloque o caminho correto do seu ambiente)
+    train_img_root = "/petrobr/parceirosbr/spfm/datasets/ImageNet_2012/train"
+    val_img_root = "/petrobr/parceirosbr/spfm/datasets/ImageNet_2012/val"
+    
+    # O arquivo de entradas estruturadas do treino (.npy)
+    train_entries_npy = "/petrobr/parceirosbr/spfm/datasets/ImageNet_2012/extras_v3/entries-TRAIN.npy"
+
+    print("=" * 70)
+    print("   INICIANDO INSTANCIAÇÃO DOS READERS VIA IMPORT")
+    print("=" * 70)
+
+    # 1. Instanciação dos objetos originais do seu código
+    try:
+        print("⏳ Carregando ImagenetValReader...")
+        val_reader = ImagenetValReader(root=val_img_root, gt_path=gt_txt, meta_path=meta_mat)
+        
+        print("⏳ Carregando ImagenetReader...")
+        train_reader = ImagenetReader(root=train_img_root, entries_path=train_entries_npy)
+    except Exception as e:
+        print(f"❌ Erro ao instanciar os Readers originais.\nDetalhe: {e}")
+        sys.exit(1)
+
+    # 2. Configuração do fatiamento taxonômico para o teste
+    # Sinta-se livre para mudar aqui e testar o comportamento de diferentes níveis!
+    TOP_DOWN = False
+    LEVEL = 2
+
+    print(f"\n⚡ Disparando .to_coarse_classes(top_down={TOP_DOWN}, level={LEVEL}) nos Readers...")
+    
+    # Executa os métodos internos que modificam o self.targets de cada classe
+    try:
+        num_classes_train = train_reader.to_coarse_classes(top_down=TOP_DOWN, level=LEVEL, mat_path= meta_mat)
+        num_classes_val = val_reader.to_coarse_classes(top_down=TOP_DOWN, level=LEVEL, mat_path= meta_mat)
+    except TypeError as te:
+        print(f"❌ Erro de assinatura: verifique se a função reduce_taxonomic_diversity")
+        print(f"recebe o 'mat_path' ou se ele está fixo no escopo. Detalhe: {te}")
+        sys.exit(1)
+
+    print("\n" + "-" * 60)
+    print("📊 MÓDULO DE VERIFICAÇÃO DE ALINHAMENTO INTERNO:")
+    print("-" * 60)
+    print(f"Classes finais computadas no Treino:     {num_classes_train}")
+    print(f"Classes finais computadas na Validação:  {num_classes_val}")
+
+    # ---------------------------------------------------------------------
+    # CRITÉRIO DE VALIDAÇÃO 1: Consistência na quantidade de saídas do modelo
+    # ---------------------------------------------------------------------
+    if num_classes_train != num_classes_val:
+        print("\n❌ ERRO DE DESALINHAMENTO CRÍTICO: Treino e Validação geraram shapes de saída diferentes!")
+        print("Causa provável: Seus dicionários de mapeamento interno ('wind_to_coarse')")
+        print("geraram IDs numéricos diferentes porque a ordenação de WNIDs divergiu.")
+    else:
+        print("\n✅ Sucesso: Ambas as estruturas concordam no número de neurônios de saída.")
+
+    # ---------------------------------------------------------------------
+    # CRITÉRIO DE VALIDAÇÃO 2: Teste Cruzado de Labels de Validação vs Treino
+    # ---------------------------------------------------------------------
+    print("\n🔍 Analisando chaves para garantir que a mesma pasta (WNID) possui a mesma label...")
+    
+    # Pegamos o mapa gerado dentro do objeto do treino
+    train_map = train_reader.wind_to_coarse
+    
+    # Na sua classe ImagenetValReader, você não salva o 'wnid_to_coarse' como atributo do self,
+    # mas conseguimos extrair o comportamento reconstruindo o mapeamento a partir do dicionário original do Reader:
+    val_all_wnids = val_reader.all_wnids
+    
+    # Reconstrói temporariamente o mapeamento final que a validação aplicou
+    # (Usando a mesma lógica da linha: old_label_to_new_label = {...} do seu ValReader)
+    # Primeiro precisamos gerar o dicionário wnid -> coarse_label rodando a redução isolada para conferir
+    wnid_to_coarse_val_check, _ = reduce_taxonomic_diversity(val_all_wnids, TOP_DOWN, LEVEL)
+
+    mismatches = 0
+    checked_keys = 0
+
+    for wnid, t_label in train_map.items():
+        if wnid in wnid_to_coarse_val_check:
+            v_label = wnid_to_coarse_val_check[wnid]
+            checked_keys += 1
+            if t_label != v_label:
+                mismatches += 1
+                if mismatches <= 5:
+                    print(f"   ⚠️ Conflito no WNID {wnid}: Treino associou à classe {t_label}, mas Validação associou à classe {v_label}")
+
+    if mismatches > 0:
+        print(f"\n❌ CONFLITO TAXONÔMICO DETECTADO: {mismatches} classes estão desalinhadas!")
+        print("Isso fará o modelo falhar na validação, pois os labels não apontam para o mesmo conceito.")
+    else:
+        print(f"\n✅ Sucesso Total: Todos os {checked_keys} WNIDs ativos possuem mapeamento idêntico entre os Readers.")
+
+    print("\n" + "=" * 70)
+    print("   FIM DO TESTE DE INTEGRAÇÃO")
+    print("=" * 70)

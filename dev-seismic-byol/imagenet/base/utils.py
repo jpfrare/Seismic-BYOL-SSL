@@ -1,3 +1,5 @@
+from scipy.io import loadmat
+
 def get_state_dict(model):
         # O state_dict é um dicionário que representa o estado atual do modelo,
     # contendo seus parâmetros treináveis (pesos e bias) e buffers internos
@@ -59,35 +61,69 @@ def get_dataset_mapping():
     
     return dataset_mapping
 
-import nltk
-from nltk.corpus import wordnet as wn
-#nltk.download('wordnet', quiet=True)
+
+def build_son_to_father_dict(father_id, sysnets, dic):
+    infos = sysnets[father_id - 1][0]
+    num_children = int(infos[4][0][0])
+
+    if num_children == 0:
+        return
+    
+    for children_id in infos[5][0]:
+        int_children_id = int(children_id)
+        dic[int_children_id] = father_id
+        build_son_to_father_dict(int_children_id, sysnets, dic)
+    
+def build_heritage_path(mat_path):
+    mat = loadmat(mat_path)
+    synsets = mat['synsets']
+
+    dic = {}
+    build_son_to_father_dict(1001, synsets, dic)
+
+    heritage_path = {} #wnid -> lista do wnid de todos os parentes começando por ele mesmo até a classe entidade
+
+    for i in range(0,1000):
+        imagenet_id = i + 1
+        wnid = str(synsets[i][0][1][0])
+
+        heritage_path[wnid] = [wnid]
+        
+        current_id = imagenet_id
+
+        while current_id in dic:
+            father_id = dic[current_id]
+            father_wnid = str(synsets[father_id - 1][0][1][0])
+            heritage_path[wnid].append(father_wnid)
+
+            current_id = father_id
+
+    
+    return heritage_path
 
 
-def reduce_taxonomic_diversity(wnids: list, top_down: bool, level: int) -> (dict, int):
+def reduce_taxonomic_diversity(wnids: list, top_down: bool, level: int, mat_path: str) -> (dict, int):
     wnid_to_class = {}
     coarse_to_class = {}
     current_class_id = 0
 
+    heritage_path = build_heritage_path(mat_path)
+
     for wnid in wnids:
-        synset_obj = wn.synset_from_pos_and_offset(wnid[0], int(wnid[1:])) #ex, o wnid n128373 vira o objeto correto separando
-        #a letra n do offset de memória 128373, ex n.wolf
-        path = synset_obj.hypernym_paths()[0] #mostra todos as classes na hierarquia até chegarmos na desejada
+        ancestors = heritage_path[wnid] #lista de todos os wnids antepassados até entidade (o último elemento é a classe entidade)
 
-        if top_down: #vai da origem em direção a folha e para em algum ponto no caminho
-            ancestor = path[level] if len(path) > level else path[-1] #pegamos a classe no nível correspondente
+        if top_down:
+            pos = len(ancestors) - 1 - level
+            chosen_wnid = ancestors[pos] if pos > 0 else ancestors[0]
         else:
-            #vai da folha para a origem e para em algum ponto no caminho
-            idx = len(path) - 1 - level
-            ancestor = path[idx] if idx >= 3 else path[3]
-
-        ancestor_name = ancestor.name()
-
-        if ancestor_name not in coarse_to_class:
-            coarse_to_class[ancestor_name] = current_class_id
+            chosen_wnid = ancestors[level] if level < len(ancestors) else ancestors[3]
+        
+        if chosen_wnid not in coarse_to_class:
+            coarse_to_class[chosen_wnid] = current_class_id
             current_class_id += 1
         
-        wnid_to_class[wnid] = coarse_to_class[ancestor_name]
+        wnid_to_class[wnid] = coarse_to_class[chosen_wnid]
+
     
     return (wnid_to_class, current_class_id)
 
