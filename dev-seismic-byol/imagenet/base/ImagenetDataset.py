@@ -22,7 +22,7 @@ class ImagenetDataset(SimpleDataset):
         return sample
 
 class StratifiedSubset(Subset):
-    def __init__(self, dataset, per_class, seed=42, num_classes):
+    def __init__(self, dataset, per_class, seed, num_classes):
         labels = dataset.readers[0].targets  
 
         rng = random.Random(seed)

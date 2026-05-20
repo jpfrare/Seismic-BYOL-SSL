@@ -1,6 +1,6 @@
 #!/bin/bash
 
-SCRIPT_PATH="/petrobr/parceirosbr/home/joao.frare/workspace/spfm/Seismic-Byol/dev-seismic-byol/imagenet/teste.py"
+SCRIPT_PATH="/petrobr/parceirosbr/home/joao.frare/workspace/spfm/Seismic-Byol/dev-seismic-byol/imagenet/teste_readers.py"
 WORKSPACE="/petrobr/parceirosbr/home/joao.frare/workspace"
 export SIF="/petrobr/parceirosbr/spfm/singularity/amd64/deeprock/ngc/MINERVA_v0_3_9-beta-SPINN_v0_0_1.sif"
 
@@ -14,8 +14,8 @@ sbatch <<EOT
 #SBATCH --partition=ict-h100
 #SBATCH --account=spfm
 #SBATCH --time=00:02:00
-#SBATCH --output=jobs_out/testereaders/teste_%j.out
-#SBATCH --error=jobs_out/testereaders/teste_%j.err
+#SBATCH --output=jobs_out/testereaders/teste_readers%j.out
+#SBATCH --error=jobs_out/testereaders/teste_readers_%j.err
 
 cd "\$SLURM_SUBMIT_DIR"
 

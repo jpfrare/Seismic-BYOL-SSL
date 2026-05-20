@@ -57,18 +57,20 @@ class ImagenetModel(L.LightningModule):
     def training_step(self, batch, batch_idx):
         x,y = batch
 
+        y_clone = y.clone() if len(self.train_metrics) > 0 else y
+
         if self.batch_level_transforms is not None:
             x,y = self.batch_level_transforms(x,y)
         
         y_hat = self(x)
 
+        for metric_name in self.train_metrics.keys():
+            self.train_metrics[metric_name].update(y_hat, y_clone)
+            self.log(f'train_{metric_name}', self.train_metrics[metric_name], on_epoch= True, prog_bar= True)
+
         loss = self.train_loss_fn(y_hat, y)
         self.log('train_loss', loss, on_epoch= True, prog_bar= True, sync_dist= self.sync_dist)
 
-        for metric_name in self.train_metrics.keys():
-            metric = self.train_metrics[metric_name](y_hat, y)
-            self.log(f'train_{metric_name}', metric, on_epoch= True, prog_bar= True, sync_dist= self.sync_dist)
-        
         return loss
     
     def validation_step(self, batch, batch_idx):
@@ -76,20 +78,18 @@ class ImagenetModel(L.LightningModule):
         y_hat = self(x)
 
         y_loss = y
+
+        for metric_name in self.val_metrics.keys():
+            self.val_metrics[metric_name].update(y_hat, y)
+            self.log(f'{metric_name}', self.val_metrics[metric_name], on_epoch= True, prog_bar= True)
+
         if isinstance(self.val_loss_fn, BinaryCrossEntropy):
             y_loss = F.one_hot(y, num_classes= self.num_classes).to(y_hat.dtype)
 
         val_loss = self.val_loss_fn(y_hat, y_loss)
         self.log("val_loss", val_loss, on_epoch=True, prog_bar=True, sync_dist= self.sync_dist)
-
-        for metric_name in self.val_metrics.keys():
-            metric = self.val_metrics[metric_name](y_hat, y)
-            self.log(f'val_{metric_name}', metric, on_epoch= True, prog_bar= True, sync_dist= self.sync_dist)
         return val_loss
     
-    def lr_scheduler_step(self, scheduler, optimizer_idx, metric=None):
-        # Schedulers do timm (como o Cosine) dependem do passo global para warmup e decaimento
-        scheduler.step(self.global_step)
     
     def configure_optimizers(self):
         optimizer = self.optimizer(self.parameters(), **self.optimizer_kwargs)
