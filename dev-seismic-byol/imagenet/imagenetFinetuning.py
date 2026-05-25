@@ -42,50 +42,19 @@ from functions import *
 from base.ImagenetDataset import ImagenetDataset, StratifiedSubset
 from base.ImagenetReader import ImagenetReader, ImagenetValReader
 from base.ImagenetModel import ImagenetModel
+from base.InformationOrganizer import FinetuningOrganizer
 
-parser = argparse.ArgumentParser(
-    description= "Finetuning on Imagenet"
-)
-
-parser.add_argument(
-    "--per_class", type= int, help= "per_clas model used in pretrain"
-)
-
-parser.add_argument(
-    "--repetition", type= int, help= "repetition used"
-)
-
-parser.add_argument(
-    "--finetune_dataset", type= str, help= "dataset used in finetuning (seam_ai_N or f3_N)"
-)
-
-parser.add_argument(
-    "--learning_rate", type= float, help= "learning rate used in finetuning", default= 1e-5
-)
-
-parser.add_argument(
-    "--num_epochs", type= int, help= "number of epochs used in finetuing", default= 50
-)
-
-args = parser.parse_args()
-seed_everything(args.repetition)
-
-#------------------------------------PATHS---------------------------
-model_name = f"V{args.repetition}_pretrain_imagenet_{args.per_class}_per_class"
-mapping = get_dataset_mapping()
-pretrain_ckpt_path = f"checkpoints+logs/checkpoints/pretrain/{args.repetition}/{model_name}/imagenet"
-train_ckpt_path= f"{root}/checkpoints+logs/checkpoints/train_patch/{args.repetition}/{model_name}/finetune_{args.finetune_dataset}"
-log_path = f"{root}/checkpoints+logs/logs/train_patch/{args.repetition}/{model_name}/finetune_{args.finetune_dataset}"
-
+#----------------------------------------Organizador do finetuning----------------------
+organizer = FinetuningOrganizer(data_root= '/petrobr/parceirosbr/home/joao.frare/workspace/spfm/Seismic-Byol/dev-seismic-byol/imagenet/logs+checkpoints')
 #----------------------------------MODELO - Transfer Learning---------------------------
 num_classes = 6
 deeplab_backbone = DeepLabV3Backbone(num_classes=num_classes)
 
 #importing_pretrained_model
-resnet50_backbone = resnet50(replace_stride_with_dilation=[False, True, True], weights= None)
-resnet50_backbone.fc = nn.Identity()
+resnet50_backbone = timm.create_model('resnet50', pretrained=True, output_stride=16, num_classes= 0)
 fc = nn.Linear(2048, 1000)
-loss_fn = nn.CrossEntropyLoss(label_smoothing= 0.1)
+train_loss_fn = BinaryCrossEntropy()
+val_loss_fn = BinaryCrossEntropy()
 pretrained_model = ImagenetModel(backbone= resnet50_backbone, fc= fc, loss_fn= loss_fn)
 
 weighted_backbone = FromPretrained(model= pretrained_model, ckpt_path= f'{pretrain_ckpt_path}/best.ckpt', strict= False, error_on_missing_keys= False).backbone

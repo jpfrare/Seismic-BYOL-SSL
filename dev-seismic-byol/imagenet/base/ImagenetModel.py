@@ -90,6 +90,9 @@ class ImagenetModel(L.LightningModule):
         self.log("val_loss", val_loss, on_epoch=True, prog_bar=True, sync_dist= self.sync_dist)
         return val_loss
     
+    def test_step(self, batch, batch_idx):
+        # Espelha exatamente o comportamento da validação
+        return self.validation_step(batch, batch_idx)
     
     def configure_optimizers(self):
         optimizer = self.optimizer(self.parameters(), **self.optimizer_kwargs)

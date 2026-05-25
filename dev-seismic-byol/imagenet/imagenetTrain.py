@@ -49,7 +49,6 @@ max_steps = train_imagenet_size*100//real_batch_size + 30          #número de p
 precision= "16-mixed" if torch.cuda.is_available() else "32"       #precisão -> quanto maior melhor
 limit_val_batches = 1.0
 log_every_n_steps = 100
-num_classes = organizer.args.num_classes                           #número de classes padrão (1000), caso necessário, será modificado
 
 seed_everything(organizer.args.repetition)
 
@@ -61,7 +60,7 @@ GT_ROOT = "/petrobr/parceirosbr/home/joao.frare/workspace/spfm/sharedata/dataset
 MAT_ROOT = "/petrobr/parceirosbr/home/joao.frare/workspace/spfm/sharedata/datasets/ImageNet_2012/extra_files/ILSVRC2012_devkit_t12/data/meta.mat"
 #--------------------------------------TRANSFORMAÇÕES---------------------------------------------------------
 train_transform_pipeline = create_transform( 
-    input_size=224,
+    input_size=160,
     is_training=True,
     auto_augment='rand-m6-n2-mstd0.5', 
     interpolation='bicubic',
@@ -80,16 +79,8 @@ val_transform_pipeline = create_transform(
 )
 
 #--------------------------------------------READERS E DATASET---------------------------------------------
-train_reader = ImagenetReader(DATASET_ROOT, TRAIN_ENTRIES)
-val_reader = ImagenetValReader(VAL_ROOT, GT_ROOT, MAT_ROOT)
-
-if organizer.args.reduction_mode == 'taxonomic':
-    #fará o agrupamento top down ou bottom up
-    mode = 'Top Down' if organizer.args.top_down else 'Bottom Up'
-    num_classes = val_reader.to_coarse_classes(top_down= organizer.args.top_down, level= organizer.args.level, mat_path= MAT_ROOT)
-    train_reader.to_coarse_classes(top_down= organizer.args.top_down, level= organizer.args.level, mat_path= MAT_ROOT)
-
-    print(f'Using {num_classes} after {mode} clustering!')
+train_reader, val_reader = organizer.set_readers(DATASET_ROOT, TRAIN_ENTRIES, VAL_ROOT, GT_ROOT, MAT_ROOT)
+num_classes = organizer.args.num_classes
 
 val_dataset = ImagenetDataset(
     ImagenetReader= val_reader,
@@ -116,6 +107,7 @@ num_workers = min(24, cpus_disponiveis)
 data_module = MinervaDataModule(
             train_dataset=train_dataset,
             val_dataset= val_dataset,
+            test_dataset= val_dataset,
             batch_size=batch_size,
             drop_last=True,
             shuffle_train=True,
@@ -209,9 +201,12 @@ pipeline = SimpleLightningPipeline(
 )
 
 last_ckpt = Path(organizer.ckpt_dir)/"last.ckpt"
+best_ckpt = Path(organizer.ckpt_dir)/"best.ckpt"
 
 if last_ckpt.exists():
     pipeline.run(data_module, task="fit", ckpt_path= last_ckpt)
 else:
     pipeline.run(data_module, task="fit")
 
+if organizer.args.test and best_ckpt.exists():
+    pipeline.run(data_module, task= "test", ckpt_path= best_ckpt)

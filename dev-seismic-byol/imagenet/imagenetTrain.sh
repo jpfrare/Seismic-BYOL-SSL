@@ -7,7 +7,7 @@ SCRIPT_PATH="/petrobr/parceirosbr/home/joao.frare/workspace/spfm/Seismic-Byol/de
 WORKSPACE="/petrobr/parceirosbr/home/joao.frare/workspace"
 export SIF="/petrobr/parceirosbr/spfm/singularity/amd64/deeprock/ngc/MINERVA_v0_3_9-beta-SPINN_v0_0_1.sif"
 
-repetition=(0 1 2)
+repetition=(1)
 
 for r in "${repetition[@]}"; do
 
@@ -42,7 +42,6 @@ nvidia-smi
 # Exporta as variáveis de ambiente necessárias para o Singularity
 export SINGULARITYENV_CUDA_VISIBLE_DEVICES=\$CUDA_VISIBLE_DEVICES
 
-# --unbuffered garante que as saídas do stdout/stderr das 4 GPUs apareçam em tempo real no arquivo de log
 srun --unbuffered singularity exec --nv \
     --bind "$WORKSPACE":"$WORKSPACE" \
     --bind /petrobr/parceirosbr/home/vinicius.soares/workspace:/petrobr/parceirosbr/home/vinicius.soares/workspace \
