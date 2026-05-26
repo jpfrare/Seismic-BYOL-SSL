@@ -3,26 +3,24 @@
 # --------------------------
 # Configuration
 # --------------------------
-SCRIPT_PATH="/petrobr/parceirosbr/home/joao.frare/workspace/spfm/Seismic-Byol/dev-seismic-byol/imagenetFinetuning.py"
+SCRIPT_PATH="/petrobr/parceirosbr/home/joao.frare/workspace/spfm/Seismic-Byol/dev-seismic-byol/imagenet/imagenetFinetuning.py"
 WORKSPACE="/petrobr/parceirosbr/home/joao.frare/workspace"
 export SIF="/petrobr/parceirosbr/spfm/singularity/amd64/deeprock/ngc/MINERVA_v0_3_9-beta-SPINN_v0_0_1.sif"
 
 
 repetition=(0 1 2)
 finetune_dataset=('seam_ai_N' 'f3_N')
-per_class=(1300)
 
 for r in "${repetition[@]}"; do
-    for p in "${per_class[@]}"; do
-        for d in "${finetune_dataset[@]}"; do
+    for d in "${finetune_dataset[@]}"; do
 
-        FLAGS="--per_class ${p} --repetition ${r} --finetune_dataset ${d} --learning_rate 1e-6 --num_epochs 20"
-        mkdir -p jobs_out/imagenetFinetune/finetune_${d}/repetition_${r}
+    FLAGS="--reduction_mode full --repetition ${r} --finetune_dataset ${d}"
+    mkdir -p jobs_out/imagenetFinetune/finetune_${d}/repetition_${r}
 
-        sbatch <<EOT
+    sbatch <<EOT
 #!/bin/bash
 
-#SBATCH --job-name=imgnet_${p}_r${r}
+#SBATCH --job-name=imgenet_full_r${r}
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=24
@@ -30,8 +28,8 @@ for r in "${repetition[@]}"; do
 #SBATCH --partition=ict-h100
 #SBATCH --account=spfm
 #SBATCH --time=24:00:00
-#SBATCH --output=jobs_out/imagenetFinetune/finetune_${d}/repetition_${r}/train_${p}_r${r}_1e-6_%j.out
-#SBATCH --error=jobs_out/imagenetFinetune/finetune_${d}/repetition_${r}/train_${p}_r${r}_1e-6_%j.err
+#SBATCH --output=jobs_out/imagenetFinetune/finetune_${d}/repetition_${r}/full_%j.out
+#SBATCH --error=jobs_out/imagenetFinetune/finetune_${d}/repetition_${r}/full_%j.err
 
 cd "\$SLURM_SUBMIT_DIR"
 
@@ -54,6 +52,5 @@ singularity exec --nv \
         python3 $SCRIPT_PATH $FLAGS
     "
 EOT
-done
 done
 done

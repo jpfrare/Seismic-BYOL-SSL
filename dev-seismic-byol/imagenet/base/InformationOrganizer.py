@@ -126,6 +126,3 @@ class FineTuningOrganizer(TrainOrganizer):
         super()._set_up_parser()
         self.parser.add_argument("--finetune_dataset", type= str, choices= ['f3_N', 'seam_ai_N'], required= True, help= 'dataset de finetune')
     
-    def set_readers(self, train_dataset_root, train_entries, val_root, ground_truth_root, mat_root):
-        raise NotImplementedError
-    
