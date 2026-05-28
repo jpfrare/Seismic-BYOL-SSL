@@ -7,6 +7,8 @@ import torch
 import torch.nn as nn
 from torchmetrics import Accuracy, JaccardIndex, F1Score
 import timm
+import timm.optim
+from timm.loss import BinaryCrossEntropy
 
 # -------------------- Lightning --------------------
 from lightning import Trainer
@@ -20,12 +22,13 @@ from minerva.pipelines.lightning_pipeline import SimpleLightningPipeline
 from minerva.transforms.transform import TransformPipeline, Transpose, Padding
 
 #--------------------- Locais & Custom -----------------------
-from utils import * 
+from base.utils import * 
 from seismic.DatasetsDatamodules import *
 from base.ImagenetModel import ImagenetModel
 from base.InformationOrganizer import FinetuningOrganizer
 
 #----------------------------------------Organizador do finetuning----------------------
+#torch.serialization.add_safe_globals([timm.optim.lamb.Lamb, torch.optim.lr_scheduler.OneCycleLR])
 DATASET_ROOT = "/petrobr/parceirosbr/spfm/datasets/ImageNet_2012/train"
 TRAIN_ENTRIES = "/petrobr/parceirosbr/spfm/datasets/ImageNet_2012/extras_v3/entries-TRAIN.npy"
 VAL_ROOT = "/petrobr/parceirosbr/spfm/datasets/ImageNet_2012/val"
@@ -51,16 +54,19 @@ pretrained_model = ImagenetModel(
     val_loss_fn= val_loss_fn,
     train_metrics = {},
     val_metrics= {},
-    optimizer= timm.optim.Lamb,
+    optimizer=  None,
     optimizer_kwargs= {},
     lr_scheduler= None,
+    lr_scheduler_kwargs= {},
     batch_level_transforms= None,
     num_classes=  organizer.args.num_classes,
     num_gpus= 2)
 
-weighted_backbone = FromPretrained(model= pretrained_model, ckpt_path= f'{organizer.ckpt_dir}/best.ckpt', strict= False, error_on_missing_keys= False).backbone
+weighted_backbone = FromPretrained(model= pretrained_model, ckpt_path= f'{organizer.ckpt_dir}/best.ckpt', strict= False, error_on_missing_keys= False, ckpt_load_weights_only= False).backbone
 weighted_state_dict= get_state_dict(weighted_backbone)
-deeplab_backbone.load_state_dict(weighted_state_dict, strict= False)
+possible_errors = deeplab_backbone.load_state_dict(weighted_state_dict, strict= False)
+
+check_transfer_learning(possible_errors.missing_keys)
 
 model = DeepLabV3(
     backbone=deeplab_backbone,
@@ -70,6 +76,7 @@ model = DeepLabV3(
 )
 
 #----------------------------Dados - Modelagem----------------------------------------
+mapping = get_dataset_mapping()
 dataset_path = mapping[organizer.args.finetune_dataset]
 
 if organizer.args.finetune_dataset == 'f3_N':
@@ -97,7 +104,7 @@ data_module = SeismicDataModule(
     test_dataset = None,
     )
 
-csv_logger = CSVLogger(organizer.finetune_log_dir, name=organizer.finetune_model_name, version= organizer.args.finetune_dataset)
+csv_logger = CSVLogger(organizer.finetune_log_dir, name='', version= '')
 #------------------------TRAINER----------------------------------------------------------
 trainer = Trainer(
     logger= csv_logger,

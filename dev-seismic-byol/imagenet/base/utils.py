@@ -1,4 +1,5 @@
 from scipy.io import loadmat
+import os
 
 def get_state_dict(model):
         # O state_dict é um dicionário que representa o estado atual do modelo,
@@ -127,3 +128,19 @@ def reduce_taxonomic_diversity(wnids: list, top_down: bool, level: int, mat_path
     
     return (wnid_to_class, current_class_id)
 
+def check_transfer_learning(missing_keys):
+    missing_resnet_layers = [
+    key for key in missing_keys 
+    if any(layer_name in key for layer_name in ['conv1', 'layer1', 'layer2', 'layer3', 'layer4'])
+    ]
+
+    if len(missing_resnet_layers) == 0:
+        print(" [SUCESSO ABSOLUTO] Todas as camadas da ResNet50 foram transferidas e estão tranquilas!")
+    else:
+        print(" [ALERTA] Algumas camadas da ResNet não foram preenchidas:")
+        # Printa as primeiras 10 camadas que falharam para você inspecionar o nome
+        for layer in missing_resnet_layers[:10]:
+            print(f"   └─> Falhou: {layer}")
+        if len(missing_resnet_layers) > 10:
+            print(f"   └─> ... e mais {len(missing_resnet_layers) - 10} camadas.")
+        raise RuntimeError("Mismatch de chaves no Transfer Learning! O esqueleto da ResNet ficou vazio.")

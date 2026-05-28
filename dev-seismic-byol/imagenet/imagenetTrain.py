@@ -161,7 +161,7 @@ model = ImagenetModel(
     num_gpus= devices
 )
 #-----------------------------------DIRETORIOS, LOGGERS E CALLBACKS----------------------------------------
-CSVlogger = CSVLogger(organizer.log_dir, name=organizer.model_name, version="imagenet")
+CSVlogger = CSVLogger(organizer.log_dir, name= '', version='')
 
 ckpt_callback = ModelCheckpoint(
     monitor='val_loss',                # monitorar a val_loss

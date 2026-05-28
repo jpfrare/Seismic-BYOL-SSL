@@ -1,7 +1,7 @@
 import argparse
 import os
 from pathlib import Path
-from ImagenetReader import ImagenetReader, ImagenetValReader
+from .ImagenetReader import ImagenetReader, ImagenetValReader
 
     
 class TrainOrganizer():
@@ -65,6 +65,18 @@ class TrainOrganizer():
             self.model_name = 'full'
         
         return dirs
+    
+    def __str__(self):
+        info = ['-------Train Infos:---------',
+        f'task: {self.task}',
+        f'ckpt_dir: {self.ckpt_dir}',
+        f'log_dir: {self.log_dir}',
+        f'model_name: {self.model_name}',
+        '-------ArgParser Arguments---']
+        for key, value in vars(self.args).items():
+            info.append(f'{key}: {value}')
+        
+        return '\n'.join(info)
 
 
     
@@ -103,7 +115,7 @@ class TrainOrganizer():
         
         return (train_reader, val_reader)
 
-class FineTuningOrganizer(TrainOrganizer):
+class FinetuningOrganizer(TrainOrganizer):
     finetune_model_name: str
     finetune_log_dir: Path
     finetune_ckpt_dir: Path
@@ -113,6 +125,7 @@ class FineTuningOrganizer(TrainOrganizer):
         self.task = 'Finetune'
 
         dirs= self._get_dirs_and_set_model_name()
+        self.finetune_model_name = f'{self.model_name}_finetune_{self.args.finetune_dataset}'
         
         dirs = dirs/f'finetune_{self.args.finetune_dataset}'
 
@@ -125,4 +138,16 @@ class FineTuningOrganizer(TrainOrganizer):
     def _set_up_parser(self):
         super()._set_up_parser()
         self.parser.add_argument("--finetune_dataset", type= str, choices= ['f3_N', 'seam_ai_N'], required= True, help= 'dataset de finetune')
+    
+    def __str__(self):
+        sup_info = super().__str__()
+
+        info = ['-------Finetune Infos:---------',
+        f'finetune_log_dir: {self.finetune_log_dir}',
+        f'finetune_ckpt_dir: {self.finetune_ckpt_dir}',
+        f'finetune_model_name: {self.finetune_model_name}']
+        
+        info = '\n'.join(info)
+
+        return sup_info + '\n' +  info
     

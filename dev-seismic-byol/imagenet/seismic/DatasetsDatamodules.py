@@ -7,6 +7,8 @@ from minerva.data.datasets.base import SimpleDataset
 from minerva.data.readers import TiffReader, PNGReader
 import lightning as L
 import os
+from pathlib import Path
+import torch
 
 
 class SeismicReducibleDataset(Dataset):
