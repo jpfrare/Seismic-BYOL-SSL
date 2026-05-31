@@ -8,7 +8,7 @@ WORKSPACE="/petrobr/parceirosbr/home/joao.frare/workspace"
 export SIF="/petrobr/parceirosbr/spfm/singularity/amd64/deeprock/ngc/MINERVA_v0_3_9-beta-SPINN_v0_0_1.sif"
 
 repetition=(0 1 2)
-per_class=100
+per_class=10
 
 for r in "${repetition[@]}"; do
 
