@@ -8,11 +8,11 @@ WORKSPACE="/petrobr/parceirosbr/home/joao.frare/workspace"
 export SIF="/petrobr/parceirosbr/spfm/singularity/amd64/deeprock/ngc/MINERVA_v0_3_9-beta-SPINN_v0_0_1.sif"
 
 repetition=(0 1 2)
-per_class=10
+num_classes=500
 
 for r in "${repetition[@]}"; do
 
-    FLAGS="--reduction_mode default --repetition ${r} --per_class ${per_class}"
+    FLAGS="--reduction_mode default --repetition ${r} --num_classes ${num_classes}"
     mkdir -p /petrobr/parceirosbr/home/joao.frare/workspace/spfm/Seismic-Byol/dev-seismic-byol/imagenet/jobs_out/imagenetTraining/repetition_${r}/default
 
     sbatch <<EOT
@@ -26,8 +26,8 @@ for r in "${repetition[@]}"; do
 #SBATCH --partition=ict-h100
 #SBATCH --account=spfm
 #SBATCH --time=24:00:00
-#SBATCH --output=/petrobr/parceirosbr/home/joao.frare/workspace/spfm/Seismic-Byol/dev-seismic-byol/imagenet/jobs_out/imagenetTraining/repetition_${r}/default/train_r${r}_${per_class}p_1000c_%j.out
-#SBATCH --error=/petrobr/parceirosbr/home/joao.frare/workspace/spfm/Seismic-Byol/dev-seismic-byol/imagenet/jobs_out/imagenetTraining/repetition_${r}/default/train_r${r}_${per_class}p_1000c_%j.err
+#SBATCH --output=/petrobr/parceirosbr/home/joao.frare/workspace/spfm/Seismic-Byol/dev-seismic-byol/imagenet/jobs_out/imagenetTraining/repetition_${r}/default/train_r${r}_1300p_${num_classes}c_%j.out
+#SBATCH --error=/petrobr/parceirosbr/home/joao.frare/workspace/spfm/Seismic-Byol/dev-seismic-byol/imagenet/jobs_out/imagenetTraining/repetition_${r}/default/train_r${r}_1300p_${num_classes}c_%j.err
 
 cd "\$SLURM_SUBMIT_DIR"
 
@@ -42,6 +42,13 @@ nvidia-smi
 
 # Exporta as variáveis de ambiente necessárias para o Singularity
 export SINGULARITYENV_CUDA_VISIBLE_DEVICES=\$CUDA_VISIBLE_DEVICES
+
+# SOLUÇÃO DO ERRO: Sorteia uma porta e um IP dinâmicos para o DDP antes do srun
+export SINGULARITYENV_MASTER_PORT=\$(shuf -i 50000-65000 -n 1)
+export SINGULARITYENV_MASTER_ADDR=\$(hostname -i)
+
+echo "Porta DDP Sorteada: \$SINGULARITYENV_MASTER_PORT"
+echo "IP do Nó Master: \$SINGULARITYENV_MASTER_ADDR"
 
 srun --unbuffered singularity exec --nv \
     --bind "$WORKSPACE":"$WORKSPACE" \

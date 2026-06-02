@@ -42,31 +42,35 @@ num_classes = 6
 deeplab_backbone = DeepLabV3Backbone(num_classes=num_classes)
 
 #importing_pretrained_model
-resnet50_backbone = timm.create_model('resnet50', pretrained=False, output_stride=8, num_classes= 0)
-fc = nn.Linear(2048, organizer.args.num_classes)
-train_loss_fn = BinaryCrossEntropy()
-val_loss_fn = BinaryCrossEntropy()
+if not organizer.args.scratch:
+    resnet50_backbone = timm.create_model('resnet50', pretrained=False, output_stride=8, num_classes= 0)
+    fc = nn.Linear(2048, organizer.args.num_classes)
+    train_loss_fn = BinaryCrossEntropy()
+    val_loss_fn = BinaryCrossEntropy()
 
-pretrained_model = ImagenetModel(
-    backbone= resnet50_backbone, 
-    fc= fc, 
-    train_loss_fn= train_loss_fn,
-    val_loss_fn= val_loss_fn,
-    train_metrics = {},
-    val_metrics= {},
-    optimizer=  None,
-    optimizer_kwargs= {},
-    lr_scheduler= None,
-    lr_scheduler_kwargs= {},
-    batch_level_transforms= None,
-    num_classes=  organizer.args.num_classes,
-    num_gpus= 2)
+    pretrained_model = ImagenetModel(
+        backbone= resnet50_backbone, 
+        fc= fc, 
+        train_loss_fn= train_loss_fn,
+        val_loss_fn= val_loss_fn,
+        train_metrics = {},
+        val_metrics= {},
+        optimizer=  None,
+        optimizer_kwargs= {},
+        lr_scheduler= None,
+        lr_scheduler_kwargs= {},
+        batch_level_transforms= None,
+        num_classes=  organizer.args.num_classes,
+        num_gpus= 2)
 
-weighted_backbone = FromPretrained(model= pretrained_model, ckpt_path= f'{organizer.ckpt_dir}/best.ckpt', strict= False, error_on_missing_keys= False, ckpt_load_weights_only= False).backbone
-weighted_state_dict= get_state_dict(weighted_backbone)
-possible_errors = deeplab_backbone.load_state_dict(weighted_state_dict, strict= False)
+    weighted_backbone = FromPretrained(model= pretrained_model, ckpt_path= f'{organizer.ckpt_dir}/best.ckpt', strict= False, error_on_missing_keys= False, ckpt_load_weights_only= False).backbone
+    weighted_state_dict= get_state_dict(weighted_backbone)
+    possible_errors = deeplab_backbone.load_state_dict(weighted_state_dict, strict= False)
 
-check_transfer_learning(possible_errors.missing_keys)
+    check_transfer_learning(possible_errors.missing_keys)
+
+    apply_layerwise_freeze(deeplab_backbone, ['conv1', 'bn1', 'act1', 'maxpool', 'layer1', 'layer2'])
+
 
 model = DeepLabV3(
     backbone=deeplab_backbone,

@@ -78,8 +78,6 @@ class TrainOrganizer():
         
         return '\n'.join(info)
 
-
-    
     def _parse_args(self):
         self._set_up_parser()
         self.args = self.parser.parse_args()
@@ -137,7 +135,15 @@ class FinetuningOrganizer(TrainOrganizer):
 
     def _set_up_parser(self):
         super()._set_up_parser()
+        self.parser.add_argument("--scratch", action= 'store_true', help= 'Train From Scratch')
         self.parser.add_argument("--finetune_dataset", type= str, choices= ['f3_N', 'seam_ai_N'], required= True, help= 'dataset de finetune')
+
+    def _get_dirs_and_set_model_name(self):
+        if self.args.scratch:
+            self.model_name = 'scratch'
+            return Path(self.data_root)/self.task/f'{self.args.repetition}'/'scratch'
+        else:
+            return super()._get_dirs_and_set_model_name()
     
     def __str__(self):
         sup_info = super().__str__()

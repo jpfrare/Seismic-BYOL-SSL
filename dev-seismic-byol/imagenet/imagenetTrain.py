@@ -95,6 +95,9 @@ train_dataset = ImagenetDataset(
 if organizer.args.reduction_mode == 'default':
     #instancia o subset no caso do número de classes e/ou imagens por classe ser variável
     train_dataset = StratifiedSubset(dataset= train_dataset, per_class= organizer.args.per_class, seed= organizer.args.repetition, num_classes= num_classes)
+    
+    if organizer.args.num_classes < 1000:
+        val_dataset = StratifiedSubset(dataset= val_dataset, per_class= 100, seed= organizer.args.repetition, num_classes= num_classes)
 
 # Coleta a afinidade real de CPUs entregues pelo cgroup do SLURM no nó
 try:
@@ -112,7 +115,9 @@ data_module = MinervaDataModule(
             drop_last=True,
             shuffle_train=True,
             name="imagenet",
-            num_workers= num_workers
+            num_workers= num_workers,
+            additional_train_dataloader_kwargs={"persistent_workers": True, "pin_memory": True},
+            additional_val_dataloader_kwargs={"persistent_workers": True, "pin_memory": True}
         )
 
 #------------------------------------MODELO-----------------------------------------------------------
@@ -187,7 +192,8 @@ trainer = Trainer(
     callbacks= callbacks,
     max_steps= max_steps,
     accumulate_grad_batches = accumulate_grad_batches,
-    val_check_interval=1.0,                                             #vai validar depois de uma época
+    val_check_interval=624,                                              #vai validar depois de uma época #MUDAR ESSE VALOR DEPOIS PARA 624
+    check_val_every_n_epoch = None,
     limit_val_batches=limit_val_batches,                                #quantos batches serão usados na validação
     log_every_n_steps=log_every_n_steps,              
     benchmark=True,
