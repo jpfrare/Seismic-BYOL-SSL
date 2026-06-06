@@ -11,19 +11,25 @@ from minerva.data.datasets.base import SimpleDataset
 class ImagenetDataset(SimpleDataset):
     def __init__(self, ImagenetReader, transform):
         super().__init__(readers= ImagenetReader, transforms= transform, return_single= False)
+        self.class_mapping = None
     
     def __getitem__(self, idx: int) -> Union[Any, Tuple[Any, ...]]:
         reader = self.readers[0]
         transform = self.transforms[0]
 
         img, label = reader[idx]
+
+        label = self.class_mapping[label] if self.class_mapping is not None else label
         sample = (transform(img), label)
 
         return sample
+    
+    def set_class_mapping(self, class_mapping):
+        self.class_mapping = class_mapping
 
-class StratifiedSubset(Subset):
+class DefaultTrainSubset(Subset):
     def __init__(self, dataset, per_class, seed, num_classes):
-        labels = dataset.readers[0].targets  #vetor onde a labels[i] retorna a classe da imagem i
+        labels = dataset.readers[0].targets  #vetor onde a labels[i] retorna a classe do indice i
 
         rng = random.Random(seed)
 
@@ -44,8 +50,6 @@ class StratifiedSubset(Subset):
             selected_classes = classes[:num_classes]    #seleciona as num_classes primeiras (como está desordenado, é uma escolha cumulativa e aleatória)
             self.class_mapping = {selected_classes[i] : i for i in range(num_classes)} #remapeia as classes pra poder ter labels entre 0 e num_classes
         
-        
-        
         selected = []
 
         # amostra balanceada
@@ -59,10 +63,16 @@ class StratifiedSubset(Subset):
         rng.shuffle(selected)
 
         super().__init__(dataset, selected)
-    
-    def __getitem__(self, idx : int):
-        img, label = super().__getitem__(idx)
 
-        if self.class_mapping is not None:
-            return img, self.class_mapping[label]
-        return img, label
+class DefaultValSubset(Subset):
+    def __init__(self, dataset, class_mapping = None):
+        self.class_mapping = class_mapping
+
+        labels = dataset.readers[0].targets
+
+        if class_mapping is None:
+            selected = list(range(len(labels)))
+        else:
+            selected = [idx for idx in range(len(labels)) if labels[idx] in class_mapping]
+
+        super().__init__(dataset, selected)

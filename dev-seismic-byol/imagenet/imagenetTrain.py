@@ -27,10 +27,12 @@ from minerva.pipelines.lightning_pipeline import SimpleLightningPipeline
 from minerva.data.data_modules import MinervaDataModule
 
 #--------------------Base-------------------------------------------------------
-from base.ImagenetDataset import ImagenetDataset, StratifiedSubset
+from base.ImagenetDataset import ImagenetDataset, DefaultTrainSubset, DefaultValSubset
 from base.ImagenetReader import ImagenetReader, ImagenetValReader
 from base.ImagenetModel import ImagenetModel
 from base.InformationOrganizer import TrainOrganizer
+
+from base.ImagenetDataset import DefaultValSubset
 
 #---------------------------------ARGUMENTOS DO TREINO------------------------
 organizer = TrainOrganizer(data_root= '/petrobr/parceirosbr/home/joao.frare/workspace/spfm/Seismic-Byol/dev-seismic-byol/imagenet/logs+checkpoints')
@@ -94,10 +96,17 @@ train_dataset = ImagenetDataset(
 
 if organizer.args.reduction_mode == 'default':
     #instancia o subset no caso do número de classes e/ou imagens por classe ser variável
-    train_dataset = StratifiedSubset(dataset= train_dataset, per_class= organizer.args.per_class, seed= organizer.args.repetition, num_classes= num_classes)
-    
-    if organizer.args.num_classes < 1000:
-        val_dataset = StratifiedSubset(dataset= val_dataset, per_class= 100, seed= organizer.args.repetition, num_classes= num_classes)
+    train_subset = DefaultTrainSubset(dataset= train_dataset, per_class= organizer.args.per_class, seed= organizer.args.repetition, num_classes= num_classes)
+    class_mapping = train_subset.class_mapping
+    val_subset = DefaultValSubset(dataset= val_dataset, class_mapping= class_mapping)
+
+    val_dataset.set_class_mapping(class_mapping)
+    train_dataset.set_class_mapping(class_mapping)
+
+    val_dataset = val_subset
+    train_dataset = train_subset
+
+print(f'Using {num_classes} classes!')
 
 # Coleta a afinidade real de CPUs entregues pelo cgroup do SLURM no nó
 try:
@@ -110,14 +119,14 @@ num_workers = min(24, cpus_disponiveis)
 data_module = MinervaDataModule(
             train_dataset=train_dataset,
             val_dataset= val_dataset,
-            test_dataset= val_dataset,
+            #test_dataset= val_dataset,
             batch_size=batch_size,
             drop_last=True,
             shuffle_train=True,
             name="imagenet",
             num_workers= num_workers,
-            additional_train_dataloader_kwargs={"persistent_workers": True, "pin_memory": True},
-            additional_val_dataloader_kwargs={"persistent_workers": True, "pin_memory": True}
+            additional_train_dataloader_kwargs={"persistent_workers": True, "pin_memory": True, "drop_last": True},
+            additional_val_dataloader_kwargs={"persistent_workers": True, "pin_memory": True, "drop_last": False}
         )
 
 #------------------------------------MODELO-----------------------------------------------------------
