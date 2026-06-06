@@ -8,11 +8,12 @@ WORKSPACE="/petrobr/parceirosbr/home/joao.frare/workspace"
 export SIF="/petrobr/parceirosbr/spfm/singularity/amd64/deeprock/ngc/MINERVA_v0_3_9-beta-SPINN_v0_0_1.sif"
 
 repetition=(0 1 2)
-num_classes=500
+num_classes=9
+per_class=1300
 
 for r in "${repetition[@]}"; do
 
-    FLAGS="--reduction_mode default --repetition ${r} --num_classes ${num_classes}"
+    FLAGS="--reduction_mode default --repetition ${r} --num_classes ${num_classes} --per_class ${per_class}"
     mkdir -p /petrobr/parceirosbr/home/joao.frare/workspace/spfm/Seismic-Byol/dev-seismic-byol/imagenet/jobs_out/imagenetTraining/repetition_${r}/default
 
     sbatch <<EOT
@@ -26,8 +27,8 @@ for r in "${repetition[@]}"; do
 #SBATCH --partition=ict-h100
 #SBATCH --account=spfm
 #SBATCH --time=24:00:00
-#SBATCH --output=/petrobr/parceirosbr/home/joao.frare/workspace/spfm/Seismic-Byol/dev-seismic-byol/imagenet/jobs_out/imagenetTraining/repetition_${r}/default/train_r${r}_1300p_${num_classes}c_%j.out
-#SBATCH --error=/petrobr/parceirosbr/home/joao.frare/workspace/spfm/Seismic-Byol/dev-seismic-byol/imagenet/jobs_out/imagenetTraining/repetition_${r}/default/train_r${r}_1300p_${num_classes}c_%j.err
+#SBATCH --output=/petrobr/parceirosbr/home/joao.frare/workspace/spfm/Seismic-Byol/dev-seismic-byol/imagenet/jobs_out/imagenetTraining/repetition_${r}/default/train_r${r}_${per_class}p_${num_classes}c_%j.out
+#SBATCH --error=/petrobr/parceirosbr/home/joao.frare/workspace/spfm/Seismic-Byol/dev-seismic-byol/imagenet/jobs_out/imagenetTraining/repetition_${r}/default/train_r${r}_${per_class}p_${num_classes}c_%j.err
 
 cd "\$SLURM_SUBMIT_DIR"
 
