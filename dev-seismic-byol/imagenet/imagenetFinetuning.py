@@ -24,11 +24,11 @@ from minerva.transforms.transform import TransformPipeline, Transpose, Padding
 #--------------------- Locais & Custom -----------------------
 from base.utils import * 
 from seismic.DatasetsDatamodules import *
+from seismic.LinearPredHead import *
 from base.ImagenetModel import ImagenetModel
 from base.InformationOrganizer import FinetuningOrganizer
 
 #----------------------------------------Organizador do finetuning----------------------
-#torch.serialization.add_safe_globals([timm.optim.lamb.Lamb, torch.optim.lr_scheduler.OneCycleLR])
 DATASET_ROOT = "/petrobr/parceirosbr/spfm/datasets/ImageNet_2012/train"
 TRAIN_ENTRIES = "/petrobr/parceirosbr/spfm/datasets/ImageNet_2012/extras_v3/entries-TRAIN.npy"
 VAL_ROOT = "/petrobr/parceirosbr/spfm/datasets/ImageNet_2012/val"
@@ -69,15 +69,24 @@ if not organizer.args.scratch:
 
     check_transfer_learning(possible_errors.missing_keys)
 
-    apply_layerwise_freeze(deeplab_backbone, ['conv1', 'bn1', 'act1', 'maxpool', 'layer1', 'layer2'])
 
-
-model = DeepLabV3(
-    backbone=deeplab_backbone,
-    learning_rate=1e-6,
-    num_classes=num_classes,
-    freeze_backbone=False,
-)
+if organizer.args.linear_redout:
+    apply_layerwise_freeze(deeplab_backbone, ['conv1', 'bn1', 'act1', 'maxpool', 'layer1', 'layer2', 'layer3', 'layer4'])
+    pred_head = LinearSegmentationHead(in_channels= 2048, num_classes= num_classes)
+    model = DeepLabV3(
+        backbone=deeplab_backbone,
+        pred_head= pred_head,
+        learning_rate=1e-6,
+        num_classes=num_classes,
+        freeze_backbone=False,
+    )
+else:
+    model = DeepLabV3(
+        backbone=deeplab_backbone,
+        learning_rate=1e-6,
+        num_classes=num_classes,
+        freeze_backbone=False,
+    )
 
 #----------------------------Dados - Modelagem----------------------------------------
 mapping = get_dataset_mapping()
