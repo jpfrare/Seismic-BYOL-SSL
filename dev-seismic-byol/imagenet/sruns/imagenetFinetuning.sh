@@ -10,18 +10,20 @@ export SIF="/petrobr/parceirosbr/spfm/singularity/amd64/deeprock/ngc/MINERVA_v0_
 
 repetition=(0 1 2)
 finetune_dataset=('seam_ai_N' 'f3_N')
-per_class=100
+level=3
+per_class=10
+num_classes=9
 
 for r in "${repetition[@]}"; do
     for d in "${finetune_dataset[@]}"; do
 
-    FLAGS="--reduction_mode default --repetition ${r} --per_class ${per_class} --finetune_dataset ${d}"
-    mkdir -p /petrobr/parceirosbr/home/joao.frare/workspace/spfm/Seismic-Byol/dev-seismic-byol/imagenet/jobs_out/imagenetFinetune/finetune_${d}/default
+    FLAGS="--reduction_mode taxonomic --top_down --level ${level} --linear_redout --repetition ${r}  --finetune_dataset ${d}"
+    mkdir -p /petrobr/parceirosbr/home/joao.frare/workspace/spfm/Seismic-Byol/dev-seismic-byol/imagenet/jobs_out/imagenetFinetune/finetune_${d}/taxonomic/repetition_${r}
 
     sbatch <<EOT
 #!/bin/bash
 
-#SBATCH --job-name=imgenet_full_r${r}
+#SBATCH --job-name=imgenet_default_r${r}
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=24
@@ -29,8 +31,8 @@ for r in "${repetition[@]}"; do
 #SBATCH --partition=ict-h100
 #SBATCH --account=spfm
 #SBATCH --time=24:00:00
-#SBATCH --output=/petrobr/parceirosbr/home/joao.frare/workspace/spfm/Seismic-Byol/dev-seismic-byol/imagenet/jobs_out/imagenetFinetune/finetune_${d}/default/repetition_${r}/${per_class}p_1000c_%j.out
-#SBATCH --error=/petrobr/parceirosbr/home/joao.frare/workspace/spfm/Seismic-Byol/dev-seismic-byol/imagenet/jobs_out/imagenetFinetune/finetune_${d}/default/repetition_${r}/${per_class}p_1000c_%j.err
+#SBATCH --output=/petrobr/parceirosbr/home/joao.frare/workspace/spfm/Seismic-Byol/dev-seismic-byol/imagenet/jobs_out/imagenetFinetune/finetune_${d}/taxonomic/repetition_${r}/level_${level}_linear__%j.out
+#SBATCH --error=/petrobr/parceirosbr/home/joao.frare/workspace/spfm/Seismic-Byol/dev-seismic-byol/imagenet/jobs_out/imagenetFinetune/finetune_${d}/taxonomic/repetition_${r}/level_${level}_linear_%j.err
 
 cd "\$SLURM_SUBMIT_DIR"
 

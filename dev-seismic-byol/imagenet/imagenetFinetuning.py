@@ -41,6 +41,7 @@ seed_everything(organizer.args.repetition)
 num_classes = 6
 deeplab_backbone = DeepLabV3Backbone(num_classes=num_classes)
 
+print(f'Scratch: {organizer.args.scratch} || Linear Redout: {organizer.args.linear_redout}')
 #importing_pretrained_model
 if not organizer.args.scratch:
     resnet50_backbone = timm.create_model('resnet50', pretrained=False, output_stride=8, num_classes= 0)
@@ -62,6 +63,9 @@ if not organizer.args.scratch:
         batch_level_transforms= None,
         num_classes=  organizer.args.num_classes,
         num_gpus= 2)
+
+    ckpt = organizer.ckpt_dir / "best.ckpt"
+    assert ckpt.exists(), f"Checkpoint não encontrado: {ckpt}"
 
     weighted_backbone = FromPretrained(model= pretrained_model, ckpt_path= f'{organizer.ckpt_dir}/best.ckpt', strict= False, error_on_missing_keys= False, ckpt_load_weights_only= False).backbone
     weighted_state_dict= get_state_dict(weighted_backbone)

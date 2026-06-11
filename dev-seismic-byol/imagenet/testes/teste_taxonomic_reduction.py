@@ -35,8 +35,8 @@ if __name__ == "__main__":
 
     # 2. Configuração do fatiamento taxonômico para o teste
     # Modifique aqui (LEVEL = 3, 4, 7...) para avaliar o comportamento do colapso
-    TOP_DOWN = False
-    LEVEL = 2
+    TOP_DOWN = True
+    LEVEL = 12
 
     print(f"\n⚡ Disparando .to_coarse_classes(top_down={TOP_DOWN}, level={LEVEL}) nos Readers...")
     

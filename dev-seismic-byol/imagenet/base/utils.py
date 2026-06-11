@@ -150,7 +150,7 @@ def apply_layerwise_freeze(resnet_50_backbone, layers : list[str]):
     é importante que obviamente os nomes estejam corretos'''
 
     print(f'Iniciando congelamento seletivo das camadas: {layers}')
-    for name, layer in resnet_50_backbone.named_children():
+    for name, layer in resnet_50_backbone.RN50model.named_children():
         if name in layers:
             for parameter in layer.parameters():
                 parameter.requires_grad = False #congela a camada
