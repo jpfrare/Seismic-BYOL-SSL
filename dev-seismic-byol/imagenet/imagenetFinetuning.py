@@ -75,14 +75,14 @@ if not organizer.args.scratch:
 
 
 if organizer.args.linear_redout:
-    apply_layerwise_freeze(deeplab_backbone, ['conv1', 'bn1', 'act1', 'maxpool', 'layer1', 'layer2', 'layer3', 'layer4'])
+    #apply_layerwise_freeze(deeplab_backbone, ['conv1', 'bn1', 'act1', 'maxpool', 'layer1', 'layer2', 'layer3', 'layer4'])
     pred_head = LinearSegmentationHead(in_channels= 2048, num_classes= num_classes)
     model = DeepLabV3(
         backbone=deeplab_backbone,
         pred_head= pred_head,
         learning_rate=1e-6,
         num_classes=num_classes,
-        freeze_backbone=False,
+        freeze_backbone=True,
     )
 else:
     model = DeepLabV3(
@@ -123,6 +123,12 @@ data_module = SeismicDataModule(
 
 csv_logger = CSVLogger(organizer.finetune_log_dir, name='', version= '')
 #------------------------TRAINER----------------------------------------------------------
+trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
+frozen = sum(p.numel() for p in model.parameters() if not p.requires_grad)
+
+print("Trainable =", trainable)
+print("Frozen =", frozen)
+
 trainer = Trainer(
     logger= csv_logger,
     max_epochs= 20,
