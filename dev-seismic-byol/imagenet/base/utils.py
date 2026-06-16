@@ -145,32 +145,6 @@ def check_transfer_learning(missing_keys):
             print(f"   └─> ... e mais {len(missing_resnet_layers) - 10} camadas.")
         raise RuntimeError("Mismatch de chaves no Transfer Learning! O esqueleto da ResNet ficou vazio.")
 
-def apply_layerwise_freeze(resnet_50_backbone, layers: list[str]):
-    '''freeza as camadas colocadas na lista layers
-    é importante que obviamente os nomes estejam corretos'''
-
-    print(f'Iniciando congelamento seletivo das camadas: {layers}')
-
-    for name, layer in resnet_50_backbone.RN50model.named_children():
-        if name in layers:
-            for parameter in layer.parameters():
-                parameter.requires_grad = False
-
-            # teste de sanidade
-            first_param = next(layer.parameters(), None)
-
-            if first_param is not None:
-                print(
-                    f'Camada congelada: {name} | '
-                    f'requires_grad = {first_param.requires_grad}'
-                )
-            else:
-                print(
-                    f'Camada congelada: {name} | '
-                    f'sem parâmetros'
-                )
-        else:
-            print(f'Camada poupada: {name}')
 
 
 

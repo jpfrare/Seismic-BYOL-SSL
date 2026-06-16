@@ -35,7 +35,7 @@ from base.InformationOrganizer import TrainOrganizer
 from base.ImagenetDataset import DefaultValSubset
 
 #---------------------------------ARGUMENTOS DO TREINO------------------------
-organizer = TrainOrganizer(data_root= '/petrobr/parceirosbr/home/joao.frare/workspace/spfm/Seismic-Byol/dev-seismic-byol/imagenet/logs+checkpoints')
+organizer = TrainOrganizer(data_root= '/petrobr/parceirosbr/spfm/joao.frare/logs+checkpoints_imagenet')
 #------------------------------------------------------------------------------
 train_imagenet_size = 1281167                                      #número de imagens de treino total do Imagenet
 

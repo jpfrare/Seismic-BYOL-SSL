@@ -37,6 +37,7 @@ class DeepLabV3(SimpleSupervisedModel):
         lr_scheduler_kwargs: Optional[Dict[str, Any]] = None,
         output_shape: Optional[Tuple[int, ...]] = None,
         freeze_backbone: bool = False,
+        freeze_layers: Optional[list[str]] = None,
         interpolate_mode: Optional[str] = "bilinear",
         flatten: bool = False,
         loss_squeeze: bool = True,
@@ -122,6 +123,7 @@ class DeepLabV3(SimpleSupervisedModel):
         self.interpolate_mode = interpolate_mode
         self.squeeze_loss = loss_squeeze
         self.loss_long = loss_long
+        self.freeze_layers = freeze_layers
 
         super().__init__(
             backbone=backbone,
@@ -138,6 +140,17 @@ class DeepLabV3(SimpleSupervisedModel):
             freeze_backbone=freeze_backbone,
             flatten=flatten,
         )
+
+        self._apply_layerwise_freeze()
+    
+    def _apply_layerwise_freeze(self):
+        if self.freeze_backbone or not self.freeze_layers or not hasattr(self.backbone, "RN50model"):
+            #não faz sentido freezar algo se ja mandamos freezar o backbone ou se não há especificamente o que freezar
+            return
+        for name, layer in self.backbone.RN50model.named_children():
+            if name in self.freeze_layers:
+                for parameter in layer.parameters():
+                    parameter.requires_grad = False
 
     def forward(self, x: Tensor) -> Tensor:
         """Performs the forward pass of the DeepLabV3 model.
