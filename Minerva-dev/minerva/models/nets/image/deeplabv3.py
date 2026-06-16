@@ -141,28 +141,38 @@ class DeepLabV3(SimpleSupervisedModel):
             flatten=flatten,
         )
 
-        self._apply_layerwise_freeze()
-    
-    def _apply_layerwise_freeze(self):
-        if self.freeze_backbone or not self.freeze_layers or not hasattr(self.backbone, "RN50model"):
-            #não faz sentido freezar algo se ja mandamos freezar o backbone ou se não há especificamente o que freezar
-            return
-        frozen_layers = []
-        spared_layers = []
-        for name, layer in self.backbone.RN50model.named_children():
-            if name in self.freeze_layers:
-                frozen_layers.append(name)
-                for parameter in layer.parameters():
-                    parameter.requires_grad = False
-            else:
-                spared_layers.append(name)
+    def _set_trainable_params(self):
+        if self.freeze_backbone:
+            for p in self.backbone.parameters():
+                p.requires_grad = False
 
-        trainable = sum(p.numel() for p in self.backbone.parameters() if p.requires_grad)
-        not_trainable = sum(p.numel() for p in self.backbone.parameters() if not p.requires_grad)
+        else:
+            for p in self.backbone.parameters():
+                p.requires_grad = True
 
-        print(f'backbone params:')
-        print(f'Frozen Layers: {frozen_layers}, Number of Backbone Not Trainable Params: {not_trainable:,}')
-        print(f'Spared Layers: {spared_layers}, Number of Backbone Trainable Params: {trainable:,}')
+            if self.freeze_layers is not None:
+                frozen_layers = []
+                spared_layers = []
+                for name, layer in self.backbone.RN50model.named_children():
+                    if name in self.freeze_layers:
+                        frozen_layers.append(name)
+
+                        for p in layer.parameters():
+                            p.requires_grad = False
+                    
+                    else:
+                        spared_layers.append(name)
+                    
+
+                trainable = sum(p.numel() for p in self.backbone.parameters() if p.requires_grad)
+                not_trainable = sum(p.numel() for p in self.backbone.parameters() if not p.requires_grad)
+
+                print(f'backbone params:')
+                print(f'Frozen Layers: {frozen_layers}, Number of Backbone Not Trainable Params: {not_trainable:,}')
+                print(f'Spared Layers: {spared_layers}, Number of Backbone Trainable Params: {trainable:,}')
+
+        for p in self.fc.parameters():
+            p.requires_grad = True
 
     def forward(self, x: Tensor) -> Tensor:
         """Performs the forward pass of the DeepLabV3 model.

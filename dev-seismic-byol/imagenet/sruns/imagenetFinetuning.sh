@@ -18,8 +18,8 @@ num_classes=9
 for r in "${repetition[@]}"; do
     for d in "${finetune_dataset[@]}"; do
 
-    FLAGS="--reduction_mode full --scratch --linear_redout --repetition ${r} --finetune_dataset ${d}"
-    mkdir -p /petrobr/parceirosbr/home/joao.frare/workspace/spfm/Seismic-Byol/dev-seismic-byol/imagenet/jobs_out/imagenetFinetune/finetune_${d}/taxonomic/repetition_${r}
+    FLAGS="--reduction_mode full --custom --repetition ${r} --finetune_dataset ${d}"
+    mkdir -p /petrobr/parceirosbr/home/joao.frare/workspace/spfm/Seismic-Byol/dev-seismic-byol/imagenet/jobs_out/imagenetFinetune/finetune_${d}/full/repetition_${r}
 
     sbatch <<EOT
 #!/bin/bash
@@ -32,8 +32,8 @@ for r in "${repetition[@]}"; do
 #SBATCH --partition=ict-h100
 #SBATCH --account=spfm
 #SBATCH --time=03:00:00
-#SBATCH --output=/petrobr/parceirosbr/home/joao.frare/workspace/spfm/Seismic-Byol/dev-seismic-byol/imagenet/jobs_out/imagenetFinetune/finetune_${d}/scratch/repetition_${r}/scratch_linear_${linear}_%j.out
-#SBATCH --error=/petrobr/parceirosbr/home/joao.frare/workspace/spfm/Seismic-Byol/dev-seismic-byol/imagenet/jobs_out/imagenetFinetune/finetune_${d}/scratch/repetition_${r}/scratch_linear_${linear}_%j.err
+#SBATCH --output=/petrobr/parceirosbr/home/joao.frare/workspace/spfm/Seismic-Byol/dev-seismic-byol/imagenet/jobs_out/imagenetFinetune/finetune_${d}/full/repetition_${r}/full_custom_%j.out
+#SBATCH --error=/petrobr/parceirosbr/home/joao.frare/workspace/spfm/Seismic-Byol/dev-seismic-byol/imagenet/jobs_out/imagenetFinetune/finetune_${d}/full/repetition_${r}/full_custom_%j.err
 
 cd "\$SLURM_SUBMIT_DIR"
 
