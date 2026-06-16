@@ -41,7 +41,7 @@ seed_everything(organizer.args.repetition)
 num_classes = 6
 deeplab_backbone = DeepLabV3Backbone(num_classes=num_classes)
 
-print(f'Scratch: {organizer.args.scratch} || Linear Redout: {organizer.args.linear_redout}')
+print(f'Scratch: {organizer.args.scratch} || Linear Redout: {organizer.args.linear_redout} || Custom: {organizer.args.custom}')
 #importing_pretrained_model
 if not organizer.args.scratch:
     resnet50_backbone = timm.create_model('resnet50', pretrained=False, output_stride=8, num_classes= 0)
@@ -75,7 +75,7 @@ if not organizer.args.scratch:
 
 
 if organizer.args.linear_redout:
-    #apply_layerwise_freeze(deeplab_backbone, ['conv1', 'bn1', 'act1', 'maxpool', 'layer1', 'layer2', 'layer3', 'layer4'])
+    #freezando o backbone todo
     pred_head = LinearSegmentationHead(in_channels= 2048, num_classes= num_classes)
     model = DeepLabV3(
         backbone=deeplab_backbone,
@@ -84,6 +84,17 @@ if organizer.args.linear_redout:
         num_classes=num_classes,
         freeze_backbone=True,
     )
+elif organizer.args.custom:
+    #layerise freeze
+    layers = ['conv1', 'bn1', 'layer1', 'layer2']
+    model = DeepLabV3(
+        backbone= deeplab_backbone,
+        learning_rate= 1e-6,
+        num_classes= num_classes,
+        freeze_backbone= False,
+        freeze_layers= layers
+    )
+
 else:
     model = DeepLabV3(
         backbone=deeplab_backbone,
@@ -123,11 +134,6 @@ data_module = SeismicDataModule(
 
 csv_logger = CSVLogger(organizer.finetune_log_dir, name='', version= '')
 #------------------------TRAINER----------------------------------------------------------
-trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
-frozen = sum(p.numel() for p in model.parameters() if not p.requires_grad)
-
-print("Trainable =", trainable)
-print("Frozen =", frozen)
 
 trainer = Trainer(
     logger= csv_logger,

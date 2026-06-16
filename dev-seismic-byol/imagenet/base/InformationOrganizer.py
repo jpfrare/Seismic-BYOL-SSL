@@ -127,7 +127,12 @@ class FinetuningOrganizer(TrainOrganizer):
         
         dirs = dirs/f'finetune_{self.args.finetune_dataset}'
 
-        dirs = dirs/'linear' if self.args.linear_redout else dirs/'full_finetuning'
+        if self.args.linear_redout:
+            dirs = dirs/'linear'
+        elif self.args.custom:
+            dirs = dirs/'custom'
+        else:
+            dirs = dirs/'full_finetuning'
 
         self.finetune_ckpt_dir = dirs/'checkpoints'
         self.finetune_log_dir = dirs/'logs'
@@ -139,7 +144,14 @@ class FinetuningOrganizer(TrainOrganizer):
         super()._set_up_parser()
         self.parser.add_argument("--scratch", action= 'store_true', help= 'Train From Scratch')
         self.parser.add_argument("--linear_redout", action= 'store_true', help= 'se faremos ou não linear redout')
+        self.parser.add_argument("--custom", action= 'store_true', help= 'se o freeze do backbone vai ser customizado')
         self.parser.add_argument("--finetune_dataset", type= str, choices= ['f3_N', 'seam_ai_N'], required= True, help= 'dataset de finetune')
+    
+    def _parse_args(self):
+        super()._parse_args()
+        if self.args.linear_redout and self.args.custom:
+            self.parser.error(
+                "Inconsistência! linear redout e custom são mutuamente exclusivos!")
 
     def _get_dirs_and_set_model_name(self):
         if self.args.scratch:

@@ -221,7 +221,7 @@ class FinetuningMetrics():
 
 if __name__ == '__main__':
 
-    root = Path('/petrobr/parceirosbr/home/joao.frare/workspace/spfm/Seismic-Byol/dev-seismic-byol/imagenet/logs+checkpoints')
+    root = Path('/petrobr/parceirosbr/spfm/joao.frare/logs+checkpoints_imagenet')
     t_root = root / 'Train'
     f_root = root / 'Finetune'
     
