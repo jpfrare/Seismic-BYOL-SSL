@@ -123,16 +123,6 @@ class FinetuningOrganizer(TrainOrganizer):
         self.task = 'Finetune'
 
         dirs= self._get_dirs_and_set_model_name()
-        self.finetune_model_name = f'{self.model_name}_finetune_{self.args.finetune_dataset}'
-        
-        dirs = dirs/f'finetune_{self.args.finetune_dataset}'
-
-        if self.args.linear_redout:
-            dirs = dirs/'linear'
-        elif self.args.custom:
-            dirs = dirs/'custom'
-        else:
-            dirs = dirs/'full_finetuning'
 
         self.finetune_ckpt_dir = dirs/'checkpoints'
         self.finetune_log_dir = dirs/'logs'
@@ -143,22 +133,31 @@ class FinetuningOrganizer(TrainOrganizer):
     def _set_up_parser(self):
         super()._set_up_parser()
         self.parser.add_argument("--scratch", action= 'store_true', help= 'Train From Scratch')
-        self.parser.add_argument("--linear_redout", action= 'store_true', help= 'se faremos ou não linear redout')
-        self.parser.add_argument("--custom", action= 'store_true', help= 'se o freeze do backbone vai ser customizado')
+        self.parser.add_argument(
+            "--backbone_freeze",
+            type= str,
+            choices= ['full_freeze', 'custom_freeze', 'full_finetuning'],
+            required= True,
+            help= 'como se dará os pesos do backbone'
+        )
+        self.parser.add_argument(
+            "--pred_head",
+            type= str,
+            choices= ['linear', 'deeplab'],
+            required= True,
+            help= 'qual cabeça será usada'
+        )
         self.parser.add_argument("--finetune_dataset", type= str, choices= ['f3_N', 'seam_ai_N'], required= True, help= 'dataset de finetune')
-    
-    def _parse_args(self):
-        super()._parse_args()
-        if self.args.linear_redout and self.args.custom:
-            self.parser.error(
-                "Inconsistência! linear redout e custom são mutuamente exclusivos!")
 
     def _get_dirs_and_set_model_name(self):
         if self.args.scratch:
             self.model_name = 'scratch'
-            return Path(self.data_root)/self.task/f'{self.args.repetition}'/'scratch'
+            dirs = Path(self.data_root)/self.task/f'{self.args.repetition}'/'scratch'
         else:
-            return super()._get_dirs_and_set_model_name()
+            dirs =  super()._get_dirs_and_set_model_name()
+        dirs = dirs / f'finetune_{self.args.finetune_dataset}'/ f'{self.args.backbone_freeze}_{self.args.pred_head}'
+        self.finetune_model_name = f'{self.model_name}_finetune_{self.args.finetune_dataset}'
+        return dirs
     
     def __str__(self):
         sup_info = super().__str__()

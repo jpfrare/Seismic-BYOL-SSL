@@ -41,7 +41,7 @@ seed_everything(organizer.args.repetition)
 num_classes = 6
 deeplab_backbone = DeepLabV3Backbone(num_classes=num_classes)
 
-print(f'Scratch: {organizer.args.scratch} || Linear Redout: {organizer.args.linear_redout} || Custom: {organizer.args.custom}')
+print(f'Scratch: {organizer.args.scratch} || Backbone Config: {organizer.args.backbone_freeze} || Pred_Head: {organizer.args.pred_head}')
 #importing_pretrained_model
 if not organizer.args.scratch:
     resnet50_backbone = timm.create_model('resnet50', pretrained=False, output_stride=8, num_classes= 0)
@@ -73,34 +73,40 @@ if not organizer.args.scratch:
 
     check_transfer_learning(possible_errors.missing_keys)
 
-
-if organizer.args.linear_redout:
-    #freezando o backbone todo
+#Cabeça de segmentação
+if organizer.args.pred_head == 'deeplab':
+    pred_head = DeepLabV3PredictionHead(num_classes=num_classes)
+else:
+    #linear
     pred_head = LinearSegmentationHead(in_channels= 2048, num_classes= num_classes)
+
+#modelo
+if organizer.args.backbone_freeze == 'full_freeze':
     model = DeepLabV3(
-        backbone=deeplab_backbone,
+        backbone= deeplab_backbone,
         pred_head= pred_head,
-        learning_rate=1e-6,
-        num_classes=num_classes,
-        freeze_backbone=True,
+        learning_rate= 1e-6,
+        num_classes= num_classes,
+        freeze_backbone= True
     )
-elif organizer.args.custom:
-    #layerise freeze
+elif organizer.args.backbone_freeze == 'custom_freeze':
     layers = ['conv1', 'bn1', 'layer1', 'layer2']
     model = DeepLabV3(
         backbone= deeplab_backbone,
+        pred_head= pred_head,
         learning_rate= 1e-6,
         num_classes= num_classes,
-        freeze_backbone= False,
-        freeze_layers= layers
+        freeze_layers= layers,
+        freeze_backbone= False
     )
-
 else:
+    #full_finetuning
     model = DeepLabV3(
-        backbone=deeplab_backbone,
-        learning_rate=1e-6,
-        num_classes=num_classes,
-        freeze_backbone=False,
+        backbone= deeplab_backbone,
+        pred_head= pred_head,
+        learning_rate= 1e-6,
+        num_classes= num_classes,
+        freeze_backbone= False
     )
 
 #----------------------------Dados - Modelagem----------------------------------------
