@@ -14,6 +14,7 @@ from timm.loss import BinaryCrossEntropy
 from lightning import Trainer
 from lightning.pytorch.loggers.csv_logs import CSVLogger
 from lightning.fabric import seed_everything
+from lightning.pytorch.callbacks import ModelCheckpoint
 
 # -------------------- Minerva --------------------
 from minerva.models.nets.image.deeplabv3 import DeepLabV3Backbone, DeepLabV3, DeepLabV3PredictionHead
@@ -42,7 +43,7 @@ num_classes = 6
 deeplab_backbone = DeepLabV3Backbone(num_classes=num_classes)
 
 print(f'Scratch: {organizer.args.scratch} || Backbone Config: {organizer.args.backbone_freeze} || Pred_Head: {organizer.args.pred_head}')
-#importing_pretrained_model
+#--------------------------------------------------------------------Importando modelo pré-treinado--------------------------------------------------------------
 if not organizer.args.scratch:
     resnet50_backbone = timm.create_model('resnet50', pretrained=False, output_stride=8, num_classes= 0)
     fc = nn.Linear(2048, organizer.args.num_classes)
@@ -73,22 +74,34 @@ if not organizer.args.scratch:
 
     check_transfer_learning(possible_errors.missing_keys)
 
-#Cabeça de segmentação
+#-------------------------------------------------------------------Cabeça de Segmentação-------------------------------------------------------------------------
 if organizer.args.pred_head == 'deeplab':
     pred_head = DeepLabV3PredictionHead(num_classes=num_classes)
 else:
     #linear
     pred_head = LinearSegmentationHead(in_channels= 2048, num_classes= num_classes)
 
-#modelo
+#------------------------------------------------------------------Modelo------------------------------------------------------------------------------------------
+val_metrics = {
+    "mIoU": JaccardIndex(
+        num_classes=num_classes, average="macro", task="multiclass"
+    ),
+    "acc": Accuracy(num_classes=num_classes, task="multiclass"),
+    "f1-weighted": F1Score(
+        num_classes=num_classes, task="multiclass", average="weighted"
+    ),
+}
+
 if organizer.args.backbone_freeze == 'full_freeze':
     model = DeepLabV3(
         backbone= deeplab_backbone,
         pred_head= pred_head,
         learning_rate= 1e-6,
         num_classes= num_classes,
-        freeze_backbone= True
+        freeze_backbone= True,
+        val_metrics= val_metrics
     )
+
 elif organizer.args.backbone_freeze == 'custom_freeze':
     layers = ['conv1', 'bn1', 'layer1', 'layer2']
     model = DeepLabV3(
@@ -97,8 +110,10 @@ elif organizer.args.backbone_freeze == 'custom_freeze':
         learning_rate= 1e-6,
         num_classes= num_classes,
         freeze_layers= layers,
-        freeze_backbone= False
+        freeze_backbone= False,
+        val_metrics= val_metrics
     )
+
 else:
     #full_finetuning
     model = DeepLabV3(
@@ -106,7 +121,8 @@ else:
         pred_head= pred_head,
         learning_rate= 1e-6,
         num_classes= num_classes,
-        freeze_backbone= False
+        freeze_backbone= False,
+        val_metrics= val_metrics
     )
 
 #----------------------------Dados - Modelagem----------------------------------------
@@ -139,7 +155,17 @@ data_module = SeismicDataModule(
     )
 
 csv_logger = CSVLogger(organizer.finetune_log_dir, name='', version= '')
-#------------------------TRAINER----------------------------------------------------------
+#------------------------Callbacks-------------------------------------------------------------------------
+ckpt_callback = ModelCheckpoint(
+    monitor= 'val_mIoU',
+    mode= 'max',
+    save_top_k=1,
+    save_last= True,
+    dirpath= organizer.finetune_ckpt_dir,
+    filename= 'best',
+    auto_insert_metric_name=False
+)
+#------------------------TRAINER---------------------------------------------------------------------------
 
 trainer = Trainer(
     logger= csv_logger,
@@ -147,7 +173,8 @@ trainer = Trainer(
     limit_val_batches = 1.0,
     strategy= 'auto',
     devices= 1,
-    check_val_every_n_epoch=True
+    check_val_every_n_epoch=True,
+    callbacks= [ckpt_callback]
 )
 
 pipeline = SimpleLightningPipeline(
@@ -161,16 +188,6 @@ pipeline.run(data_module, task="fit")
     
 num_classes = 6
     
-metrics = {
-    "mIoU": JaccardIndex(
-        num_classes=num_classes, average="macro", task="multiclass"
-    ),
-    "acc": Accuracy(num_classes=num_classes, task="multiclass"),
-    "f1-weighted": F1Score(
-        num_classes=num_classes, task="multiclass", average="weighted"
-    ),
-}
-    
 pipeline = SimpleLightningPipeline(
     model=model,
     trainer=trainer,
@@ -178,7 +195,7 @@ pipeline = SimpleLightningPipeline(
     save_run_status=True,
     seed=organizer.args.repetition,
     apply_metrics_per_sample=False,
-    classification_metrics=metrics,
+    classification_metrics=val_metrics,
 )
     
-pipeline.run(data_module, task="evaluate")
+pipeline.run(data_module, task="evaluate", ckpt_path= organizer.finetune_ckpt_dir / 'best.ckpt')
