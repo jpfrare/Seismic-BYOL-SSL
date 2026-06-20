@@ -174,6 +174,21 @@ class DeepLabV3(SimpleSupervisedModel):
         for p in self.fc.parameters():
             p.requires_grad = True
 
+    def _compute_metrics(self, y_hat, y, step_name):
+        if self.metrics[step_name] is None:
+            return {}
+
+        if self.squeeze_loss:
+            y = y.squeeze(1)
+
+        if self.loss_long:
+            y = y.long()
+
+        return {
+            f"{step_name}_{metric_name}": metric.to(self.device)(y_hat, y)
+            for metric_name, metric in self.metrics[step_name].items()
+        }
+
     def forward(self, x: Tensor) -> Tensor:
         """Performs the forward pass of the DeepLabV3 model.
 
