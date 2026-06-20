@@ -14,7 +14,7 @@ class TrainMetrics():
     def __init__(self, raw_data, save_root):
         self.raw_data = raw_data
         self.save_root = Path(save_root)
-        self.model_csvs = self._get_model_csvs()
+        self._get_model_csvs()
 
     
     def _get_model_csvs(self):
@@ -27,7 +27,6 @@ class TrainMetrics():
                 df_repetition = df_repetition.groupby('step').first().reset_index()
                 '''importante ver que o agrupamento por step e junto com o .first() faz com que, ele junte as informações da loss de treino
                 com a loss de validação para o mesmo step de validação (o que é importante e precisamos) '''
-                print(df_repetition.tail(20))
                 df_repetition = df_repetition.dropna(subset=['train_loss_epoch', 'val_acc1', 'val_acc5', 'val_loss'])
                 df_repetition['key'] = repetition
                 data.append(df_repetition)
@@ -45,7 +44,7 @@ class TrainMetrics():
 
             model_csv[model_name] = model_to_curves
         
-        return model_csv
+        self.model_csvs = model_csv
     
     def group_plot(self, y_axis: str, x_axis: str, mul_factor: int, title: str, xlabel_title: str, ylabel_title: str, yscale: str = None):
         '''plot de apenas um gráfico da única variável escolhida para todos os modelos (média sombreado com desvio padrão)
@@ -179,17 +178,21 @@ class FinetuningMetrics():
     finetune_dataset: str
     raw_data: dict[str, list[Path, Path, Path]]
     save_root: Path
+    model_data: dict
+    model_csvs: dict
 
     def __init__(self, raw_data, save_root):
         self.raw_data = raw_data
         self.save_root = Path(save_root)
+        self._get_model_csvs()
+        self._get_model_data()
     
     def _get_model_data(self):
         model_data = {}
         for model_name in self.raw_data.keys():
             miou_rep = []
             for repetition in range(3):
-                path = self.raw_data[model_name][repetition]
+                path = next(self.raw_data[model_name][repetition].glob("metrics*.yaml"))
                 with open(path, 'r') as data:
                     metrics = yaml.safe_load(data)
                     miou = metrics['classification']['mIoU'][0]
@@ -200,7 +203,88 @@ class FinetuningMetrics():
 
             model_data[model_name] = f'{mean:.2f} ± {std:.2f}'
         
-        return model_data
+        self.model_data = model_data
+    
+    def _get_model_csvs(self):
+        model_csv = {}
+        for model_name in self.raw_data.keys():
+            data = []
+            for repetition in range(3):
+                csv_path = self.raw_data[model_name][repetition] / 'metrics.csv'
+                df_repetition = pd.read_csv(csv_path)
+                df_repetition = df_repetition.groupby('epoch').first().reset_index()
+                '''importante ver que o agrupamento por step e junto com o .first() faz com que, ele junte as informações da loss de treino
+                com a loss de validação para o mesmo step de validação (o que é importante e precisamos) '''
+                df_repetition = df_repetition.dropna(subset=['train_loss', 'val_loss'])
+                df_repetition['key'] = repetition
+                data.append(df_repetition)
+            df_model = pd.concat(data)
+            model_to_curves = df_model.groupby('epoch').agg(
+                mean_val_loss= ('val_loss', 'mean'),
+                std_val_loss= ('val_loss', 'std'),
+                mean_train_loss = ('train_loss', 'mean'),
+                std_train_loss = ('train_loss', 'std')
+            ).reset_index()
+
+            model_csv[model_name] = model_to_curves
+        
+        self.model_csvs = model_csv
+    
+    def individual_plot(self, y_axis: list[str], x_axis: str, mul_factor: int, title: str, ncols: int = 4, yscale: str = None):
+        '''plota vários gráficos (cada um referente a um modelo) de um conjunto de métricas escolhido (média sombreado com desvio padrão)'''
+
+        num_models = len(self.model_csvs)
+        nrows = math.ceil(num_models/ncols) #dado um número de colunas, consegue calcular o número de linhas
+
+        fig, axs = plt.subplots(nrows=nrows, ncols=ncols, figsize=(12, 8)) #fig -> contém a painel que contém os demais gráficos, axs é a lista de mini gráficos
+
+        #mesmo que haja apenas um modelo, torna ax iterável
+        if num_models > 1:
+            axs = axs.flatten() #pega uma matriz e achata ela, concatena as linhas em colunas
+        else:
+            axs = [axs]
+
+        for i, (model_name, dataframe) in enumerate(self.model_csvs.items()): 
+            ax = axs[i]
+
+            for metric in y_axis: #itera pelas métricas pedidas e as plota
+                mean = dataframe[f'mean_{metric}']*mul_factor
+                std = dataframe[f'std_{metric}']*mul_factor
+
+                ax.plot(
+                    dataframe[x_axis],
+                    mean,
+                    linewidth= 2,
+                    label= metric
+                )
+
+                ax.fill_between(
+                    dataframe[x_axis],
+                    mean - std,
+                    mean + std,
+                    alpha= 0.15,
+                    zorder= 2
+                )
+
+            ax.set_title(model_name, fontsize=12, fontweight='bold')
+            ax.grid(True, linestyle='--', alpha=0.5)
+            ax.legend(fontsize= 9)
+
+            if yscale is not None:
+                ax.set_yscale(yscale)
+
+        #apaga os quadradinhos não preenchidos
+        for i in range(num_models, len(axs)):
+            fig.delaxes(axs[i])
+        
+        fig.suptitle(title, fontsize=16, fontweight='bold')
+        
+        fig.tight_layout()
+
+        save_path = self.save_root / f'{title}_Clean_Grid.png'
+        fig.savefig(save_path, dpi=300, bbox_inches='tight')
+        plt.close()
+        
     
     def save_miou_table(self, filename):
         '''Recupera os dados processados de mIoU, organiza em uma tabela
@@ -208,9 +292,7 @@ class FinetuningMetrics():
         '''
         import pandas as pd
 
-        model_data_dict = self._get_model_data()
-
-        table_rows = list(model_data_dict.items())
+        table_rows = list(self.model_data.items())
 
         df_miou = pd.DataFrame(table_rows, columns=['Model Name', 'mIoU'])
 
@@ -218,6 +300,8 @@ class FinetuningMetrics():
 
         with open(save_path, 'w', encoding='utf-8') as f:
             f.write(df_miou.to_string(index=False))
+    
+
 
 if __name__ == '__main__':
 
@@ -299,7 +383,26 @@ if __name__ == '__main__':
         'Level 3': [],
         'Scratch': []
     }
-    
+
+    parihaka_custom_linear = {
+        'Full Dataset': [],
+        'Scratch': []
+    }
+
+    parihaka_custom_deeplab = {
+        'Full Dataset': [],
+        'Scratch': []
+    }
+
+    f3_custom_linear = {
+        'Full Dataset': [],
+        'Scratch': []
+    }
+
+    f3_custom_deeplab = {
+        'Full Dataset': [],
+        'Scratch': []
+    }
 
     for i in ['0', '1', '2']:
         # CORREÇÃO: Mudado de train_root para t_root
@@ -315,32 +418,69 @@ if __name__ == '__main__':
         taxonomic_experiments['9 Classes'].append(t_root / i / 'taxonomic' / 'top_down_level_3' / 'logs' / 'metrics.csv')
 
         for ipc in ['600', '100', '10']:
-            parihaka_full_finetuning[f'{ipc} images per class'].append(next(Path(f_root / i / 'default' / f'num_classes_1000_per_class_{ipc}' / 'finetune_seam_ai_N' / 'full_finetuning' / 'logs').glob("metrics*.yaml")))
-            parihaka_linear_redout[f'{ipc} images per class'].append(next(Path(f_root / i / 'default' /  f'num_classes_1000_per_class_{ipc}' / 'finetune_seam_ai_N' / 'linear' / 'logs').glob("metrics*.yaml")))
-            f3_full_finetuning[f'{ipc} images per class'].append(next(Path(f_root / i / 'default' / f'num_classes_1000_per_class_{ipc}' /'finetune_f3_N' / 'full_finetuning' / 'logs').glob("metrics*.yaml")))
-            f3_linear_redout[f'{ipc} images per class'].append(next(Path(f_root / i / 'default' /  f'num_classes_1000_per_class_{ipc}' / 'finetune_f3_N' / 'linear' / 'logs').glob("metrics*.yaml")))
+            parihaka_full_finetuning[f'{ipc} images per class'].append(Path(f_root / i / 'default' / f'num_classes_1000_per_class_{ipc}' / 'finetune_seam_ai_N' / 'full_finetuning' / 'logs'))
+
+            parihaka_linear_redout[f'{ipc} images per class'].append(Path(f_root / i / 'default' /  f'num_classes_1000_per_class_{ipc}' / 'finetune_seam_ai_N' / 'linear' / 'logs'))
+
+            f3_full_finetuning[f'{ipc} images per class'].append(Path(f_root / i / 'default' / f'num_classes_1000_per_class_{ipc}' /'finetune_f3_N' / 'full_finetuning' / 'logs'))
+
+            f3_linear_redout[f'{ipc} images per class'].append(Path(f_root / i / 'default' /  f'num_classes_1000_per_class_{ipc}' / 'finetune_f3_N' / 'linear' / 'logs'))
 
         for c in ['500', '79', '9']:
-            parihaka_full_finetuning[f'{c} Classes'].append(next(Path(f_root / i / 'default' / f'num_classes_{c}_per_class_1300' / 'finetune_seam_ai_N' / 'full_finetuning' / 'logs').glob("metrics*.yaml")))
-            parihaka_linear_redout[f'{c} Classes'].append(next(Path(f_root / i / 'default' /  f'num_classes_{c}_per_class_1300' / 'finetune_seam_ai_N' / 'linear' / 'logs').glob("metrics*.yaml")))
-            f3_full_finetuning[f'{c} Classes'].append(next(Path(f_root / i / 'default' / f'num_classes_{c}_per_class_1300' /'finetune_f3_N' / 'full_finetuning' / 'logs').glob("metrics*.yaml")))
-            f3_linear_redout[f'{c} Classes'].append(next(Path(f_root / i / 'default' /  f'num_classes_{c}_per_class_1300' / 'finetune_f3_N' / 'linear' / 'logs').glob("metrics*.yaml")))    
+            parihaka_full_finetuning[f'{c} Classes'].append(Path(f_root / i / 'default' / f'num_classes_{c}_per_class_1300' / 'finetune_seam_ai_N' / 'full_finetuning' / 'logs'))
+
+            parihaka_linear_redout[f'{c} Classes'].append(Path(f_root / i / 'default' /  f'num_classes_{c}_per_class_1300' / 'finetune_seam_ai_N' / 'linear' / 'logs'))
+            
+            f3_full_finetuning[f'{c} Classes'].append(Path(f_root / i / 'default' / f'num_classes_{c}_per_class_1300' /'finetune_f3_N' / 'full_finetuning' / 'logs'))
+
+            f3_linear_redout[f'{c} Classes'].append(Path(f_root / i / 'default' /  f'num_classes_{c}_per_class_1300' / 'finetune_f3_N' / 'linear' / 'logs'))
+            
         
         for level in ['9', '6', '3']:
-            parihaka_full_finetuning[f'Level {level}'].append(next(Path(f_root / i / 'taxonomic' / f'top_down_level_{level}' / 'finetune_seam_ai_N' / 'full_finetuning' / 'logs').glob("metrics*.yaml")))
-            parihaka_linear_redout[f'Level {level}'].append(next(Path(f_root / i / 'taxonomic' /  f'top_down_level_{level}' / 'finetune_seam_ai_N' / 'linear' / 'logs').glob("metrics*.yaml")))
-            f3_full_finetuning[f'Level {level}'].append(next(Path(f_root / i / 'taxonomic' / f'top_down_level_{level}' /'finetune_f3_N' / 'full_finetuning' / 'logs').glob("metrics*.yaml")))
-            f3_linear_redout[f'Level {level}'].append(next(Path(f_root / i / 'taxonomic' /  f'top_down_level_{level}' / 'finetune_f3_N' / 'linear' / 'logs').glob("metrics*.yaml")))
+            parihaka_full_finetuning[f'Level {level}'].append(Path(f_root / i / 'taxonomic' / f'top_down_level_{level}' / 'finetune_seam_ai_N' / 'full_finetuning' / 'logs'))
+            
+            parihaka_linear_redout[f'Level {level}'].append(Path(f_root / i / 'taxonomic' /  f'top_down_level_{level}' / 'finetune_seam_ai_N' / 'linear' / 'logs'))
+            
+            f3_full_finetuning[f'Level {level}'].append(Path(f_root / i / 'taxonomic' / f'top_down_level_{level}' /'finetune_f3_N' / 'full_finetuning' / 'logs'))
+            
+            f3_linear_redout[f'Level {level}'].append(Path(f_root / i / 'taxonomic' /  f'top_down_level_{level}' / 'finetune_f3_N' / 'linear' / 'logs'))
+            
         
-        parihaka_full_finetuning[f'Full Dataset'].append(next(Path(f_root / i / 'full' / 'finetune_seam_ai_N' / 'full_finetuning' / 'logs').glob("metrics*.yaml")))
-        parihaka_linear_redout[f'Full Dataset'].append(next(Path(f_root / i / 'full' / 'finetune_seam_ai_N' / 'linear' / 'logs').glob("metrics*.yaml")))
-        f3_full_finetuning[f'Full Dataset'].append(next(Path(f_root / i / 'full' / 'finetune_f3_N' / 'full_finetuning' / 'logs').glob("metrics*.yaml")))
-        f3_linear_redout[f'Full Dataset'].append(next(Path(f_root / i / 'full' / 'finetune_f3_N' / 'linear' / 'logs').glob("metrics*.yaml")))
+        parihaka_full_finetuning[f'Full Dataset'].append(Path(f_root / i / 'full' / 'finetune_seam_ai_N' / 'full_finetuning' / 'logs'))
 
-        parihaka_full_finetuning[f'Scratch'].append(next(Path(f_root / i / 'scratch' / 'finetune_seam_ai_N' / 'full_finetuning' / 'logs').glob("metrics*.yaml")))
-        parihaka_linear_redout[f'Scratch'].append(next(Path(f_root / i / 'scratch' / 'finetune_seam_ai_N' / 'linear' / 'logs').glob("metrics*.yaml")))
-        f3_full_finetuning[f'Scratch'].append(next(Path(f_root / i / 'scratch' / 'finetune_f3_N' / 'full_finetuning' / 'logs').glob("metrics*.yaml")))
-        f3_linear_redout[f'Scratch'].append(next(Path(f_root / i / 'scratch' / 'finetune_f3_N' / 'linear' / 'logs').glob("metrics*.yaml")))
+        parihaka_linear_redout[f'Full Dataset'].append(Path(f_root / i / 'full' / 'finetune_seam_ai_N' / 'linear' / 'logs'))
+
+        parihaka_custom_linear[f'Full Dataset'].append(Path(f_root / i / 'full' / 'finetune_seam_ai_N' / 'custom_freeze_linear' / 'logs'))
+
+        parihaka_custom_deeplab[f'Full Dataset'].append(Path(f_root / i / 'full' / 'finetune_seam_ai_N' / 'custom_freeze_deeplab' / 'logs'))
+
+
+        f3_full_finetuning[f'Full Dataset'].append(Path(f_root / i / 'full' / 'finetune_f3_N' / 'full_finetuning' / 'logs'))
+
+        f3_linear_redout[f'Full Dataset'].append(Path(f_root / i / 'full' / 'finetune_f3_N' / 'linear' / 'logs'))
+
+        f3_custom_linear[f'Full Dataset'].append(Path(f_root / i / 'full' / 'finetune_f3_N' / 'custom_freeze_linear' / 'logs'))
+
+        f3_custom_deeplab[f'Full Dataset'].append(Path(f_root / i / 'full' / 'finetune_f3_N' / 'custom_freeze_deeplab' / 'logs'))
+
+
+        parihaka_full_finetuning[f'Scratch'].append(Path(f_root / i / 'scratch' / 'finetune_seam_ai_N' / 'full_finetuning' / 'logs'))
+
+        parihaka_linear_redout[f'Scratch'].append(Path(f_root / i / 'scratch' / 'finetune_seam_ai_N' / 'linear' / 'logs'))
+
+        parihaka_custom_linear[f'Scratch'].append(Path(f_root / i / 'scratch' / 'finetune_seam_ai_N' / 'custom_freeze_linear' / 'logs'))
+
+        parihaka_custom_deeplab[f'Scratch'].append(Path(f_root / i / 'scratch' / 'finetune_seam_ai_N' / 'custom_freeze_deeplab' / 'logs'))
+
+
+        f3_full_finetuning[f'Scratch'].append(Path(f_root / i / 'scratch' / 'finetune_f3_N' / 'full_finetuning' / 'logs'))
+
+        f3_linear_redout[f'Scratch'].append(Path(f_root / i / 'scratch' / 'finetune_f3_N' / 'linear' / 'logs'))
+
+        f3_custom_linear[f'Scratch'].append(Path(f_root / i / 'scratch' / 'finetune_f3_N'  / 'custom_freeze_linear' / 'logs'))
+
+        f3_custom_deeplab[f'Scratch'].append(Path(f_root / i / 'scratch' / 'finetune_f3_N'  / 'custom_freeze_deeplab' / 'logs'))
+
     
     #--------------------------------------------------------------pre-train------------------------------------------------------------------------------
     ipc_metrics = TrainMetrics(ipc_experiments, Path('./data')/'pretrain')
@@ -361,14 +501,35 @@ if __name__ == '__main__':
 
     parihaka_full_finetuning_metrics = FinetuningMetrics(parihaka_full_finetuning, Path('./data')/'finetune')
     parihaka_full_finetuning_metrics.save_miou_table('Models on Full Finetuning - Parihaka')
+    parihaka_full_finetuning_metrics.individual_plot(['val_loss', 'train_loss'], 'epoch', 1, 'Full Finetuning - Parihaka', ncols= 3)
 
     parihaka_linear_redout_metrics = FinetuningMetrics(parihaka_linear_redout, Path('./data')/'finetune')
     parihaka_linear_redout_metrics.save_miou_table('Models on Linear Redout - Parihaka')
+    parihaka_linear_redout_metrics.individual_plot(['val_loss', 'train_loss'], 'epoch', 1, 'Linear Redout - Parihaka', ncols= 3)
+
+    parihaka_custom_linear_metrics = FinetuningMetrics(parihaka_custom_linear, Path('./data')/'finetune')
+    parihaka_custom_linear_metrics.save_miou_table('Models on Custom Freeze and Linear Pred Head - Parihaka')
+    parihaka_custom_linear_metrics.individual_plot(['val_loss', 'train_loss'], 'epoch', 1, 'Custom Freeze and Linear Pred Head - Parihaka', ncols= 3)
+
+    parihaka_custom_deeplab_metrics = FinetuningMetrics(parihaka_custom_deeplab, Path('./data')/'finetune')
+    parihaka_custom_deeplab_metrics.save_miou_table('Models on Custom Freeze and DeepLab Pred Head - Parihaka')
+    parihaka_custom_deeplab_metrics.individual_plot(['val_loss', 'train_loss'], 'epoch', 1, 'Custom Freeze and DeepLab Pred Head - Parihaka', ncols= 3)
 
     f3_full_finetuning_metrics = FinetuningMetrics(f3_full_finetuning, Path('./data')/'finetune')
     f3_full_finetuning_metrics.save_miou_table('Models on Full Finetuning - F3')
+    f3_full_finetuning_metrics.individual_plot(['val_loss', 'train_loss'], 'epoch', 1, 'Full Finetuning - F3', ncols= 3)
 
     f3_linear_redout_metrics = FinetuningMetrics(f3_linear_redout, Path('./data')/'finetune')
     f3_linear_redout_metrics.save_miou_table('Models on Linear Redout - F3')
+    f3_linear_redout_metrics.individual_plot(['val_loss', 'train_loss'], 'epoch', 1, 'Linear Redout - F3', ncols= 3)
+
+    f3_custom_linear_metrics = FinetuningMetrics(f3_custom_linear, Path('./data')/'finetune')
+    f3_custom_linear_metrics.save_miou_table('Models on Custom Freeze and Linear Pred Head - F3')
+    f3_custom_linear_metrics.individual_plot(['val_loss', 'train_loss'], 'epoch', 1, 'Custom Freeze and Linear Pred Head - F3', ncols= 3)
+
+    f3_custom_deeplab_metrics = FinetuningMetrics(f3_custom_deeplab, Path('./data')/'finetune')
+    f3_custom_deeplab_metrics.save_miou_table('Models on Custom Freeze and DeepLab Pred Head - F3')
+    f3_custom_deeplab_metrics.individual_plot(['val_loss', 'train_loss'], 'epoch', 1, 'Custom Freeze and DeepLab Pred Head - F3', ncols= 3)
+
 
     

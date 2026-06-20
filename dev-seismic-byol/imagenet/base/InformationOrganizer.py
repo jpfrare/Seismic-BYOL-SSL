@@ -122,7 +122,7 @@ class FinetuningOrganizer(TrainOrganizer):
         super().__init__(data_root)
         self.task = 'Finetune'
 
-        dirs= self._get_dirs_and_set_model_name()
+        dirs= self._get_finetune_dirs_and_set_model_name()
 
         self.finetune_ckpt_dir = dirs/'checkpoints'
         self.finetune_log_dir = dirs/'logs'
@@ -149,7 +149,7 @@ class FinetuningOrganizer(TrainOrganizer):
         )
         self.parser.add_argument("--finetune_dataset", type= str, choices= ['f3_N', 'seam_ai_N'], required= True, help= 'dataset de finetune')
 
-    def _get_dirs_and_set_model_name(self):
+    def _get_finetune_dirs_and_set_model_name(self):
         if self.args.scratch:
             self.model_name = 'scratch'
             dirs = Path(self.data_root)/self.task/f'{self.args.repetition}'/'scratch'

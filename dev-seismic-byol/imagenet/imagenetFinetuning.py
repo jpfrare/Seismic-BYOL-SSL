@@ -16,7 +16,7 @@ from lightning.pytorch.loggers.csv_logs import CSVLogger
 from lightning.fabric import seed_everything
 
 # -------------------- Minerva --------------------
-from minerva.models.nets.image.deeplabv3 import DeepLabV3Backbone, DeepLabV3
+from minerva.models.nets.image.deeplabv3 import DeepLabV3Backbone, DeepLabV3, DeepLabV3PredictionHead
 from minerva.models.loaders import FromPretrained
 from minerva.pipelines.lightning_pipeline import SimpleLightningPipeline
 from minerva.transforms.transform import TransformPipeline, Transpose, Padding

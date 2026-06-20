@@ -8,8 +8,9 @@ WORKSPACE="/petrobr/parceirosbr/home/joao.frare/workspace"
 export SIF="/petrobr/parceirosbr/spfm/singularity/amd64/deeprock/ngc/MINERVA_v0_3_9-beta-SPINN_v0_0_1.sif"
 
 
-repetition=(0)
-finetune_dataset=('seam_ai_N' 'f3_N')
+repetition=(1)
+finetune_dataset=('seam_ai_N')
+head=('linear')
 linear=yes
 level=3
 per_class=10
@@ -17,14 +18,15 @@ num_classes=9
 
 for r in "${repetition[@]}"; do
     for d in "${finetune_dataset[@]}"; do
+        for h in "${head[@]}"; do
 
-    FLAGS="--reduction_mode full --custom --repetition ${r} --finetune_dataset ${d}"
-    mkdir -p /petrobr/parceirosbr/home/joao.frare/workspace/spfm/Seismic-Byol/dev-seismic-byol/imagenet/jobs_out/imagenetFinetune/finetune_${d}/full/repetition_${r}
+        FLAGS="--reduction_mode full --scratch --backbone_freeze custom_freeze --pred_head ${h} --repetition ${r} --finetune_dataset ${d}"
+        mkdir -p /petrobr/parceirosbr/home/joao.frare/workspace/spfm/Seismic-Byol/dev-seismic-byol/imagenet/jobs_out/imagenetFinetune/finetune_${d}/scratch/repetition_${r}
 
     sbatch <<EOT
 #!/bin/bash
 
-#SBATCH --job-name=imgenet_default_r${r}
+#SBATCH --job-name=ft_${d}_${h}_r${r}
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=24
@@ -32,8 +34,8 @@ for r in "${repetition[@]}"; do
 #SBATCH --partition=ict-h100
 #SBATCH --account=spfm
 #SBATCH --time=03:00:00
-#SBATCH --output=/petrobr/parceirosbr/home/joao.frare/workspace/spfm/Seismic-Byol/dev-seismic-byol/imagenet/jobs_out/imagenetFinetune/finetune_${d}/full/repetition_${r}/full_custom_%j.out
-#SBATCH --error=/petrobr/parceirosbr/home/joao.frare/workspace/spfm/Seismic-Byol/dev-seismic-byol/imagenet/jobs_out/imagenetFinetune/finetune_${d}/full/repetition_${r}/full_custom_%j.err
+#SBATCH --output=/petrobr/parceirosbr/home/joao.frare/workspace/spfm/Seismic-Byol/dev-seismic-byol/imagenet/jobs_out/imagenetFinetune/finetune_${d}/scratch/repetition_${r}/scratch_head_${h}_%j.out
+#SBATCH --error=/petrobr/parceirosbr/home/joao.frare/workspace/spfm/Seismic-Byol/dev-seismic-byol/imagenet/jobs_out/imagenetFinetune/finetune_${d}/scratch/repetition_${r}/scratch_head_${h}_%j.err
 
 cd "\$SLURM_SUBMIT_DIR"
 
@@ -56,5 +58,6 @@ singularity exec --nv \
         python3 $SCRIPT_PATH $FLAGS
     "
 EOT
+done
 done
 done
