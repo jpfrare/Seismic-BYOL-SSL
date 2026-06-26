@@ -201,7 +201,7 @@ class FinetuningMetrics():
             mean = np.mean(miou_rep)
             std = np.std(miou_rep)
 
-            model_data[model_name] = f'{mean:.2f} ± {std:.2f}'
+            model_data[model_name] = [mean, std]
         
         self.model_data = model_data
     
@@ -292,7 +292,9 @@ class FinetuningMetrics():
         '''
         import pandas as pd
 
-        table_rows = list(self.model_data.items())
+        table_rows = []
+        for key, value in self.model_data.items():
+            table_rows.append((key, f'{value[0]:.2f} ± {value[1]:.2f}'))
 
         df_miou = pd.DataFrame(table_rows, columns=['Model Name', 'mIoU'])
 
@@ -304,6 +306,23 @@ class FinetuningMetrics():
 
 
 if __name__ == '__main__':
+    number_of_images = {
+        'Full Dataset': 1_281_000,
+        '600 images per class': 600_000,
+        '100 images per class': 100_000,
+        '10 images per class': 10_000,
+        '500 Classes': 640_500,
+        '79 Classes': 101_199,
+        '9 Classes': 11_529,
+        'Level 9': 1_281_000,
+        'Level 6': 1_281_000,
+        'Level 3': 1_281_000,
+        'Scratch': 0
+    }
+
+    number_of_classes = {
+
+    }
 
     root = Path('/petrobr/parceirosbr/spfm/joao.frare/logs+checkpoints_imagenet')
     t_root = root / 'Train'
@@ -418,68 +437,53 @@ if __name__ == '__main__':
         taxonomic_experiments['9 Classes'].append(t_root / i / 'taxonomic' / 'top_down_level_3' / 'logs' / 'metrics.csv')
 
         for ipc in ['600', '100', '10']:
-            parihaka_full_finetuning[f'{ipc} images per class'].append(Path(f_root / i / 'default' / f'num_classes_1000_per_class_{ipc}' / 'finetune_seam_ai_N' / 'full_finetuning' / 'logs'))
+            parihaka_full_finetuning[f'{ipc} images per class'].append(Path(f_root / i / 'default' / f'num_classes_1000_per_class_{ipc}' / 'finetune_seam_ai_N' / 'full_finetuning_deeplab' / 'logs'))
 
-            parihaka_linear_redout[f'{ipc} images per class'].append(Path(f_root / i / 'default' /  f'num_classes_1000_per_class_{ipc}' / 'finetune_seam_ai_N' / 'linear' / 'logs'))
+            parihaka_linear_redout[f'{ipc} images per class'].append(Path(f_root / i / 'default' /  f'num_classes_1000_per_class_{ipc}' / 'finetune_seam_ai_N' / 'full_freeze_linear' / 'logs'))
 
-            f3_full_finetuning[f'{ipc} images per class'].append(Path(f_root / i / 'default' / f'num_classes_1000_per_class_{ipc}' /'finetune_f3_N' / 'full_finetuning' / 'logs'))
+            f3_full_finetuning[f'{ipc} images per class'].append(Path(f_root / i / 'default' / f'num_classes_1000_per_class_{ipc}' /'finetune_f3_N' / 'full_finetuning_deeplab' / 'logs'))
 
-            f3_linear_redout[f'{ipc} images per class'].append(Path(f_root / i / 'default' /  f'num_classes_1000_per_class_{ipc}' / 'finetune_f3_N' / 'linear' / 'logs'))
+            f3_linear_redout[f'{ipc} images per class'].append(Path(f_root / i / 'default' /  f'num_classes_1000_per_class_{ipc}' / 'finetune_f3_N' / 'full_freeze_linear' / 'logs'))
 
         for c in ['500', '79', '9']:
-            parihaka_full_finetuning[f'{c} Classes'].append(Path(f_root / i / 'default' / f'num_classes_{c}_per_class_1300' / 'finetune_seam_ai_N' / 'full_finetuning' / 'logs'))
+            parihaka_full_finetuning[f'{c} Classes'].append(Path(f_root / i / 'default' / f'num_classes_{c}_per_class_1300' / 'finetune_seam_ai_N' / 'full_finetuning_deeplab' / 'logs'))
 
-            parihaka_linear_redout[f'{c} Classes'].append(Path(f_root / i / 'default' /  f'num_classes_{c}_per_class_1300' / 'finetune_seam_ai_N' / 'linear' / 'logs'))
+            parihaka_linear_redout[f'{c} Classes'].append(Path(f_root / i / 'default' /  f'num_classes_{c}_per_class_1300' / 'finetune_seam_ai_N' / 'full_freeze_linear' / 'logs'))
             
-            f3_full_finetuning[f'{c} Classes'].append(Path(f_root / i / 'default' / f'num_classes_{c}_per_class_1300' /'finetune_f3_N' / 'full_finetuning' / 'logs'))
+            f3_full_finetuning[f'{c} Classes'].append(Path(f_root / i / 'default' / f'num_classes_{c}_per_class_1300' /'finetune_f3_N' / 'full_finetuning_deeplab' / 'logs'))
 
-            f3_linear_redout[f'{c} Classes'].append(Path(f_root / i / 'default' /  f'num_classes_{c}_per_class_1300' / 'finetune_f3_N' / 'linear' / 'logs'))
+            f3_linear_redout[f'{c} Classes'].append(Path(f_root / i / 'default' /  f'num_classes_{c}_per_class_1300' / 'finetune_f3_N' / 'full_freeze_linear' / 'logs'))
             
         
         for level in ['9', '6', '3']:
-            parihaka_full_finetuning[f'Level {level}'].append(Path(f_root / i / 'taxonomic' / f'top_down_level_{level}' / 'finetune_seam_ai_N' / 'full_finetuning' / 'logs'))
+            parihaka_full_finetuning[f'Level {level}'].append(Path(f_root / i / 'taxonomic' / f'top_down_level_{level}' / 'finetune_seam_ai_N' / 'full_finetuning_deeplab' / 'logs'))
             
-            parihaka_linear_redout[f'Level {level}'].append(Path(f_root / i / 'taxonomic' /  f'top_down_level_{level}' / 'finetune_seam_ai_N' / 'linear' / 'logs'))
+            parihaka_linear_redout[f'Level {level}'].append(Path(f_root / i / 'taxonomic' /  f'top_down_level_{level}' / 'finetune_seam_ai_N' / 'full_freeze_linear' / 'logs'))
             
-            f3_full_finetuning[f'Level {level}'].append(Path(f_root / i / 'taxonomic' / f'top_down_level_{level}' /'finetune_f3_N' / 'full_finetuning' / 'logs'))
+            f3_full_finetuning[f'Level {level}'].append(Path(f_root / i / 'taxonomic' / f'top_down_level_{level}' /'finetune_f3_N' / 'full_finetuning_deeplab' / 'logs'))
             
-            f3_linear_redout[f'Level {level}'].append(Path(f_root / i / 'taxonomic' /  f'top_down_level_{level}' / 'finetune_f3_N' / 'linear' / 'logs'))
+            f3_linear_redout[f'Level {level}'].append(Path(f_root / i / 'taxonomic' /  f'top_down_level_{level}' / 'finetune_f3_N' / 'full_freeze_linear' / 'logs'))
             
         
-        parihaka_full_finetuning[f'Full Dataset'].append(Path(f_root / i / 'full' / 'finetune_seam_ai_N' / 'full_finetuning' / 'logs'))
+        parihaka_full_finetuning[f'Full Dataset'].append(Path(f_root / i / 'full' / 'finetune_seam_ai_N' / 'full_finetuning_deeplab' / 'logs'))
 
-        parihaka_linear_redout[f'Full Dataset'].append(Path(f_root / i / 'full' / 'finetune_seam_ai_N' / 'linear' / 'logs'))
-
-        parihaka_custom_linear[f'Full Dataset'].append(Path(f_root / i / 'full' / 'finetune_seam_ai_N' / 'custom_freeze_linear' / 'logs'))
-
-        parihaka_custom_deeplab[f'Full Dataset'].append(Path(f_root / i / 'full' / 'finetune_seam_ai_N' / 'custom_freeze_deeplab' / 'logs'))
+        parihaka_linear_redout[f'Full Dataset'].append(Path(f_root / i / 'full' / 'finetune_seam_ai_N' / 'full_freeze_linear' / 'logs'))
 
 
-        f3_full_finetuning[f'Full Dataset'].append(Path(f_root / i / 'full' / 'finetune_f3_N' / 'full_finetuning' / 'logs'))
+        f3_full_finetuning[f'Full Dataset'].append(Path(f_root / i / 'full' / 'finetune_f3_N' / 'full_finetuning_deeplab' / 'logs'))
 
-        f3_linear_redout[f'Full Dataset'].append(Path(f_root / i / 'full' / 'finetune_f3_N' / 'linear' / 'logs'))
-
-        f3_custom_linear[f'Full Dataset'].append(Path(f_root / i / 'full' / 'finetune_f3_N' / 'custom_freeze_linear' / 'logs'))
-
-        f3_custom_deeplab[f'Full Dataset'].append(Path(f_root / i / 'full' / 'finetune_f3_N' / 'custom_freeze_deeplab' / 'logs'))
+        f3_linear_redout[f'Full Dataset'].append(Path(f_root / i / 'full' / 'finetune_f3_N' / 'full_freeze_linear' / 'logs'))
 
 
-        parihaka_full_finetuning[f'Scratch'].append(Path(f_root / i / 'scratch' / 'finetune_seam_ai_N' / 'full_finetuning' / 'logs'))
+        parihaka_full_finetuning[f'Scratch'].append(Path(f_root / i / 'scratch' / 'finetune_seam_ai_N' / 'full_finetuning_deeplab' / 'logs'))
 
-        parihaka_linear_redout[f'Scratch'].append(Path(f_root / i / 'scratch' / 'finetune_seam_ai_N' / 'linear' / 'logs'))
-
-        parihaka_custom_linear[f'Scratch'].append(Path(f_root / i / 'scratch' / 'finetune_seam_ai_N' / 'custom_freeze_linear' / 'logs'))
-
-        parihaka_custom_deeplab[f'Scratch'].append(Path(f_root / i / 'scratch' / 'finetune_seam_ai_N' / 'custom_freeze_deeplab' / 'logs'))
+        parihaka_linear_redout[f'Scratch'].append(Path(f_root / i / 'scratch' / 'finetune_seam_ai_N' / 'full_freeze_linear' / 'logs'))
 
 
-        f3_full_finetuning[f'Scratch'].append(Path(f_root / i / 'scratch' / 'finetune_f3_N' / 'full_finetuning' / 'logs'))
+        f3_full_finetuning[f'Scratch'].append(Path(f_root / i / 'scratch' / 'finetune_f3_N' / 'full_finetuning_deeplab' / 'logs'))
 
-        f3_linear_redout[f'Scratch'].append(Path(f_root / i / 'scratch' / 'finetune_f3_N' / 'linear' / 'logs'))
+        f3_linear_redout[f'Scratch'].append(Path(f_root / i / 'scratch' / 'finetune_f3_N' / 'full_freeze_linear' / 'logs'))
 
-        f3_custom_linear[f'Scratch'].append(Path(f_root / i / 'scratch' / 'finetune_f3_N'  / 'custom_freeze_linear' / 'logs'))
-
-        f3_custom_deeplab[f'Scratch'].append(Path(f_root / i / 'scratch' / 'finetune_f3_N'  / 'custom_freeze_deeplab' / 'logs'))
 
     
     #--------------------------------------------------------------pre-train------------------------------------------------------------------------------
@@ -507,14 +511,6 @@ if __name__ == '__main__':
     parihaka_linear_redout_metrics.save_miou_table('Models on Linear Redout - Parihaka')
     parihaka_linear_redout_metrics.individual_plot(['val_loss', 'train_loss'], 'epoch', 1, 'Linear Redout - Parihaka', ncols= 3)
 
-    parihaka_custom_linear_metrics = FinetuningMetrics(parihaka_custom_linear, Path('./data')/'finetune')
-    parihaka_custom_linear_metrics.save_miou_table('Models on Custom Freeze and Linear Pred Head - Parihaka')
-    parihaka_custom_linear_metrics.individual_plot(['val_loss', 'train_loss'], 'epoch', 1, 'Custom Freeze and Linear Pred Head - Parihaka', ncols= 3)
-
-    parihaka_custom_deeplab_metrics = FinetuningMetrics(parihaka_custom_deeplab, Path('./data')/'finetune')
-    parihaka_custom_deeplab_metrics.save_miou_table('Models on Custom Freeze and DeepLab Pred Head - Parihaka')
-    parihaka_custom_deeplab_metrics.individual_plot(['val_loss', 'train_loss'], 'epoch', 1, 'Custom Freeze and DeepLab Pred Head - Parihaka', ncols= 3)
-
     f3_full_finetuning_metrics = FinetuningMetrics(f3_full_finetuning, Path('./data')/'finetune')
     f3_full_finetuning_metrics.save_miou_table('Models on Full Finetuning - F3')
     f3_full_finetuning_metrics.individual_plot(['val_loss', 'train_loss'], 'epoch', 1, 'Full Finetuning - F3', ncols= 3)
@@ -523,13 +519,8 @@ if __name__ == '__main__':
     f3_linear_redout_metrics.save_miou_table('Models on Linear Redout - F3')
     f3_linear_redout_metrics.individual_plot(['val_loss', 'train_loss'], 'epoch', 1, 'Linear Redout - F3', ncols= 3)
 
-    f3_custom_linear_metrics = FinetuningMetrics(f3_custom_linear, Path('./data')/'finetune')
-    f3_custom_linear_metrics.save_miou_table('Models on Custom Freeze and Linear Pred Head - F3')
-    f3_custom_linear_metrics.individual_plot(['val_loss', 'train_loss'], 'epoch', 1, 'Custom Freeze and Linear Pred Head - F3', ncols= 3)
 
-    f3_custom_deeplab_metrics = FinetuningMetrics(f3_custom_deeplab, Path('./data')/'finetune')
-    f3_custom_deeplab_metrics.save_miou_table('Models on Custom Freeze and DeepLab Pred Head - F3')
-    f3_custom_deeplab_metrics.individual_plot(['val_loss', 'train_loss'], 'epoch', 1, 'Custom Freeze and DeepLab Pred Head - F3', ncols= 3)
+
 
 
     
