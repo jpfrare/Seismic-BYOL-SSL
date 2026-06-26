@@ -180,12 +180,16 @@ class FinetuningMetrics():
     save_root: Path
     model_data: dict
     model_csvs: dict
+    num_images: dict[str, int]
+    num_classes: dict[str, int]
 
-    def __init__(self, raw_data, save_root):
+    def __init__(self, raw_data, save_root, num_images, num_classes):
         self.raw_data = raw_data
         self.save_root = Path(save_root)
         self._get_model_csvs()
         self._get_model_data()
+        self.num_images = num_images
+        self.num_classes = num_classes
     
     def _get_model_data(self):
         model_data = {}
@@ -201,7 +205,12 @@ class FinetuningMetrics():
             mean = np.mean(miou_rep)
             std = np.std(miou_rep)
 
-            model_data[model_name] = [mean, std]
+            model_data[model_name] = {
+                'mean': mean,
+                'std': std,
+                'n_images': self.num_images[model_name],
+                'n_classes': self.num_classes[model_name]
+            }
         
         self.model_data = model_data
     
@@ -293,8 +302,8 @@ class FinetuningMetrics():
         import pandas as pd
 
         table_rows = []
-        for key, value in self.model_data.items():
-            table_rows.append((key, f'{value[0]:.2f} ± {value[1]:.2f}'))
+        for key in self.model_data.keys():
+            table_rows.append((key, f'{self.model_data[key]['mean']:.2f} ± {self.model_data[key]['std']:.2f}'))
 
         df_miou = pd.DataFrame(table_rows, columns=['Model Name', 'mIoU'])
 
@@ -304,6 +313,7 @@ class FinetuningMetrics():
             f.write(df_miou.to_string(index=False))
     
 
+#--------------------------------------------------------------------------------------------------------------------------------------------------
 
 if __name__ == '__main__':
     number_of_images = {
@@ -321,7 +331,17 @@ if __name__ == '__main__':
     }
 
     number_of_classes = {
-
+        'Full Dataset': 1000,
+        '600 images per class': 1000,
+        '100 images per class': 1000,
+        '10 images per class': 1000,
+        '500 Classes': 500,
+        '79 Classes': 79,
+        '9 Classes': 9,
+        'Level 9': 477,
+        'Level 6': 80,
+        'Level 3': 9,
+        'Scratch': 0
     }
 
     root = Path('/petrobr/parceirosbr/spfm/joao.frare/logs+checkpoints_imagenet')
@@ -503,19 +523,19 @@ if __name__ == '__main__':
 
     #---------------------------------------------------------finetuning-----------------------------------------------------------------------------------
 
-    parihaka_full_finetuning_metrics = FinetuningMetrics(parihaka_full_finetuning, Path('./data')/'finetune')
+    parihaka_full_finetuning_metrics = FinetuningMetrics(parihaka_full_finetuning, Path('./data')/'finetune', number_of_images, number_of_classes)
     parihaka_full_finetuning_metrics.save_miou_table('Models on Full Finetuning - Parihaka')
     parihaka_full_finetuning_metrics.individual_plot(['val_loss', 'train_loss'], 'epoch', 1, 'Full Finetuning - Parihaka', ncols= 3)
 
-    parihaka_linear_redout_metrics = FinetuningMetrics(parihaka_linear_redout, Path('./data')/'finetune')
+    parihaka_linear_redout_metrics = FinetuningMetrics(parihaka_linear_redout, Path('./data')/'finetune', number_of_images, number_of_classes)
     parihaka_linear_redout_metrics.save_miou_table('Models on Linear Redout - Parihaka')
     parihaka_linear_redout_metrics.individual_plot(['val_loss', 'train_loss'], 'epoch', 1, 'Linear Redout - Parihaka', ncols= 3)
 
-    f3_full_finetuning_metrics = FinetuningMetrics(f3_full_finetuning, Path('./data')/'finetune')
+    f3_full_finetuning_metrics = FinetuningMetrics(f3_full_finetuning, Path('./data')/'finetune', number_of_images, number_of_classes)
     f3_full_finetuning_metrics.save_miou_table('Models on Full Finetuning - F3')
     f3_full_finetuning_metrics.individual_plot(['val_loss', 'train_loss'], 'epoch', 1, 'Full Finetuning - F3', ncols= 3)
 
-    f3_linear_redout_metrics = FinetuningMetrics(f3_linear_redout, Path('./data')/'finetune')
+    f3_linear_redout_metrics = FinetuningMetrics(f3_linear_redout, Path('./data')/'finetune', number_of_images, number_of_classes)
     f3_linear_redout_metrics.save_miou_table('Models on Linear Redout - F3')
     f3_linear_redout_metrics.individual_plot(['val_loss', 'train_loss'], 'epoch', 1, 'Linear Redout - F3', ncols= 3)
 
