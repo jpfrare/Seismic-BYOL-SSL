@@ -154,6 +154,18 @@ data_module = SeismicDataModule(
     test_dataset = None,
     )
 
+#DEBUG
+
+batch = next(iter(data_module.val_dataloader()))
+x, y = batch
+
+print("predict split:", data_module._predict_split)
+
+print("train size:", len(data_module.train_dataset))
+print("val size:", len(data_module.val_dataset))
+print("test size:", len(data_module.test_dataset))
+print("predict size:", len(data_module.predict_dataset))
+
 csv_logger = CSVLogger(organizer.finetune_log_dir, name='', version= '')
 #------------------------Callbacks-------------------------------------------------------------------------
 ckpt_callback = ModelCheckpoint(
@@ -187,6 +199,16 @@ pipeline = SimpleLightningPipeline(
 pipeline.run(data_module, task="fit")
     
 num_classes = 6
+
+metrics = {
+    "mIoU": JaccardIndex(
+        num_classes=num_classes, average="macro", task="multiclass"
+    ),
+    "acc": Accuracy(num_classes=num_classes, task="multiclass"),
+    "f1-weighted": F1Score(
+        num_classes=num_classes, task="multiclass", average="weighted"
+    ),
+}
     
 pipeline = SimpleLightningPipeline(
     model=model,
@@ -195,7 +217,7 @@ pipeline = SimpleLightningPipeline(
     save_run_status=True,
     seed=organizer.args.repetition,
     apply_metrics_per_sample=False,
-    classification_metrics=val_metrics,
+    classification_metrics=metrics,
 )
     
 pipeline.run(data_module, task="evaluate", ckpt_path= organizer.finetune_ckpt_dir / 'best.ckpt')

@@ -8,10 +8,12 @@ WORKSPACE="/petrobr/parceirosbr/home/joao.frare/workspace"
 export SIF="/petrobr/parceirosbr/spfm/singularity/amd64/deeprock/ngc/MINERVA_v0_3_9-beta-SPINN_v0_0_1.sif"
 
 
-repetition=(0)
+repetition=(0 1 2)
 finetune_dataset=('seam_ai_N' 'f3_N')
-protocol=('full_finetuning' 'linear_redout')
+protocol=('full_freeze' 'full_finetuning')
+numbers=('3' '6' '9')
 
+for n in "${numbers[@]}"; do
 for r in "${repetition[@]}"; do
     for d in "${finetune_dataset[@]}"; do
         for p in "${protocol[@]}"; do
@@ -26,13 +28,13 @@ for r in "${repetition[@]}"; do
 
             fi
 
-            FLAGS="--reduction_mode full --backbone_freeze ${freeze} --pred_head ${head} --repetition ${r} --finetune_dataset ${d}"
-            mkdir -p /petrobr/parceirosbr/home/joao.frare/workspace/spfm/Seismic-Byol/dev-seismic-byol/imagenet/jobs_out/imagenetFinetune/finetune_${d}/full/repetition_${r}
+            FLAGS="--reduction_mode taxonomic --top_down --level ${n} --backbone_freeze ${freeze} --pred_head ${head} --repetition ${r} --finetune_dataset ${d}"
+            mkdir -p /petrobr/parceirosbr/home/joao.frare/workspace/spfm/Seismic-Byol/dev-seismic-byol/imagenet/jobs_out/imagenetFinetune/finetune_${d}/default/repetition_${r}
 
     sbatch <<EOT
 #!/bin/bash
 
-#SBATCH --job-name=ft_full_${p}_${r}_${d}
+#SBATCH --job-name=ft_default_${p}_${r}_${d}
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=24
@@ -40,8 +42,8 @@ for r in "${repetition[@]}"; do
 #SBATCH --partition=ict-h100
 #SBATCH --account=spfm
 #SBATCH --time=00:50:00
-#SBATCH --output=/petrobr/parceirosbr/home/joao.frare/workspace/spfm/Seismic-Byol/dev-seismic-byol/imagenet/jobs_out/imagenetFinetune/finetune_${d}/full/repetition_${r}/full_${freeze}_%j.out
-#SBATCH --error=/petrobr/parceirosbr/home/joao.frare/workspace/spfm/Seismic-Byol/dev-seismic-byol/imagenet/jobs_out/imagenetFinetune/finetune_${d}/full/repetition_${r}/full__${freeze}_%j.err
+#SBATCH --output=/petrobr/parceirosbr/home/joao.frare/workspace/spfm/Seismic-Byol/dev-seismic-byol/imagenet/jobs_out/imagenetFinetune/finetune_${d}/default/repetition_${r}/num_classes_${n}_${p}_%j.out
+#SBATCH --error=/petrobr/parceirosbr/home/joao.frare/workspace/spfm/Seismic-Byol/dev-seismic-byol/imagenet/jobs_out/imagenetFinetune/finetune_${d}/default/repetition_${r}/num_classes_${n}_${p}_%j.err
 
 cd "\$SLURM_SUBMIT_DIR"
 
@@ -66,4 +68,5 @@ singularity exec --nv \
 EOT
         done
     done
+done
 done

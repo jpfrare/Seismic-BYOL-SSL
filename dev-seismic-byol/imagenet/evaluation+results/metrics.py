@@ -5,6 +5,7 @@ import math
 from pathlib import Path
 import yaml
 import numpy as np
+import copy
 
 class TrainMetrics():
     raw_data: dict[str, tuple[Path,Path,Path]] #dicioário: nome_modelo -> lista com os caminhos do csv de cada repetição
@@ -15,6 +16,7 @@ class TrainMetrics():
         self.raw_data = raw_data
         self.save_root = Path(save_root)
         self._get_model_csvs()
+        self.save_root.mkdir(parents= True, exist_ok= True)
 
     
     def _get_model_csvs(self):
@@ -175,24 +177,27 @@ class TrainMetrics():
 
     
 class FinetuningMetrics():
-    finetune_dataset: str
     raw_data: dict[str, list[Path, Path, Path]]
     save_root: Path
     model_data: dict
     model_csvs: dict
-    num_images: dict[str, int]
-    num_classes: dict[str, int]
+    
 
-    def __init__(self, raw_data, save_root, num_images, num_classes):
+    def __init__(self, raw_data, save_root, infos):
         self.raw_data = raw_data
         self.save_root = Path(save_root)
+        self.save_root.mkdir(parents= True, exist_ok= True)
+        self.model_data = copy.deepcopy(infos)
+
         self._get_model_csvs()
         self._get_model_data()
-        self.num_images = num_images
-        self.num_classes = num_classes
     
     def _get_model_data(self):
-        model_data = {}
+        '''organiza o self.model data da seguinte forma:
+            self.model_data['Nome Modelo'] = {'mean' (média do mIoU), 'std' (desvio padrão do mIoU), 
+            'n_images' (número de imagens de pré treino), 'n_classes' (número de classes de pré treino), 'color' (cor de plot),
+            'label' (nome para ser plotado)}'''
+
         for model_name in self.raw_data.keys():
             miou_rep = []
             for repetition in range(3):
@@ -205,16 +210,12 @@ class FinetuningMetrics():
             mean = np.mean(miou_rep)
             std = np.std(miou_rep)
 
-            model_data[model_name] = {
-                'mean': mean,
-                'std': std,
-                'n_images': self.num_images[model_name],
-                'n_classes': self.num_classes[model_name]
-            }
+            self.model_data[model_name]['mean'] = mean
+            self.model_data[model_name]['std'] = std
         
-        self.model_data = model_data
     
     def _get_model_csvs(self):
+        '''organiza o dataframe de modo que self.model_csvs esteja organizado por época em val e train loss dos modelos, média e desvio padrão'''
         model_csv = {}
         for model_name in self.raw_data.keys():
             data = []
@@ -222,8 +223,9 @@ class FinetuningMetrics():
                 csv_path = self.raw_data[model_name][repetition] / 'metrics.csv'
                 df_repetition = pd.read_csv(csv_path)
                 df_repetition = df_repetition.groupby('epoch').first().reset_index()
-                '''importante ver que o agrupamento por step e junto com o .first() faz com que, ele junte as informações da loss de treino
-                com a loss de validação para o mesmo step de validação (o que é importante e precisamos) '''
+                # groupby + first() junta as métricas de treino e validação
+                # correspondentes ao mesmo epoch, eliminando as linhas em que
+                # apenas train_loss ou apenas val_loss aparecem.
                 df_repetition = df_repetition.dropna(subset=['train_loss', 'val_loss'])
                 df_repetition['key'] = repetition
                 data.append(df_repetition)
@@ -287,14 +289,128 @@ class FinetuningMetrics():
             fig.delaxes(axs[i])
         
         fig.suptitle(title, fontsize=16, fontweight='bold')
-        
-        fig.tight_layout()
 
-        save_path = self.save_root / f'{title}_Clean_Grid.png'
-        fig.savefig(save_path, dpi=300, bbox_inches='tight')
-        plt.close()
-        
+        self._save_plot(fig, f'{title}_Clean_Grid.png')
+
+    def plot_miou_vs_pretrained_images(self, filename):
+        """Scatter plot de mIoU em função do número de imagens de pré-treinamento."""
+
+        fig, ax = plt.subplots(figsize=(10, 6))
+
+        # Recupera os dados do Scratch
+        scratch = self.model_data["Scratch"]
+
+        # Linha horizontal do Scratch
+        ax.axhline(
+            y=scratch["mean"],
+            color="black",
+            linestyle="--",
+            linewidth=2,
+            label="Scratch baseline",
+            zorder=1,
+        )
+
+        # Faixa correspondente ao desvio padrão
+        ax.axhspan(
+            scratch["mean"] - scratch["std"],
+            scratch["mean"] + scratch["std"],
+            color="black",
+            alpha=0.2,
+            zorder=0,
+        )
+
+        for model_name, info in self.model_data.items():
+                if model_name != "Scratch":
+                    ax.errorbar(
+                        info["n_images"],
+                        info["mean"],
+                        yerr=info["std"],
+                        fmt="o",
+                        color=info["color"],
+                        markersize=8,
+                        capsize=4,
+                        elinewidth=1.5,
+                        zorder=3,
+                        label=model_name,      # <-- legenda usa o nome completo
+                    )
+
+        ax.set_xlabel("Number of pretraining images", fontsize=12)
+        ax.set_ylabel("Mean mIoU", fontsize=12)
+        ax.set_title(filename, fontsize=14)
+
+        ax.grid(True, linestyle="--", alpha=0.5)
+        ax.set_xscale("log")
+
+        # legenda fora do gráfico
+        ax.legend(
+            loc="center left",
+            bbox_to_anchor=(1.02, 0.5),
+            fontsize=8,
+            frameon=False,
+            title="Models"
+        )
+
+        self._save_plot(fig, filename)
     
+    def plot_miou_vs_classes(self, filename):
+        """Scatter plot de mIoU em função do número de classes de pré-treinamento."""
+
+        fig, ax = plt.subplots(figsize=(10, 6))
+
+        # Recupera os dados do Scratch
+        scratch = self.model_data["Scratch"]
+
+        # Linha horizontal do Scratch
+        ax.axhline(
+            y=scratch["mean"],
+            color="black",
+            linestyle="--",
+            linewidth=2,
+            label="Scratch baseline",
+            zorder=1,
+        )
+
+        # Faixa correspondente ao desvio padrão
+        ax.axhspan(
+            scratch["mean"] - scratch["std"],
+            scratch["mean"] + scratch["std"],
+            color="black",
+            alpha=0.2,
+            zorder=0,
+        )
+
+        for model_name, info in self.model_data.items():
+                if model_name != "Scratch":
+                    ax.errorbar(
+                        info["n_classes"],
+                        info["mean"],
+                        yerr=info["std"],
+                        fmt="o",
+                        color=info["color"],
+                        markersize=8,
+                        capsize=4,
+                        elinewidth=1.5,
+                        zorder=3,
+                        label=model_name,      # <-- legenda usa o nome completo
+                    )
+
+        ax.set_xlabel("Number of pretrained classes", fontsize=12)
+        ax.set_ylabel("Mean mIoU", fontsize=12)
+        ax.set_title(filename, fontsize=14)
+
+        ax.grid(True, linestyle="--", alpha=0.5)
+
+        # legenda fora do gráfico
+        ax.legend(
+            loc="center left",
+            bbox_to_anchor=(1.02, 0.5),
+            fontsize=8,
+            frameon=False,
+            title="Models"
+        )
+
+        self._save_plot(fig, filename)
+        
     def save_miou_table(self, filename):
         '''Recupera os dados processados de mIoU, organiza em uma tabela
         e salva em um arquivo de texto alinhado na pasta root.
@@ -302,8 +418,13 @@ class FinetuningMetrics():
         import pandas as pd
 
         table_rows = []
-        for key in self.model_data.keys():
-            table_rows.append((key, f'{self.model_data[key]['mean']:.2f} ± {self.model_data[key]['std']:.2f}'))
+        for model_name, info in self.model_data.items():
+            table_rows.append(
+                (
+                    model_name,
+                    f"{info['mean']:.2f} ± {info['std']:.2f}"
+                )
+            )
 
         df_miou = pd.DataFrame(table_rows, columns=['Model Name', 'mIoU'])
 
@@ -312,37 +433,98 @@ class FinetuningMetrics():
         with open(save_path, 'w', encoding='utf-8') as f:
             f.write(df_miou.to_string(index=False))
     
+    def _save_plot(self, fig, filename):
+        fig.tight_layout()
+        fig.savefig(
+            self.save_root / filename,
+            dpi=300,
+            bbox_inches="tight",
+        )
+        plt.close(fig)
+    
 
 #--------------------------------------------------------------------------------------------------------------------------------------------------
 
 if __name__ == '__main__':
-    number_of_images = {
-        'Full Dataset': 1_281_000,
-        '600 images per class': 600_000,
-        '100 images per class': 100_000,
-        '10 images per class': 10_000,
-        '500 Classes': 640_500,
-        '79 Classes': 101_199,
-        '9 Classes': 11_529,
-        'Level 9': 1_281_000,
-        'Level 6': 1_281_000,
-        'Level 3': 1_281_000,
-        'Scratch': 0
+    MODEL_INFO = {
+        "Full Dataset": {
+            "n_images": 1_281_000,
+            "n_classes": 1040,
+            "color": "orange",
+            "label": "FD",
+        },
+
+        "600 images per class": {
+            "n_images": 600_000,
+            "n_classes": 1020,
+            "color": "navy",
+            "label": "600PC",
+        },
+
+        "100 images per class": {
+            "n_images": 100_000,
+            "n_classes": 1000,
+            "color": "blue",
+            "label": "100PC",
+        },
+
+        "10 images per class": {
+            "n_images": 10_000,
+            "n_classes": 980,
+            "color": "slateblue",
+            "label": "10PC",
+        },
+
+        "500 Classes": {
+            "n_images": 640_500,
+            "n_classes": 500,
+            "color": "darkred",
+            "label": "500C",
+        },
+
+        "79 Classes": {
+            "n_images": 101_199,
+            "n_classes": 79,
+            "color": "red",
+            "label": "79C",
+        },
+
+        "9 Classes": {
+            "n_images": 11_529,
+            "n_classes": 9,
+            "color": "tomato",
+            "label": "9C",
+        },
+
+        "Level 9": {
+            "n_images": 1_281_000,
+            "n_classes": 477,
+            "color": "green",
+            "label": "L9(477C)",
+        },
+
+        "Level 6": {
+            "n_images": 1_281_000,
+            "n_classes": 80,
+            "color": "lime",
+            "label": "L6(80C)",
+        },
+
+        "Level 3": {
+            "n_images": 1_281_000,
+            "n_classes": 9,
+            "color": "palegreen",
+            "label": "L3(9C)",
+        },
+
+        "Scratch": {
+            "n_images": 1,
+            "n_classes": 0,
+            "color": "black",
+            "label": "Scratch",
+        },
     }
 
-    number_of_classes = {
-        'Full Dataset': 1000,
-        '600 images per class': 1000,
-        '100 images per class': 1000,
-        '10 images per class': 1000,
-        '500 Classes': 500,
-        '79 Classes': 79,
-        '9 Classes': 9,
-        'Level 9': 477,
-        'Level 6': 80,
-        'Level 3': 9,
-        'Scratch': 0
-    }
 
     root = Path('/petrobr/parceirosbr/spfm/joao.frare/logs+checkpoints_imagenet')
     t_root = root / 'Train'
@@ -352,7 +534,7 @@ if __name__ == '__main__':
         'Full Dataset': [],
         '600 images per class': [],
         '100 images per class': [],
-        '10 images per class': [] 
+        '10 images per class': []
     }
 
     class_experiments = {
@@ -523,22 +705,29 @@ if __name__ == '__main__':
 
     #---------------------------------------------------------finetuning-----------------------------------------------------------------------------------
 
-    parihaka_full_finetuning_metrics = FinetuningMetrics(parihaka_full_finetuning, Path('./data')/'finetune', number_of_images, number_of_classes)
+    parihaka_full_finetuning_metrics = FinetuningMetrics(parihaka_full_finetuning, Path('./data')/'finetune', MODEL_INFO)
     parihaka_full_finetuning_metrics.save_miou_table('Models on Full Finetuning - Parihaka')
     parihaka_full_finetuning_metrics.individual_plot(['val_loss', 'train_loss'], 'epoch', 1, 'Full Finetuning - Parihaka', ncols= 3)
+    parihaka_full_finetuning_metrics.plot_miou_vs_pretrained_images('Full Finetuning - Parihaka mIoU x Number of Images')
+    parihaka_full_finetuning_metrics.plot_miou_vs_classes('Full Finetuning - Parihaka mIoU x Number of Classes')
 
-    parihaka_linear_redout_metrics = FinetuningMetrics(parihaka_linear_redout, Path('./data')/'finetune', number_of_images, number_of_classes)
+    parihaka_linear_redout_metrics = FinetuningMetrics(parihaka_linear_redout, Path('./data')/'finetune', MODEL_INFO)
     parihaka_linear_redout_metrics.save_miou_table('Models on Linear Redout - Parihaka')
     parihaka_linear_redout_metrics.individual_plot(['val_loss', 'train_loss'], 'epoch', 1, 'Linear Redout - Parihaka', ncols= 3)
+    parihaka_linear_redout_metrics.plot_miou_vs_pretrained_images('Linear Redout - Parihaka mIoU x Number of Images')
+    parihaka_linear_redout_metrics.plot_miou_vs_classes('Linear Redout - Parihaka mIoU x Number of Classes')
 
-    f3_full_finetuning_metrics = FinetuningMetrics(f3_full_finetuning, Path('./data')/'finetune', number_of_images, number_of_classes)
+    f3_full_finetuning_metrics = FinetuningMetrics(f3_full_finetuning, Path('./data')/'finetune', MODEL_INFO)
     f3_full_finetuning_metrics.save_miou_table('Models on Full Finetuning - F3')
     f3_full_finetuning_metrics.individual_plot(['val_loss', 'train_loss'], 'epoch', 1, 'Full Finetuning - F3', ncols= 3)
+    f3_full_finetuning_metrics.plot_miou_vs_pretrained_images('Full Finetuning - F3 mIoU x Number of Images')
+    f3_full_finetuning_metrics.plot_miou_vs_classes('Full Finetuning - F3 mIoU x Number of Classes')
 
-    f3_linear_redout_metrics = FinetuningMetrics(f3_linear_redout, Path('./data')/'finetune', number_of_images, number_of_classes)
+    f3_linear_redout_metrics = FinetuningMetrics(f3_linear_redout, Path('./data')/'finetune', MODEL_INFO)
     f3_linear_redout_metrics.save_miou_table('Models on Linear Redout - F3')
     f3_linear_redout_metrics.individual_plot(['val_loss', 'train_loss'], 'epoch', 1, 'Linear Redout - F3', ncols= 3)
-
+    f3_linear_redout_metrics.plot_miou_vs_pretrained_images('Linear Redout - F3 mIoU x Number of Images')
+    f3_linear_redout_metrics.plot_miou_vs_classes('Linear Redout - F3 mIoU x Number of Classes')
 
 
 
