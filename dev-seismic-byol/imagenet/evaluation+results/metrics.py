@@ -7,9 +7,10 @@ import yaml
 import numpy as np
 import copy
 
+
 class TrainMetrics():
-    raw_data: dict[str, tuple[Path,Path,Path]] #dicioário: nome_modelo -> lista com os caminhos do csv de cada repetição
-    save_root: Path                            #onde os dados serão salvos
+    raw_data: dict[str, list[Path,Path,Path]]   #dicionário: nome_modelo -> lista com os caminhos do csv de cada repetição
+    save_root: Path                             #onde os dados serão salvos
     model_csvs: dict
 
     def __init__(self, raw_data, save_root):
@@ -181,13 +182,17 @@ class FinetuningMetrics():
     save_root: Path
     model_data: dict
     model_csvs: dict
+    finetune_dataset: str
+    backbone_freeze: str
     
 
-    def __init__(self, raw_data, save_root, infos):
+    def __init__(self, raw_data, save_root, infos, finetune_dataset, backbone_freeze):
         self.raw_data = raw_data
         self.save_root = Path(save_root)
         self.save_root.mkdir(parents= True, exist_ok= True)
         self.model_data = copy.deepcopy(infos)
+        self.finetune_dataset = finetune_dataset
+        self.backbone_freeze = backbone_freeze
 
         self._get_model_csvs()
         self._get_model_data()
@@ -197,6 +202,27 @@ class FinetuningMetrics():
             self.model_data['Nome Modelo'] = {'mean' (média do mIoU), 'std' (desvio padrão do mIoU), 
             'n_images' (número de imagens de pré treino), 'n_classes' (número de classes de pré treino), 'color' (cor de plot),
             'label' (nome para ser plotado)}'''
+        
+        if self.finetune_dataset == 'f3':
+
+            if self.backbone_freeze == 'full_finetuning':
+                self.model_data["Torch Pretrained"]['mean'] = 0.75
+                self.model_data["Torch Pretrained"]['std'] = 0.01
+
+            elif self.backbone_freeze == 'linear_redout':
+                self.model_data["Torch Pretrained"]['mean'] = 0.47
+                self.model_data["Torch Pretrained"]['std'] = 0.00
+
+        elif self.finetune_dataset == 'seam_ai':
+
+            if self.backbone_freeze == 'full_finetuning':
+                self.model_data["Torch Pretrained"]['mean'] = 0.72
+                self.model_data["Torch Pretrained"]['std'] = 0.01
+
+            elif self.backbone_freeze == 'linear_redout':
+                self.model_data["Torch Pretrained"]['mean'] = 0.36
+                self.model_data["Torch Pretrained"]['std'] = 0.00
+        
 
         for model_name in self.raw_data.keys():
             miou_rep = []
@@ -322,7 +348,7 @@ class FinetuningMetrics():
         for model_name, info in self.model_data.items():
                 if model_name != "Scratch":
                     ax.errorbar(
-                        info["n_images"],
+                        info["n_images"] + info["img_offset"],
                         info["mean"],
                         yerr=info["std"],
                         fmt="o",
@@ -382,7 +408,7 @@ class FinetuningMetrics():
         for model_name, info in self.model_data.items():
                 if model_name != "Scratch":
                     ax.errorbar(
-                        info["n_classes"],
+                        info["n_classes"] + info["class_offset"],
                         info["mean"],
                         yerr=info["std"],
                         fmt="o",
@@ -408,6 +434,79 @@ class FinetuningMetrics():
             frameon=False,
             title="Models"
         )
+
+        self._save_plot(fig, filename)
+    
+
+    def plot_heatmap(self, filename):
+
+        rows = sorted(
+            {info["n_classes"] for info in self.model_data.values()},
+            reverse=True,
+        )
+
+        cols = sorted(
+            {info["n_images"] for info in self.model_data.values()},
+        )
+
+        heatmap = pd.DataFrame(
+            np.nan,
+            index=rows,
+            columns=cols,
+        )
+
+        for info in self.model_data.values():
+            heatmap.loc[
+                info["n_classes"],
+                info["n_images"],
+            ] = info["mean"]
+
+        fig, ax = plt.subplots(figsize=(8,6))
+
+        im = ax.imshow(
+            heatmap.values,
+            cmap="viridis",
+            aspect="auto",
+        )
+
+        # eixo x
+        xlabels = []
+        for n in cols:
+            if n >= 1_000_000:
+                xlabels.append(f"{n/1e6:.2f}M")
+            elif n >= 1000:
+                xlabels.append(f"{n/1000:.0f}k")
+            else:
+                xlabels.append(str(n))
+
+        ax.set_xticks(np.arange(len(cols)))
+        ax.set_xticklabels(xlabels)
+
+        # eixo y
+        ax.set_yticks(np.arange(len(rows)))
+        ax.set_yticklabels(rows)
+
+        ax.set_xlabel("Number of pretraining images")
+        ax.set_ylabel("Number of pretraining classes")
+        ax.set_title("Mean mIoU")
+
+        # escreve o valor em cada célula
+        for i in range(len(rows)):
+            for j in range(len(cols)):
+                value = heatmap.values[i, j]
+
+                if not np.isnan(value):
+                    ax.text(
+                        j,
+                        i,
+                        f"{value:.3f}",
+                        ha="center",
+                        va="center",
+                        color="white",
+                        fontsize=8,
+                    )
+
+        fig.colorbar(im, ax=ax, label="mIoU")
 
         self._save_plot(fig, filename)
         
@@ -447,79 +546,111 @@ class FinetuningMetrics():
 
 if __name__ == '__main__':
     MODEL_INFO = {
+        "Torch Pretrained": {
+            "n_images": 1_281_000,
+            "img_offset": 50_000,
+            "n_classes": 1000,
+            "class_offset": 30,
+            "color": "purple",
+            "label": "PTR",
+        },
+
         "Full Dataset": {
             "n_images": 1_281_000,
-            "n_classes": 1040,
+            "img_offset": 25_000,
+            "n_classes": 1000,
+            "class_offset": 15,
             "color": "orange",
             "label": "FD",
         },
 
         "600 images per class": {
             "n_images": 600_000,
-            "n_classes": 1020,
+            "img_offset": 0,
+            "n_classes": 1000,
+            "class_offset": 7,
             "color": "navy",
             "label": "600PC",
         },
 
         "100 images per class": {
             "n_images": 100_000,
+            "img_offset": 0,
             "n_classes": 1000,
+            "class_offset": -7,
             "color": "blue",
             "label": "100PC",
         },
 
         "10 images per class": {
             "n_images": 10_000,
-            "n_classes": 980,
+            "img_offset": 0,
+            "n_classes": 1000,
+            "class_offset": -15,
             "color": "slateblue",
             "label": "10PC",
         },
 
         "500 Classes": {
-            "n_images": 640_500,
+            "n_images": 600_000,
+            "img_offset": 0,
             "n_classes": 500,
+            "class_offset": 0,
             "color": "darkred",
             "label": "500C",
         },
 
         "79 Classes": {
-            "n_images": 101_199,
+            "n_images": 100_000,
+            "img_offset": 0,
             "n_classes": 79,
+            "class_offset": 0,
             "color": "red",
             "label": "79C",
         },
 
         "9 Classes": {
-            "n_images": 11_529,
+            "n_images": 10_000,
+            "img_offset": 0,
             "n_classes": 9,
+            "class_offset": 0,
             "color": "tomato",
             "label": "9C",
         },
 
-        "Level 9": {
+        "Level 9 (477 Classes)": {
             "n_images": 1_281_000,
+            "img_offset": 0,
             "n_classes": 477,
+            "class_offset": 0,
+            "img_offset": 0,
             "color": "green",
             "label": "L9(477C)",
         },
 
-        "Level 6": {
+        "Level 6 (80 Classes)": {
             "n_images": 1_281_000,
+            "img_offset": -25_000,
             "n_classes": 80,
+            "class_offset": 0,
             "color": "lime",
             "label": "L6(80C)",
         },
 
-        "Level 3": {
+        "Level 3 (9 Classes)": {
             "n_images": 1_281_000,
+            "img_offset": -50_000,
             "n_classes": 9,
+            "class_offset": 0,
             "color": "palegreen",
             "label": "L3(9C)",
         },
 
         "Scratch": {
-            "n_images": 1,
+            "n_images": 0,
+            "img_offset": 0,
             "n_classes": 0,
+            "class_offset": 0,
             "color": "black",
             "label": "Scratch",
         },
@@ -557,9 +688,9 @@ if __name__ == '__main__':
         '500 Classes': [],
         '79 Classes': [],
         '9 Classes': [],
-        'Level 9': [],
-        'Level 6': [],
-        'Level 3': [],
+        'Level 9 (477 Classes)': [],
+        'Level 6 (80 Classes)': [],
+        'Level 3 (9 Classes)': [],
         'Scratch' : []
     }
 
@@ -571,9 +702,9 @@ if __name__ == '__main__':
         '500 Classes': [],
         '79 Classes': [],
         '9 Classes': [],
-        'Level 9': [],
-        'Level 6': [],
-        'Level 3': [],
+        'Level 9 (477 Classes)': [],
+        'Level 6 (80 Classes)': [],
+        'Level 3 (9 Classes)': [],
         'Scratch': []
     }
 
@@ -585,9 +716,9 @@ if __name__ == '__main__':
         '500 Classes': [],
         '79 Classes': [],
         '9 Classes': [],
-        'Level 9': [],
-        'Level 6': [],
-        'Level 3': [],
+        'Level 9 (477 Classes)': [],
+        'Level 6 (80 Classes)': [],
+        'Level 3 (9 Classes)': [],
         'Scratch': []
     }
 
@@ -599,9 +730,9 @@ if __name__ == '__main__':
         '500 Classes': [],
         '79 Classes': [],
         '9 Classes': [],
-        'Level 9': [],
-        'Level 6': [],
-        'Level 3': [],
+        'Level 9 (477 Classes)': [],
+        'Level 6 (80 Classes)': [],
+        'Level 3 (9 Classes)': [],
         'Scratch': []
     }
 
@@ -656,15 +787,19 @@ if __name__ == '__main__':
 
             f3_linear_redout[f'{c} Classes'].append(Path(f_root / i / 'default' /  f'num_classes_{c}_per_class_1300' / 'finetune_f3_N' / 'full_freeze_linear' / 'logs'))
             
-        
+        level_class = {
+            '9': '(477 Classes)',
+            '6': '(80 Classes)',
+            '3': '(9 Classes)'
+        }
         for level in ['9', '6', '3']:
-            parihaka_full_finetuning[f'Level {level}'].append(Path(f_root / i / 'taxonomic' / f'top_down_level_{level}' / 'finetune_seam_ai_N' / 'full_finetuning_deeplab' / 'logs'))
+            parihaka_full_finetuning[f'Level {level} {level_class[level]}'].append(Path(f_root / i / 'taxonomic' / f'top_down_level_{level}' / 'finetune_seam_ai_N' / 'full_finetuning_deeplab' / 'logs'))
             
-            parihaka_linear_redout[f'Level {level}'].append(Path(f_root / i / 'taxonomic' /  f'top_down_level_{level}' / 'finetune_seam_ai_N' / 'full_freeze_linear' / 'logs'))
+            parihaka_linear_redout[f'Level {level} {level_class[level]}'].append(Path(f_root / i / 'taxonomic' /  f'top_down_level_{level}' / 'finetune_seam_ai_N' / 'full_freeze_linear' / 'logs'))
             
-            f3_full_finetuning[f'Level {level}'].append(Path(f_root / i / 'taxonomic' / f'top_down_level_{level}' /'finetune_f3_N' / 'full_finetuning_deeplab' / 'logs'))
+            f3_full_finetuning[f'Level {level} {level_class[level]}'].append(Path(f_root / i / 'taxonomic' / f'top_down_level_{level}' /'finetune_f3_N' / 'full_finetuning_deeplab' / 'logs'))
             
-            f3_linear_redout[f'Level {level}'].append(Path(f_root / i / 'taxonomic' /  f'top_down_level_{level}' / 'finetune_f3_N' / 'full_freeze_linear' / 'logs'))
+            f3_linear_redout[f'Level {level} {level_class[level]}'].append(Path(f_root / i / 'taxonomic' /  f'top_down_level_{level}' / 'finetune_f3_N' / 'full_freeze_linear' / 'logs'))
             
         
         parihaka_full_finetuning[f'Full Dataset'].append(Path(f_root / i / 'full' / 'finetune_seam_ai_N' / 'full_finetuning_deeplab' / 'logs'))
@@ -705,29 +840,33 @@ if __name__ == '__main__':
 
     #---------------------------------------------------------finetuning-----------------------------------------------------------------------------------
 
-    parihaka_full_finetuning_metrics = FinetuningMetrics(parihaka_full_finetuning, Path('./data')/'finetune', MODEL_INFO)
+    parihaka_full_finetuning_metrics = FinetuningMetrics(parihaka_full_finetuning, Path('./data')/'finetune', MODEL_INFO, 'seam_ai', 'full_finetuning')
     parihaka_full_finetuning_metrics.save_miou_table('Models on Full Finetuning - Parihaka')
     parihaka_full_finetuning_metrics.individual_plot(['val_loss', 'train_loss'], 'epoch', 1, 'Full Finetuning - Parihaka', ncols= 3)
     parihaka_full_finetuning_metrics.plot_miou_vs_pretrained_images('Full Finetuning - Parihaka mIoU x Number of Images')
     parihaka_full_finetuning_metrics.plot_miou_vs_classes('Full Finetuning - Parihaka mIoU x Number of Classes')
+    parihaka_full_finetuning_metrics.plot_heatmap('Full Finetuning - Parihaka HeatMap')
 
-    parihaka_linear_redout_metrics = FinetuningMetrics(parihaka_linear_redout, Path('./data')/'finetune', MODEL_INFO)
+    parihaka_linear_redout_metrics = FinetuningMetrics(parihaka_linear_redout, Path('./data')/'finetune', MODEL_INFO, 'seam_ai', 'linear_redout')
     parihaka_linear_redout_metrics.save_miou_table('Models on Linear Redout - Parihaka')
     parihaka_linear_redout_metrics.individual_plot(['val_loss', 'train_loss'], 'epoch', 1, 'Linear Redout - Parihaka', ncols= 3)
     parihaka_linear_redout_metrics.plot_miou_vs_pretrained_images('Linear Redout - Parihaka mIoU x Number of Images')
     parihaka_linear_redout_metrics.plot_miou_vs_classes('Linear Redout - Parihaka mIoU x Number of Classes')
+    parihaka_linear_redout_metrics.plot_heatmap('Linear Redout - Parihaka HeatMap')
 
-    f3_full_finetuning_metrics = FinetuningMetrics(f3_full_finetuning, Path('./data')/'finetune', MODEL_INFO)
+    f3_full_finetuning_metrics = FinetuningMetrics(f3_full_finetuning, Path('./data')/'finetune', MODEL_INFO, 'f3', 'full_finetuning')
     f3_full_finetuning_metrics.save_miou_table('Models on Full Finetuning - F3')
     f3_full_finetuning_metrics.individual_plot(['val_loss', 'train_loss'], 'epoch', 1, 'Full Finetuning - F3', ncols= 3)
     f3_full_finetuning_metrics.plot_miou_vs_pretrained_images('Full Finetuning - F3 mIoU x Number of Images')
     f3_full_finetuning_metrics.plot_miou_vs_classes('Full Finetuning - F3 mIoU x Number of Classes')
+    f3_full_finetuning_metrics.plot_heatmap('Full Finetuning - F3 HeatMap')
 
-    f3_linear_redout_metrics = FinetuningMetrics(f3_linear_redout, Path('./data')/'finetune', MODEL_INFO)
+    f3_linear_redout_metrics = FinetuningMetrics(f3_linear_redout, Path('./data')/'finetune', MODEL_INFO, 'f3', 'linear_redout')
     f3_linear_redout_metrics.save_miou_table('Models on Linear Redout - F3')
     f3_linear_redout_metrics.individual_plot(['val_loss', 'train_loss'], 'epoch', 1, 'Linear Redout - F3', ncols= 3)
     f3_linear_redout_metrics.plot_miou_vs_pretrained_images('Linear Redout - F3 mIoU x Number of Images')
     f3_linear_redout_metrics.plot_miou_vs_classes('Linear Redout - F3 mIoU x Number of Classes')
+    f3_linear_redout_metrics.plot_heatmap('Linear Redout - F3 HeatMap')
 
 
 

@@ -37,7 +37,7 @@ from base.ImagenetDataset import DefaultValSubset
 #---------------------------------ARGUMENTOS DO TREINO------------------------
 organizer = TrainOrganizer(data_root= '/petrobr/parceirosbr/spfm/joao.frare/logs+checkpoints_imagenet')
 #------------------------------------------------------------------------------
-train_imagenet_size = 1281167                                      #número de imagens de treino total do Imagenet
+full_imagenet_size = 1281167                                      #número de imagens de treino total do Imagenet
 
 devices = 2                                                        #número de gpus a serem utilizados        
 strategy= 'ddp'      
@@ -45,7 +45,7 @@ batch_size = 1024
 
 accumulate_grad_batches = 1                                        #variável que carrega o batch total de pouco no trainer, dribla problemas físicos (quantidade de VRAM)
 real_batch_size = accumulate_grad_batches * batch_size * devices
-max_steps = train_imagenet_size*100//real_batch_size + 30          #número de passos para se treinar uma imagenet completa por 150 épocas
+max_steps = full_imagenet_size*100//real_batch_size + 30          #número de passos para se treinar uma imagenet completa por 150 épocas
 
 
 precision= "16-mixed" if torch.cuda.is_available() else "32"       #precisão -> quanto maior melhor
@@ -106,7 +106,10 @@ if organizer.args.reduction_mode == 'default':
     val_dataset = val_subset
     train_dataset = train_subset
 
-print(f'Using {num_classes} classes!')
+print(f"Dataset size      : {len(train_dataset)}")
+print(f"Global batch size : {real_batch_size}")
+print(f"Steps             : {max_steps}")
+print(f"Equivalent epochs : {max_steps * real_batch_size / len(train_dataset):.1f}")
 
 # Coleta a afinidade real de CPUs entregues pelo cgroup do SLURM no nó
 try:
@@ -201,9 +204,9 @@ trainer = Trainer(
     callbacks= callbacks,
     max_steps= max_steps,
     accumulate_grad_batches = accumulate_grad_batches,
-    #val_check_interval=624,                                              #vai validar depois de uma época #MUDAR ESSE VALOR DEPOIS PARA 624
-    check_val_every_n_epoch = 1,
-    limit_val_batches=limit_val_batches,                                #quantos batches serão usados na validação
+    check_val_every_n_epoch=None,
+    val_check_interval=625,                                              #vai validar depois de uma época considerando o full dataset
+    limit_val_batches=limit_val_batches,                                 #quantos batches serão usados na validação
     log_every_n_steps=log_every_n_steps,              
     benchmark=True,
 )
