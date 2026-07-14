@@ -8,8 +8,8 @@ WORKSPACE="/petrobr/parceirosbr/home/joao.frare/workspace"
 export SIF="/petrobr/parceirosbr/spfm/singularity/amd64/deeprock/ngc/MINERVA_v0_3_9-beta-SPINN_v0_0_1.sif"
 
 repetition=(0 1 2)
-per_class=1300
-num_classes=10
+per_class=160
+num_classes=500
 level=3
 
 

@@ -1,5 +1,7 @@
 from pathlib import Path
 import os
+import pandas as pd
+import numpy as np
 
 class ModelInfo():
     root_path: Path                                                         #-> pasta raiz dos dados
@@ -7,7 +9,7 @@ class ModelInfo():
     finetune_path: dict[str : dict[str : Path]]                             #-> caminhos a partir da pasta raiz e repetição que levam as combinações de 
                                                                             #datasets e protocolos de finetuning
 
-    pretrain_dataframe: pd.DataFrame | list                                 #-> dataframe que contém os dados agregados das reeptições do pré-treino por step
+    pretrain_dataframe: pd.DataFrame                                        #-> dataframe que contém os dados agregados das reeptições do pré-treino por step
     finetune_dataframes: dict[str, dict[str, pd.DataFrame]]                 #-> dataframes que contém todos os dados agregados das repetiões de todas as combinações de datasets e protocolos do finetuning por época
     finetune_miou: dict[str, dict[str, dict[str, float]]]                   #-> valores (média e desvio padrão) de todas as combinações de datasets e protocolos do finetuning
 
@@ -90,6 +92,8 @@ class ModelInfo():
 
         else:
             raise ValueError('Valores inseridos incongruentes!')
+        
+        self._load_data()
 
     def _create_dataset_protocols_dictionary(self, datasets: list[str], protocols: list[str], start_value = None) -> dict:
         '''cria um dicionário aninhado'''
@@ -116,7 +120,7 @@ class ModelInfo():
         return data_frame
         
 
-    def load_data(self) -> None:
+    def _load_data(self) -> None:
         '''carrega todos os dados para as respectivas variáveis'''
 
         self.finetune_dataframes = self._create_dataset_protocols_dictionary(self.datasets, self.protocols, start_value= [])
@@ -142,6 +146,10 @@ class ModelInfo():
                 'std': 0.00,
             }
 
+            self.pretrain_dataframe = pd.DataFrame()
+            for dataset in self.datasets:
+                for protocol in self.protocols:
+                    self.finetune_dataframes[dataset][protocol] = pd.DataFrame()
             return
 
         for repetition in range(3):
@@ -178,6 +186,9 @@ class ModelInfo():
                     std_acc5= ('val_acc5', 'std') 
                 ).reset_index()
         
+        else:
+            self.pretrain_dataframe = pd.DataFrame()
+        
         #-----------------------------------------agregando repetições do finetuning------------------------------------------------
         for dataset in self.datasets:
             for protocol in self.protocols:
@@ -197,3 +208,14 @@ class ModelInfo():
                     'std': std,
                 }
         return
+    
+    def get_pretrain_dataframe(self) -> pd.DataFrame:
+        return self.pretrain_dataframe
+    
+    def get_finetune_dataframe(self, dataset: str, protocol: str) -> pd.DataFrame:
+        return self.finetune_dataframes[dataset][protocol]
+
+    def get_finetune_miou(self, dataset: str, protocol: str) -> tuple(float, float):
+        '''return (mean, std) for desired dataset + protocol'''
+        data = self.finetune_miou[dataset][protocol]
+        return (data['mean'], data['std'])
