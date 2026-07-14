@@ -439,3 +439,92 @@ class FinetuningMetrics():
 
 class Metrics():
     models: list[ModelInfo]
+
+    def __init__(self, models: list[ModelInfo]):
+        self.models = models
+    
+    def _save_plot(self, fig, filename: str, save_path: Path):
+        save_path.mkdir(parents=True, exist_ok=True)
+        fig.tight_layout()
+        fig.savefig(
+            save_path / filename,
+            dpi=300,
+            bbox_inches="tight",
+        )
+        plt.close(fig)
+    
+    def individual_plot(
+        self,
+        title: str,
+        save_path: Path,
+        y_axis: list[str],
+        x_axis: str,
+        mul_factor: float = 1,
+        ncols: int = 4,
+        yscale: str | None = None,
+        finetune: bool = False,
+        dataset: str | None = None,
+        protocol: str | None = None
+        ):
+        '''plota vários gráficos (cada um referente a um modelo) de um conjunto de métricas escolhido (média sombreado com desvio padrão)'''
+
+        num_models = len(self.models)
+        nrows = math.ceil(num_models/ncols) #dado um número de colunas, consegue calcular o número de linhas
+
+        fig, axs = plt.subplots(nrows=nrows, ncols=ncols, figsize=(12, 8), sharey= True) #fig -> contém a painel que contém os demais gráficos, axs é a lista de mini gráficos
+
+        axs = axs.flatten() if num_models > 1 else [axs]
+
+        for i in range(num_models):
+            ax = axs[i]
+            dataframe = self.models[i].get_pretrain_dataframe() if not finetune else self.models[i].get_finetune_dataframe(dataset, protocol)
+            if dataframe.empty:
+                continue
+
+            for metric in y_axis:
+                mean = dataframe[f'mean_{metric}']*mul_factor
+                std = dataframe[f'std_{metric}']*mul_factor
+
+                ax.plot(
+                    dataframe[x_axis],
+                    mean,
+                    linewidth= 2,
+                    label= metric
+                )
+
+                ax.fill_between(
+                    dataframe[x_axis],
+                    mean - std,
+                    mean + std,
+                    alpha= 0.15,
+                    zorder= 2
+                )
+            ax.set_title(self.models[i].model_name, fontsize=12, fontweight='bold')
+            ax.grid(True, linestyle='--', alpha=0.5)
+            ax.legend(fontsize= 9)
+
+            if yscale is not None:
+                ax.set_yscale(yscale)
+        
+        #apaga os quadradinhos não preenchidos
+        for i in range(num_models, len(axs)):
+            fig.delaxes(axs[i])
+        
+        fig.suptitle(title, fontsize=16, fontweight='bold')
+
+        self._save_plot(fig, f'{title}_Clean_Grid.png', save_path)
+    
+    def group_plot(
+        self,
+        title: str,
+        save_path: Path,
+        y_axis: str,
+        x_axis: str,
+        mul_factor: float = 1,
+        yscale: str | None =  None,
+        finetune: bool = False,
+        dataset: str | None = None,
+        protocol: str | None = None
+        ):
+        
+
