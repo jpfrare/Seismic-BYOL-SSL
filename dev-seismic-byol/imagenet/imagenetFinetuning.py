@@ -40,6 +40,9 @@ organizer.set_readers(DATASET_ROOT, TRAIN_ENTRIES, VAL_ROOT, GT_ROOT, MAT_ROOT)
 seed_everything(organizer.args.repetition)
 #----------------------------------MODELO - Transfer Learning---------------------------
 num_classes = 6
+learning_rate = 1e-4
+num_epochs = 50
+batch_size = 8
 deeplab_backbone = DeepLabV3Backbone(num_classes=num_classes)
 
 print(f'Scratch: {organizer.args.scratch} || Backbone Config: {organizer.args.backbone_freeze} || Pred_Head: {organizer.args.pred_head}')
@@ -96,10 +99,21 @@ if organizer.args.backbone_freeze == 'full_freeze':
     model = DeepLabV3(
         backbone= deeplab_backbone,
         pred_head= pred_head,
-        learning_rate= 1e-6,
         num_classes= num_classes,
         freeze_backbone= True,
-        val_metrics= val_metrics
+        val_metrics= val_metrics,
+
+        optimizer= torch.optim.AdamW,
+        optimizer_kwargs = {
+            'weight_decay': 1e-4,
+            'lr': learning_rate,
+        },
+
+        lr_scheduler=torch.optim.lr_scheduler.CosineAnnealingLR,
+        lr_scheduler_kwargs={
+            "T_max": num_epochs,
+            "eta_min": 1e-6,
+        },
     )
 
 elif organizer.args.backbone_freeze == 'custom_freeze':
@@ -107,11 +121,22 @@ elif organizer.args.backbone_freeze == 'custom_freeze':
     model = DeepLabV3(
         backbone= deeplab_backbone,
         pred_head= pred_head,
-        learning_rate= 1e-6,
         num_classes= num_classes,
         freeze_layers= layers,
         freeze_backbone= False,
-        val_metrics= val_metrics
+        val_metrics= val_metrics,
+
+        optimizer= torch.optim.AdamW,
+        optimizer_kwargs = {
+            'weight_decay': 1e-4,
+            'lr': learning_rate,
+        },
+
+        lr_scheduler=torch.optim.lr_scheduler.CosineAnnealingLR,
+        lr_scheduler_kwargs={
+            "T_max": num_epochs,
+            "eta_min": 1e-6,
+        },
     )
 
 else:
@@ -119,10 +144,21 @@ else:
     model = DeepLabV3(
         backbone= deeplab_backbone,
         pred_head= pred_head,
-        learning_rate= 1e-6,
         num_classes= num_classes,
         freeze_backbone= False,
-        val_metrics= val_metrics
+        val_metrics= val_metrics,
+
+        optimizer= torch.optim.AdamW,
+        optimizer_kwargs = {
+            'weight_decay': 1e-4,
+            'lr': learning_rate,
+        },
+
+        lr_scheduler=torch.optim.lr_scheduler.CosineAnnealingLR,
+        lr_scheduler_kwargs={
+            "T_max": num_epochs,
+            "eta_min": 1e-6,
+        },
     )
 
 #----------------------------Dados - Modelagem----------------------------------------
@@ -144,7 +180,7 @@ transform_pipeline = TransformPipeline([
 train_dataset = SeismicFullDataset(root=dataset_path, partition='train', transform=transform_pipeline)
 data_module = SeismicDataModule(
     root = dataset_path,
-    batch_size=8,
+    batch_size=batch_size,
     cap=1.0,
     drop_last=True,
     transform=transform_pipeline,
@@ -181,7 +217,7 @@ ckpt_callback = ModelCheckpoint(
 
 trainer = Trainer(
     logger= csv_logger,
-    max_epochs= 20,
+    max_epochs= num_epochs,
     limit_val_batches = 1.0,
     strategy= 'auto',
     devices= 1,
