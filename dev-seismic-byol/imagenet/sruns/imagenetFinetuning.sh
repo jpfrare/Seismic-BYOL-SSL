@@ -11,7 +11,7 @@ export SIF="/petrobr/parceirosbr/spfm/singularity/amd64/deeprock/ngc/MINERVA_v0_
 repetition=(0 1 2)
 finetune_dataset=('seam_ai_N' 'f3_N')
 protocol=('full_freeze' 'full_finetuning')
-numbers=('3' '6' '9')
+numbers=('3')
 
 for n in "${numbers[@]}"; do
 for r in "${repetition[@]}"; do
@@ -28,7 +28,7 @@ for r in "${repetition[@]}"; do
 
             fi
 
-            FLAGS="--reduction_mode taxonomic --top_down --level ${n} --backbone_freeze ${freeze} --pred_head ${head} --repetition ${r} --finetune_dataset ${d}"
+            FLAGS="--reduction_mode full --backbone_freeze ${freeze} --pred_head ${head} --repetition ${r} --finetune_dataset ${d}"
             mkdir -p /petrobr/parceirosbr/home/joao.frare/workspace/spfm/Seismic-Byol/dev-seismic-byol/imagenet/jobs_out/imagenetFinetune/finetune_${d}/default/repetition_${r}
 
     sbatch <<EOT

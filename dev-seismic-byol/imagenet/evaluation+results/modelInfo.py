@@ -2,6 +2,8 @@ from pathlib import Path
 import os
 import pandas as pd
 import numpy as np
+import copy
+import yaml
 
 class ModelInfo():
     root_path: Path                                                         #-> pasta raiz dos dados
@@ -113,9 +115,11 @@ class ModelInfo():
                     base / f"finetune_{dataset}" / protocol / "logs"
                 )
     
-    def _read_csv(self, csv_path: Path, value_groupby: str, dropna_subset: list[str]) -> pd.DataFrame:
+    def _read_csv(self, csv_path: Path, dropna_subset: list[str]) -> pd.DataFrame:
         data_frame = pd.read_csv(csv_path)
-        data_frame = data_frame.groupby(value_groupby).first().reset_index()
+        data_frame = data_frame.groupby("epoch", as_index= False).agg({
+            value: 'max' for value in dropna_subset
+        })
         data_frame = data_frame.dropna(subset = dropna_subset)
         return data_frame
         
@@ -157,14 +161,14 @@ class ModelInfo():
             if not self.scratch:
                 #--------------------------lendo repetições do pré-treino----------------------------------------------------------
                 pretrain_csv_path = self.root_path / 'Train' / f'{repetition}' / self.pretrain_path / 'metrics.csv'
-                self.pretrain_dataframe.append(self._read_csv(pretrain_csv_path, 'step', ['train_loss_epoch', 'val_acc1', 'val_acc5', 'val_loss']))
+                self.pretrain_dataframe.append(self._read_csv(pretrain_csv_path, ['step', 'train_loss_epoch', 'val_acc1', 'val_acc5', 'val_loss']))
 
             #--------------------------------lendo repetições do finetuning---------------------------------------------------------
             for dataset in self.datasets:
                 for protocol in self.protocols:
 
                     finetune_path = self.root_path / 'Finetune' / f'{repetition}' / self.finetune_path[dataset][protocol]
-                    self.finetune_dataframes[dataset][protocol].append(self._read_csv(finetune_path / 'metrics.csv', 'epoch', ['train_loss', 'val_loss']))
+                    self.finetune_dataframes[dataset][protocol].append(self._read_csv(finetune_path / 'metrics.csv', ['train_loss', 'val_loss']))
 
                     finetune_yaml_path = next(finetune_path.glob('metrics*.yaml')) 
                     with open(finetune_yaml_path, 'r') as file:
