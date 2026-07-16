@@ -35,8 +35,8 @@ class ModelInfo():
     datasets: list = ['seam_ai_N', 'f3_N'],
     protocols: list = ['full_finetuning_deeplab', 'full_freeze_linear']):
 
-    '''inicia o objeto, inserindo os miolos de caminho corretamente nas variáveis de caminho, atribuindo número de classes e imagens de pré-treino e o
-    nome do modelo'''
+        '''inicia o objeto, inserindo os miolos de caminho corretamente nas variáveis de caminho, atribuindo número de classes e imagens de pré-treino e o
+        nome do modelo'''
 
         self.finetune_path = self._create_dataset_protocols_dictionary(datasets, protocols)
         self.datasets = datasets
@@ -219,7 +219,7 @@ class ModelInfo():
     def get_finetune_dataframe(self, dataset: str, protocol: str) -> pd.DataFrame:
         return self.finetune_dataframes[dataset][protocol]
 
-    def get_finetune_miou(self, dataset: str, protocol: str) -> tuple(float, float):
+    def get_finetune_miou(self, dataset: str, protocol: str) -> tuple[float, float]:
         '''return (mean, std) for desired dataset + protocol'''
         data = self.finetune_miou[dataset][protocol]
         return (data['mean'], data['std'])

@@ -9,6 +9,7 @@ from torchmetrics import Accuracy, JaccardIndex, F1Score
 import timm
 import timm.optim
 from timm.loss import BinaryCrossEntropy
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 # -------------------- Lightning --------------------
 from lightning import Trainer
@@ -24,6 +25,7 @@ from minerva.transforms.transform import TransformPipeline, Transpose, Padding
 
 #--------------------- Locais & Custom -----------------------
 from base.utils import * 
+from seismic.SeismicModel import SeismicModel
 from seismic.DatasetsDatamodules import *
 from seismic.LinearPredHead import *
 from base.ImagenetModel import ImagenetModel
@@ -40,8 +42,8 @@ organizer.set_readers(DATASET_ROOT, TRAIN_ENTRIES, VAL_ROOT, GT_ROOT, MAT_ROOT)
 seed_everything(organizer.args.repetition)
 #----------------------------------MODELO - Transfer Learning---------------------------
 num_classes = 6
-learning_rate = 1e-4
-num_epochs = 50
+learning_rate = 1e-3
+num_epochs = 30
 batch_size = 8
 deeplab_backbone = DeepLabV3Backbone(num_classes=num_classes)
 
@@ -94,71 +96,48 @@ val_metrics = {
         num_classes=num_classes, task="multiclass", average="weighted"
     ),
 }
+#Parametros em comum: ajustar o freeze_backbone e o freeze_layers
+training_parameters = {
+    'backbone': deeplab_backbone,
+    'pred_head': pred_head,
+    'num_classes': num_classes,
+    'val_metrics': val_metrics,
+    'optimizer': torch.optim.AdamW,
+    'optimizer_kwargs': {
+        'weight_decay': 1e-4,
+        'lr': learning_rate,
+    },
+
+    "lr_scheduler": ReduceLROnPlateau,
+    "lr_scheduler_kwargs": {
+        "mode": "max",
+        "factor": 0.5,
+        "patience": 3,
+        "cooldown": 1,
+        "min_lr": 1e-6,
+    },
+}
+
 
 if organizer.args.backbone_freeze == 'full_freeze':
-    model = DeepLabV3(
-        backbone= deeplab_backbone,
-        pred_head= pred_head,
-        num_classes= num_classes,
+    model = SeismicModel(
         freeze_backbone= True,
-        val_metrics= val_metrics,
-
-        optimizer= torch.optim.AdamW,
-        optimizer_kwargs = {
-            'weight_decay': 1e-4,
-            'lr': learning_rate,
-        },
-
-        lr_scheduler=torch.optim.lr_scheduler.CosineAnnealingLR,
-        lr_scheduler_kwargs={
-            "T_max": num_epochs,
-            "eta_min": 1e-6,
-        },
+        **training_parameters
     )
 
 elif organizer.args.backbone_freeze == 'custom_freeze':
     layers = ['conv1', 'bn1', 'layer1', 'layer2']
-    model = DeepLabV3(
-        backbone= deeplab_backbone,
-        pred_head= pred_head,
-        num_classes= num_classes,
+    model = SeismicModel(
         freeze_layers= layers,
         freeze_backbone= False,
-        val_metrics= val_metrics,
-
-        optimizer= torch.optim.AdamW,
-        optimizer_kwargs = {
-            'weight_decay': 1e-4,
-            'lr': learning_rate,
-        },
-
-        lr_scheduler=torch.optim.lr_scheduler.CosineAnnealingLR,
-        lr_scheduler_kwargs={
-            "T_max": num_epochs,
-            "eta_min": 1e-6,
-        },
+        **training_parameters
     )
 
 else:
     #full_finetuning
-    model = DeepLabV3(
-        backbone= deeplab_backbone,
-        pred_head= pred_head,
-        num_classes= num_classes,
+    model = SeismicModel(
         freeze_backbone= False,
-        val_metrics= val_metrics,
-
-        optimizer= torch.optim.AdamW,
-        optimizer_kwargs = {
-            'weight_decay': 1e-4,
-            'lr': learning_rate,
-        },
-
-        lr_scheduler=torch.optim.lr_scheduler.CosineAnnealingLR,
-        lr_scheduler_kwargs={
-            "T_max": num_epochs,
-            "eta_min": 1e-6,
-        },
+        **training_parameters
     )
 
 #----------------------------Dados - Modelagem----------------------------------------
@@ -221,7 +200,7 @@ trainer = Trainer(
     limit_val_batches = 1.0,
     strategy= 'auto',
     devices= 1,
-    check_val_every_n_epoch=True,
+    check_val_every_n_epoch=1,
     callbacks= [ckpt_callback]
 )
 

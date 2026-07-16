@@ -35,8 +35,8 @@ class Metrics():
         yscale: str | None = None,
         finetune: bool = False,
         dataset: str | None = None,
-        protocol: str | None = None
-        ):
+        protocol: str | None = None):
+
         '''plota vários gráficos (cada um referente a um modelo) de um conjunto de métricas escolhido (média sombreado com desvio padrão)'''
 
         num_models = len(self.models)
@@ -95,8 +95,7 @@ class Metrics():
         yscale: str | None =  None,
         finetune: bool = False,
         dataset: str | None = None,
-        protocol: str | None = None
-        ):
+        protocol: str | None = None):
 
         '''plot de apenas um gráfico da única variável escolhida para todos os modelos (média sombreado com desvio padrão)
         mul_factor é o fator multiplicativo para a variável y'''
@@ -138,91 +137,137 @@ class Metrics():
         plt.close()
     
     def plot_heatmap(
-    self,
-    title: str,
-    save_path: Path,
-    dataset: str,
-    protocol: str,
-    ):
+        self,
+        title: str,
+        save_path: Path,
+        dataset: str,
+        protocol: str,
+        ):
 
-    rows = sorted(
-        {model.pretrained_classes for model in self.models},
-        reverse=True,
-    )
+        rows = sorted(
+            {model.pretrained_classes for model in self.models},
+            reverse=True,
+        )
 
-    cols = sorted(
-        {model.pretrained_images for model in self.models},
-    )
+        cols = sorted(
+            {model.pretrained_images for model in self.models},
+        )
 
-    heatmap = pd.DataFrame(
-        np.nan,
-        index=rows,
-        columns=cols,
-    )
+        heatmap = pd.DataFrame(
+            np.nan,
+            index=rows,
+            columns=cols,
+        )
 
-    for model in self.models:
+        for model in self.models:
 
-        # ignora modelos que não pertencem à malha
-        if model.scratch or model.torchPretrained:
-            continue
+            # ignora modelos que não pertencem à malha
+            if model.scratch or model.torchPretrained:
+                continue
 
-        mean, std = model.get_finetune_miou(dataset, protocol)
+            mean, std = model.get_finetune_miou(dataset, protocol)
 
-        heatmap.loc[
-            model.pretrained_classes,
-            model.pretrained_images,
-        ] = mean
+            heatmap.loc[
+                model.pretrained_classes,
+                model.pretrained_images,
+            ] = mean
 
-    fig, ax = plt.subplots(figsize=(8, 6))
+        fig, ax = plt.subplots(figsize=(8, 6))
 
-    im = ax.imshow(
-        heatmap.values,
-        cmap="OrRd",
-        aspect="auto",
-    )
+        im = ax.imshow(
+            heatmap.values,
+            cmap="OrRd",
+            aspect="auto",
+        )
 
-    # eixo x
-    xlabels = []
-    for n in cols:
-        if n >= 1_000_000:
-            xlabels.append(f"{n/1e6:.2f}M")
-        elif n >= 1000:
-            xlabels.append(f"{n/1000:.0f}k")
-        else:
-            xlabels.append(str(n))
+        # eixo x
+        xlabels = []
+        for n in cols:
+            if n >= 1_000_000:
+                xlabels.append(f"{n/1e6:.2f}M")
+            elif n >= 1000:
+                xlabels.append(f"{n/1000:.0f}k")
+            else:
+                xlabels.append(str(n))
 
-    ax.set_xticks(np.arange(len(cols)))
-    ax.set_xticklabels(xlabels)
+        ax.set_xticks(np.arange(len(cols)))
+        ax.set_xticklabels(xlabels)
 
-    # eixo y
-    ax.set_yticks(np.arange(len(rows)))
-    ax.set_yticklabels(rows)
+        # eixo y
+        ax.set_yticks(np.arange(len(rows)))
+        ax.set_yticklabels(rows)
 
-    ax.set_xlabel("Number of pretraining images")
-    ax.set_ylabel("Number of pretraining classes")
-    ax.set_title(title)
+        ax.set_xlabel("Number of pretraining images")
+        ax.set_ylabel("Number of pretraining classes")
+        ax.set_title(title)
 
-    # escreve o valor nas células
-    for i in range(len(rows)):
-        for j in range(len(cols)):
-            value = heatmap.iloc[i, j]
+        # escreve o valor nas células
+        for i in range(len(rows)):
+            for j in range(len(cols)):
+                value = heatmap.iloc[i, j]
 
-            if not np.isnan(value):
-                ax.text(
-                    j,
-                    i,
-                    f"{value:.3f}",
-                    ha="center",
-                    va="center",
-                    color="white",
-                    fontsize=8,
+                if not np.isnan(value):
+                    ax.text(
+                        j,
+                        i,
+                        f"{value:.3f}",
+                        ha="center",
+                        va="center",
+                        color="white",
+                        fontsize=8,
+                    )
+
+        fig.colorbar(im, ax=ax, label="Mean mIoU")
+
+        self._save_plot(
+            fig,
+            f"{title}.png",
+            save_path,
+        )
+    
+    def save_miou_table(self, filename, save_path, dataset, protocol):
+        '''Recupera os dados processados de mIoU, organiza em uma tabela
+        e salva em um arquivo de texto alinhado na pasta root.
+        '''
+
+        table_rows = []
+        for model in self.models:
+            mean, std = model.get_finetune_miou(dataset, protocol)
+            table_rows.append(
+                (
+                    model.model_name,
+                    f"{mean:.4f} ± {std:.4f}"
                 )
+            )
 
-    fig.colorbar(im, ax=ax, label="Mean mIoU")
+        df_miou = pd.DataFrame(table_rows, columns=['Model Name', 'mIoU'])
 
-    self._save_plot(
-        fig,
-        f"{title}.png",
-        save_path,
-    )
+        save_path.mkdir(parents=True, exist_ok=True)
+        save_path = save_path / filename
+
+        with open(save_path, 'w', encoding='utf-8') as f:
+            f.write(df_miou.to_string(index=False))
+        
+    def show_best_pretrain_metrics(self, filename, save_path):
+        table_rows = []
+
+        for model in self.models:
+            dataframe = model.get_pretrain_dataframe()
+            if dataframe.empty:
+                continue
+            
+            best = dataframe.loc[dataframe['mean_acc1'].idxmax()]
+            info = f"{best['mean_acc1']:.3f} ± {best['std_acc1']:.3f}"
+            table_rows.append( (model.model_name, info))
+        
+        df_miou = pd.DataFrame(table_rows, columns=['Model Name', 'Top 1'])
+
+        save_path.mkdir(parents=True, exist_ok=True)
+        save_path = save_path / filename
+
+        with open(save_path, 'w', encoding='utf-8') as f:
+            f.write(df_miou.to_string(index=False))
+
+            
+
 
