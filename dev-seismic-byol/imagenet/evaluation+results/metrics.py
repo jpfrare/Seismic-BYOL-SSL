@@ -162,7 +162,7 @@ class Metrics():
         for model in self.models:
 
             # ignora modelos que não pertencem à malha
-            if model.scratch or model.torchPretrained:
+            if model.torchPretrained:
                 continue
 
             mean, std = model.get_finetune_miou(dataset, protocol)
@@ -213,7 +213,7 @@ class Metrics():
                         f"{value:.3f}",
                         ha="center",
                         va="center",
-                        color="white",
+                        color="black",
                         fontsize=8,
                     )
 
@@ -236,7 +236,7 @@ class Metrics():
             table_rows.append(
                 (
                     model.model_name,
-                    f"{mean:.4f} ± {std:.4f}"
+                    f"{mean:.2f} ± {std:.2f}"
                 )
             )
 
@@ -257,7 +257,7 @@ class Metrics():
                 continue
             
             best = dataframe.loc[dataframe['mean_acc1'].idxmax()]
-            info = f"{best['mean_acc1']:.3f} ± {best['std_acc1']:.3f}"
+            info = f"{best['mean_acc1']:.4f} ± {best['std_acc1']:.4f}"
             table_rows.append( (model.model_name, info))
         
         df_miou = pd.DataFrame(table_rows, columns=['Model Name', 'Top 1'])

@@ -1,5 +1,6 @@
 from minerva.models.nets.image.deeplabv3 import DeepLabV3Backbone, DeepLabV3, DeepLabV3PredictionHead
 from torch.optim.lr_scheduler import ReduceLROnPlateau
+import torch
 
 class SeismicModel(DeepLabV3):
     def configure_optimizers(self):
@@ -23,7 +24,7 @@ class SeismicModel(DeepLabV3):
                 "optimizer": optimizer,
                 "lr_scheduler": {
                     "scheduler": scheduler,
-                    "monitor": "val_mIoU",
+                    "monitor": "val_loss",
                     "interval": "epoch",
                     "frequency": 1,
                 },

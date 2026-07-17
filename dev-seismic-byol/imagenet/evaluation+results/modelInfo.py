@@ -76,7 +76,11 @@ class ModelInfo():
             real_per_class = min(per_class, 1280)
             self.pretrained_images = real_per_class * num_classes
             self.pretrained_classes = num_classes
-            self.model_name = f'C_{num_classes}|IPC_{real_per_class}'
+
+            if num_classes == 10 and per_class == 1300:
+                self.pretrained_images = 13000
+
+            self.model_name = f'{num_classes}C, {real_per_class}IpC'
 
             base = Path('default') / f'num_classes_{num_classes}_per_class_{per_class}'
             self.pretrain_path = base / 'logs'
@@ -205,7 +209,7 @@ class ModelInfo():
                 ).reset_index()
 
                 mean = np.mean(self.finetune_miou[dataset][protocol])
-                std = np.std(self.finetune_miou[dataset][protocol])
+                std = np.std(self.finetune_miou[dataset][protocol], ddof= 1)
 
                 self.finetune_miou[dataset][protocol] = {
                     'mean': mean,
