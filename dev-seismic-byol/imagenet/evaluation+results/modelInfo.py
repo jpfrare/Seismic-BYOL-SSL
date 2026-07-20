@@ -90,7 +90,7 @@ class ModelInfo():
             self.pretrained_images = 1_280_000
             self.pretrained_classes = num_classes
             cut_mode = 'top_down' if top_down else 'bottom_up'
-            self.model_name = f'Level_{level}_(C_{num_classes})'
+            self.model_name = f'L{level}, {num_classes}C'
 
             base = Path('taxonomic') / f'{cut_mode}_level_{level}'
             self.pretrain_path = base / 'logs'
@@ -121,9 +121,7 @@ class ModelInfo():
     
     def _read_csv(self, csv_path: Path, dropna_subset: list[str]) -> pd.DataFrame:
         data_frame = pd.read_csv(csv_path)
-        data_frame = data_frame.groupby("epoch", as_index= False).agg({
-            value: 'max' for value in dropna_subset
-        })
+        data_frame = data_frame.groupby("epoch", as_index= False).agg({value: 'max' for value in dropna_subset})
         data_frame = data_frame.dropna(subset = dropna_subset)
         return data_frame
         

@@ -14,6 +14,12 @@ class Metrics():
     def __init__(self, models: list[ModelInfo]):
         self.models = models
     
+    def __add__(self, other):
+        return Metrics(self.models + other.models)
+    
+    def add_model(self, model: ModelInfo):
+        self.models.append(model)
+    
     def _save_plot(self, fig, filename: str, save_path: Path):
         save_path.mkdir(parents=True, exist_ok=True)
         fig.tight_layout()
@@ -132,6 +138,13 @@ class Metrics():
         if yscale is not None:
             plt.yscale(yscale)
         
+        plt.legend(
+            loc='best',      # ou 'upper right', 'lower left', etc.
+            fontsize=10,
+            frameon=True,
+            ncol=2           # opcional, divide em 2 colunas se houver muitos modelos
+        )
+        save_path.mkdir(parents=True, exist_ok=True)
         save_path = save_path / f'{title}.png'
         plt.savefig(save_path, dpi= 300, bbox_inches='tight')
         plt.close()
@@ -153,31 +166,57 @@ class Metrics():
             {model.pretrained_images for model in self.models},
         )
 
-        heatmap = pd.DataFrame(
+        heatmap_mean= pd.DataFrame(
             np.nan,
             index=rows,
             columns=cols,
         )
 
+        heatmap_std= pd.DataFrame(
+            np.nan,
+            index= rows,
+            columns= cols,
+        )
+
+        min_miou = np.inf
+        max_miou = -np.inf
         for model in self.models:
 
             # ignora modelos que não pertencem à malha
             if model.torchPretrained:
                 continue
 
-            mean, std = model.get_finetune_miou(dataset, protocol)
+            for p in model.protocols:
+                #mantém a escala entre vários protocolos sobre o mesmo dataset
+                miou, std_miou = model.get_finetune_miou(dataset, p)
+                miou *= 100
+                std_miou *= 100
 
-            heatmap.loc[
+                if p == protocol:
+                    mean = miou
+                    std = std_miou
+                
+                max_miou = max(max_miou, miou)
+                min_miou = min(min_miou, miou)
+
+            heatmap_mean.loc[
                 model.pretrained_classes,
                 model.pretrained_images,
             ] = mean
 
+            heatmap_std.loc[
+                model.pretrained_classes,
+                model.pretrained_images,
+            ] = std
+
         fig, ax = plt.subplots(figsize=(8, 6))
 
         im = ax.imshow(
-            heatmap.values,
+            heatmap_mean.values,
             cmap="OrRd",
             aspect="auto",
+            vmin= min_miou,
+            vmax= max_miou,
         )
 
         # eixo x
@@ -204,20 +243,23 @@ class Metrics():
         # escreve o valor nas células
         for i in range(len(rows)):
             for j in range(len(cols)):
-                value = heatmap.iloc[i, j]
+                mean = heatmap_mean.iloc[i, j]
+                std = heatmap_std.iloc[i,j]
 
-                if not np.isnan(value):
+                if not np.isnan(mean):
                     ax.text(
                         j,
                         i,
-                        f"{value:.3f}",
+                        f"{mean:.2f}%\n±{std:.2f}%",
                         ha="center",
                         va="center",
                         color="black",
-                        fontsize=8,
+                        fontsize=10,
                     )
 
-        fig.colorbar(im, ax=ax, label="Mean mIoU")
+        cbar = fig.colorbar(im, ax=ax)
+        cbar.set_label("Mean mIoU (%)")
+        cbar.set_ticks(np.linspace(min_miou, max_miou, 6))
 
         self._save_plot(
             fig,
@@ -268,6 +310,115 @@ class Metrics():
         with open(save_path, 'w', encoding='utf-8') as f:
             f.write(df_miou.to_string(index=False))
 
-            
+    def plot_taxonomic_x_default(self, 
+    title: str,
+    save_path: Path,
+    dataset: str,
+    protocol: str):
+
+        classes = sorted({model.pretrained_classes for model in self.models})
+
+        default_mean = []
+        default_std = []
+
+        tax_mean = []
+        tax_std = []
+
+        labels = []
+
+        for c in classes:
+
+            default_model = next(
+                (
+                    m for m in self.models
+                    if (
+                        m.reduction_mode == "default"
+                        and m.pretrained_classes == c
+                    )
+                ),
+                None,
+            )
+
+            tax_model = next(
+                (
+                    m for m in self.models
+                    if (
+                        m.reduction_mode == "taxonomic"
+                        and m.pretrained_classes == c
+                    )
+                ),
+                None,
+            )
+
+            if default_model is None or tax_model is None:
+                continue
+
+            mean, std = default_model.get_finetune_miou(dataset, protocol)
+            default_mean.append(mean * 100)
+            default_std.append(std * 100)
+
+            mean, std = tax_model.get_finetune_miou(dataset, protocol)
+            tax_mean.append(mean * 100)
+            tax_std.append(std * 100)
+
+            labels.append(str(c))
+
+        x = np.arange(len(labels))
+        width = 0.38
+
+        fig, ax = plt.subplots(figsize=(8, 5))
+
+        bars_default = ax.bar(
+            x - width / 2,
+            default_mean,
+            width,
+            yerr=default_std,
+            capsize=5,
+            label="Default",
+            color="#4C72B0"
+        )
+
+        bars_tax = ax.bar(
+            x + width / 2,
+            tax_mean,
+            width,
+            yerr=tax_std,
+            capsize=5,
+            label="Taxonomic",
+            color="#DD8452"
+        )
+
+        ax.bar_label(
+            bars_default,
+            fmt="%.1f",
+            padding=3,
+            fontsize=9,
+        )
+
+        ax.bar_label(
+            bars_tax,
+            fmt="%.1f",
+            padding=3,
+            fontsize=9,
+        )
+
+        ax.set_xticks(x)
+        ax.set_xticklabels(labels)
+
+        ax.set_xlabel("Number of pretraining classes")
+        ax.set_ylabel("mIoU (%)")
+        ax.set_title(title)
+
+        ax.legend()
+
+        ax.set_ylim(0, 100)
+
+        ax.grid(axis="y", linestyle="--", alpha=0.3)
+
+        self._save_plot(
+            fig,
+            f"{title}.png",
+            save_path,
+        )
 
 
