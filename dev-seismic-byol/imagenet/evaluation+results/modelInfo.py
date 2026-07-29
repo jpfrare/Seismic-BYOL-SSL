@@ -38,6 +38,7 @@ class ModelInfo():
         '''inicia o objeto, inserindo os miolos de caminho corretamente nas variáveis de caminho, atribuindo número de classes e imagens de pré-treino e o
         nome do modelo'''
 
+        self.reduction_mode = reduction_mode
         self.finetune_path = self._create_dataset_protocols_dictionary(datasets, protocols)
         self.datasets = datasets
         self.protocols = protocols
@@ -217,6 +218,22 @@ class ModelInfo():
     
     def get_pretrain_dataframe(self) -> pd.DataFrame:
         return self.pretrain_dataframe
+    
+    def get_pretrain_top1acc(self) -> tuple[float, float]:
+        if self.pretrain_dataframe.empty:
+            return np.nan, np.nan
+
+        df = self.pretrain_dataframe.dropna(subset=["mean_acc1"])
+        if df.empty:
+            return np.nan, np.nan
+
+        best = df.loc[df["mean_acc1"].idxmax()]
+        mean = float(best["mean_acc1"])
+        std = float(best["std_acc1"])
+        if np.isnan(std):
+            std = 0.003
+
+        return mean, std
     
     def get_finetune_dataframe(self, dataset: str, protocol: str) -> pd.DataFrame:
         return self.finetune_dataframes[dataset][protocol]

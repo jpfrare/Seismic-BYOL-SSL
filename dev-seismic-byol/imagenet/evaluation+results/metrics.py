@@ -48,7 +48,7 @@ class Metrics():
         num_models = len(self.models)
         nrows = math.ceil(num_models/ncols) #dado um número de colunas, consegue calcular o número de linhas
 
-        fig, axs = plt.subplots(nrows=nrows, ncols=ncols, figsize=(12, 8), sharey= True) #fig -> contém a painel que contém os demais gráficos, axs é a lista de mini gráficos
+        fig, axs = plt.subplots(nrows=nrows, ncols=ncols, figsize=(12, 8), sharey= True, sharex= True) #fig -> contém a painel que contém os demais gráficos, axs é a lista de mini gráficos
 
         axs = axs.flatten() if num_models > 1 else [axs]
 
@@ -78,16 +78,27 @@ class Metrics():
                 )
             ax.set_title(self.models[i].model_name, fontsize=12, fontweight='bold')
             ax.grid(True, linestyle='--', alpha=0.5)
-            ax.legend(fontsize= 9)
 
             if yscale is not None:
                 ax.set_yscale(yscale)
+        
+        handles, labels = axs[0].get_legend_handles_labels()
+
+        fig.legend(
+            handles,
+            labels,
+            loc="upper center",
+            ncol=2,
+            bbox_to_anchor=(0.5, 0.975),
+            frameon=False,
+            fontsize=10
+        )
         
         #apaga os quadradinhos não preenchidos
         for i in range(num_models, len(axs)):
             fig.delaxes(axs[i])
         
-        fig.suptitle(title, fontsize=16, fontweight='bold')
+        fig.suptitle(title, fontsize=13, fontweight='bold', y=0.99)
 
         self._save_plot(fig, f'{title}.png', save_path)
     
@@ -95,8 +106,11 @@ class Metrics():
         self,
         title: str,
         save_path: Path,
-        y_axis: str,
         x_axis: str,
+        y_axis: str,
+        min_y: float | None = None,
+        max_y: float | None = None,
+        y_step: float | None = None,
         mul_factor: float = 1,
         yscale: str | None =  None,
         finetune: bool = False,
@@ -131,12 +145,24 @@ class Metrics():
                 zorder = 2
             )
         
-        plt.title(title, fontsize=14, fontweight='bold')
-        plt.xlabel(x_axis, fontsize= 12)
-        plt.ylabel(y_axis, fontsize= 12)
+            plt.title(title, fontsize=14, fontweight='bold')
+            plt.xlabel(x_axis, fontsize= 12)
+            plt.ylabel(y_axis, fontsize= 12)
 
         if yscale is not None:
             plt.yscale(yscale)
+            
+        if min_y is not None and max_y is not None:
+            plt.ylim(min_y, max_y)
+
+        if y_step is not None:
+            if min_y is None or max_y is None:
+                ymin, ymax = plt.ylim()
+                ticks = np.arange(ymin, ymax + y_step, y_step)
+            else:
+                ticks = np.arange(min_y, max_y + y_step, y_step)
+            
+            plt.yticks(ticks)
         
         plt.legend(
             loc='best',      # ou 'upper right', 'lower left', etc.
@@ -150,12 +176,14 @@ class Metrics():
         plt.close()
     
     def plot_heatmap(
-        self,
-        title: str,
-        save_path: Path,
-        dataset: str,
-        protocol: str,
-        ):
+    self,
+    title: str,
+    save_path: Path,
+    dataset: str | None = None,
+    protocol: str | None = None,
+    pretrain: bool = False,
+    cmap: str = "OrRd",
+    ):
 
         rows = sorted(
             {model.pretrained_classes for model in self.models},
@@ -166,38 +194,48 @@ class Metrics():
             {model.pretrained_images for model in self.models},
         )
 
-        heatmap_mean= pd.DataFrame(
+        heatmap_mean = pd.DataFrame(
             np.nan,
             index=rows,
             columns=cols,
         )
 
-        heatmap_std= pd.DataFrame(
+        heatmap_std = pd.DataFrame(
             np.nan,
-            index= rows,
-            columns= cols,
+            index=rows,
+            columns=cols,
         )
 
-        min_miou = np.inf
-        max_miou = -np.inf
+        if not pretrain:
+            min_metric = np.inf
+            max_metric = -np.inf
+
         for model in self.models:
 
             # ignora modelos que não pertencem à malha
             if model.torchPretrained:
                 continue
 
-            for p in model.protocols:
-                #mantém a escala entre vários protocolos sobre o mesmo dataset
-                miou, std_miou = model.get_finetune_miou(dataset, p)
-                miou *= 100
-                std_miou *= 100
+            if pretrain:
 
-                if p == protocol:
-                    mean = miou
-                    std = std_miou
-                
-                max_miou = max(max_miou, miou)
-                min_miou = min(min_miou, miou)
+                mean, std = model.get_pretrain_top1acc()
+                mean *= 100
+                std *= 100
+
+            else:
+
+                for p in model.protocols:
+
+                    miou, std_miou = model.get_finetune_miou(dataset, p)
+                    miou *= 100
+                    std_miou *= 100
+
+                    if p == protocol:
+                        mean = miou
+                        std = std_miou
+
+                    max_metric = max(max_metric, miou)
+                    min_metric = min(min_metric, miou)
 
             heatmap_mean.loc[
                 model.pretrained_classes,
@@ -211,13 +249,23 @@ class Metrics():
 
         fig, ax = plt.subplots(figsize=(8, 6))
 
-        im = ax.imshow(
-            heatmap_mean.values,
-            cmap="OrRd",
-            aspect="auto",
-            vmin= min_miou,
-            vmax= max_miou,
-        )
+        if pretrain:
+
+            im = ax.imshow(
+                heatmap_mean.values,
+                cmap=cmap,
+                aspect="auto",
+            )
+
+        else:
+
+            im = ax.imshow(
+                heatmap_mean.values,
+                cmap=cmap,
+                aspect="auto",
+                vmin=min_metric,
+                vmax=max_metric,
+            )
 
         # eixo x
         xlabels = []
@@ -240,11 +288,11 @@ class Metrics():
         ax.set_ylabel("Number of pretraining classes")
         ax.set_title(title)
 
-        # escreve o valor nas células
+        # escreve valores
         for i in range(len(rows)):
             for j in range(len(cols)):
                 mean = heatmap_mean.iloc[i, j]
-                std = heatmap_std.iloc[i,j]
+                std = heatmap_std.iloc[i, j]
 
                 if not np.isnan(mean):
                     ax.text(
@@ -258,8 +306,12 @@ class Metrics():
                     )
 
         cbar = fig.colorbar(im, ax=ax)
-        cbar.set_label("Mean mIoU (%)")
-        cbar.set_ticks(np.linspace(min_miou, max_miou, 6))
+
+        if pretrain:
+            cbar.set_label("Top-1 Accuracy (%)")
+        else:
+            cbar.set_label("Mean mIoU (%)")
+            cbar.set_ticks(np.linspace(min_metric, max_metric, 6))
 
         self._save_plot(
             fig,
@@ -290,40 +342,20 @@ class Metrics():
         with open(save_path, 'w', encoding='utf-8') as f:
             f.write(df_miou.to_string(index=False))
         
-    def show_best_pretrain_metrics(self, filename, save_path):
-        table_rows = []
 
-        for model in self.models:
-            dataframe = model.get_pretrain_dataframe()
-            if dataframe.empty:
-                continue
-            
-            best = dataframe.loc[dataframe['mean_acc1'].idxmax()]
-            info = f"{best['mean_acc1']:.4f} ± {best['std_acc1']:.4f}"
-            table_rows.append( (model.model_name, info))
-        
-        df_miou = pd.DataFrame(table_rows, columns=['Model Name', 'Top 1'])
-
-        save_path.mkdir(parents=True, exist_ok=True)
-        save_path = save_path / filename
-
-        with open(save_path, 'w', encoding='utf-8') as f:
-            f.write(df_miou.to_string(index=False))
-
-    def plot_taxonomic_x_default(self, 
+    def plot_taxonomic_x_default(
+    self,
     title: str,
     save_path: Path,
-    dataset: str,
-    protocol: str):
+    dataset: str | None = None,
+    protocol: str | None = None,
+    pretrain: bool = False,
+    ):
 
         classes = sorted({model.pretrained_classes for model in self.models})
 
-        default_mean = []
-        default_std = []
-
-        tax_mean = []
-        tax_std = []
-
+        default_mean, default_std = [], []
+        tax_mean, tax_std = [], []
         labels = []
 
         for c in classes:
@@ -331,10 +363,8 @@ class Metrics():
             default_model = next(
                 (
                     m for m in self.models
-                    if (
-                        m.reduction_mode == "default"
-                        and m.pretrained_classes == c
-                    )
+                    if m.reduction_mode == "default"
+                    and m.pretrained_classes == c
                 ),
                 None,
             )
@@ -342,10 +372,8 @@ class Metrics():
             tax_model = next(
                 (
                     m for m in self.models
-                    if (
-                        m.reduction_mode == "taxonomic"
-                        and m.pretrained_classes == c
-                    )
+                    if m.reduction_mode == "taxonomic"
+                    and m.pretrained_classes == c
                 ),
                 None,
             )
@@ -353,67 +381,122 @@ class Metrics():
             if default_model is None or tax_model is None:
                 continue
 
-            mean, std = default_model.get_finetune_miou(dataset, protocol)
+            mean, std = (
+                default_model.get_pretrain_top1acc()
+                if pretrain
+                else default_model.get_finetune_miou(dataset, protocol)
+            )
+
             default_mean.append(mean * 100)
             default_std.append(std * 100)
 
-            mean, std = tax_model.get_finetune_miou(dataset, protocol)
+            mean, std = (
+                tax_model.get_pretrain_top1acc()
+                if pretrain
+                else tax_model.get_finetune_miou(dataset, protocol)
+            )
+
             tax_mean.append(mean * 100)
             tax_std.append(std * 100)
 
             labels.append(str(c))
 
         x = np.arange(len(labels))
-        width = 0.38
+        width = 0.35
 
-        fig, ax = plt.subplots(figsize=(8, 5))
+        fig, ax = plt.subplots(figsize=(9,5))
+
+        error_style = dict(
+            lw=1.5,
+            capsize=6,
+            capthick=1.5,
+            ecolor="black"
+        )
 
         bars_default = ax.bar(
-            x - width / 2,
+            x - width/2,
             default_mean,
             width,
             yerr=default_std,
-            capsize=5,
+            color="#4C72B0",
             label="Default",
-            color="#4C72B0"
+            error_kw=error_style,
         )
 
         bars_tax = ax.bar(
-            x + width / 2,
+            x + width/2,
             tax_mean,
             width,
             yerr=tax_std,
-            capsize=5,
+            color="#DD8452",
             label="Taxonomic",
-            color="#DD8452"
+            error_kw=error_style,
         )
 
-        ax.bar_label(
-            bars_default,
-            fmt="%.1f",
-            padding=3,
-            fontsize=9,
-        )
+        ymax = max(max(default_mean), max(tax_mean))
+        ax.set_ylim(0, ymax + 10)
 
-        ax.bar_label(
-            bars_tax,
-            fmt="%.1f",
-            padding=3,
-            fontsize=9,
-        )
+        # -------- valores acima das barras --------
+
+        for bar in bars_default:
+            h = bar.get_height()
+            ax.text(
+                bar.get_x() + bar.get_width()/2 - 0.02,
+                h + 1.2,
+                f"{h:.1f}",
+                ha="center",
+                va="bottom",
+                fontsize=10,
+            )
+
+        for bar in bars_tax:
+            h = bar.get_height()
+            ax.text(
+                bar.get_x() + bar.get_width()/2 + 0.02,
+                h + 1.2,
+                f"{h:.1f}",
+                ha="center",
+                va="bottom",
+                fontsize=10,
+            )
 
         ax.set_xticks(x)
-        ax.set_xticklabels(labels)
+        ax.set_xticklabels(labels, fontsize=12)
 
-        ax.set_xlabel("Number of pretraining classes")
-        ax.set_ylabel("mIoU (%)")
-        ax.set_title(title)
+        ax.set_xlabel(
+            "Number of pretraining classes",
+            fontsize=14,
+        )
 
-        ax.legend()
+        ax.set_ylabel(
+            "Top-1 Accuracy (%)" if pretrain else "mIoU (%)",
+            fontsize=14,
+        )
 
-        ax.set_ylim(0, 100)
+        ax.set_title(
+            title,
+            fontsize=18,
+            fontweight="bold",
+        )
 
-        ax.grid(axis="y", linestyle="--", alpha=0.3)
+        ax.tick_params(axis="y", labelsize=12)
+
+        ax.grid(
+            axis="y",
+            linestyle="--",
+            alpha=0.25,
+        )
+
+        ax.spines["top"].set_visible(False)
+        ax.spines["right"].set_visible(False)
+
+        ax.legend(
+            frameon=False,
+            fontsize=12,
+            loc="upper right",
+        )
+
+        plt.tight_layout()
 
         self._save_plot(
             fig,
