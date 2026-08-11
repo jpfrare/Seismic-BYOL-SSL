@@ -50,7 +50,7 @@ max_steps = full_imagenet_size*100//real_batch_size + 30          #número de pa
 
 precision= "16-mixed" if torch.cuda.is_available() else "32"       #precisão -> quanto maior melhor
 limit_val_batches = 1.0
-log_every_n_steps = 100
+log_every_n_steps = 600
 
 seed_everything(organizer.args.repetition)
 
@@ -181,9 +181,10 @@ model = ImagenetModel(
 CSVlogger = CSVLogger(organizer.log_dir, name= '', version='')
 
 ckpt_callback = ModelCheckpoint(
-    monitor='val_loss',                # monitorar a val_loss
-    save_top_k=1,                      # Salva apenas o menor val_loss
-    save_last=True,                    # Salva o estado final para resume
+    monitor='val_acc1',                # monitorar a val_acc1
+    mode='max'
+    save_top_k=1,                      # Salva apenas o maior val_acc1
+    save_last=False,                    
     dirpath=organizer.ckpt_dir,
     filename='best',                    
     auto_insert_metric_name=False
@@ -225,6 +226,3 @@ if last_ckpt.exists():
     pipeline.run(data_module, task="fit", ckpt_path= last_ckpt)
 else:
     pipeline.run(data_module, task="fit")
-
-if organizer.args.test and best_ckpt.exists():
-    pipeline.run(data_module, task= "test", ckpt_path= best_ckpt)

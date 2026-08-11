@@ -6,7 +6,7 @@ from PIL import Image
 from scipy.io import loadmat
 from .utils import reduce_taxonomic_diversity
 
-#por alguma razão mistica, tanto o dataset de validação como de treino sao arrays estruturados do numpy
+#por alguma razão mistica, tanto o dataset de teste como de treino sao arrays estruturados do numpy
 #pra cada linha do array do treino:
 #linha[0] é o id do arquivo ex: 10026
 #linha[1] é a label dele
@@ -101,3 +101,5 @@ class ImagenetValReader():
         self.targets = [old_label_to_new_label[label] for label in self.targets]
 
         return num_classes
+
+

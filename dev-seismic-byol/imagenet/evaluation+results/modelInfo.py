@@ -159,7 +159,7 @@ class ModelInfo():
                     self.finetune_dataframes[dataset][protocol] = pd.DataFrame()
             return
 
-        for repetition in range(3):
+        for repetition in range(5):
 
             if not self.scratch:
                 #--------------------------lendo repetições do pré-treino----------------------------------------------------------

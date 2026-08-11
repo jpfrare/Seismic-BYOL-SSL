@@ -93,6 +93,9 @@ class ImagenetModel(L.LightningModule):
     def test_step(self, batch, batch_idx):
         # Espelha exatamente o comportamento da validação
         return self.validation_step(batch, batch_idx)
+    def predict_step(self, batch, batch_idx, dataloader_idx=0):
+        x, y = batch
+        return self(x)
     
     def configure_optimizers(self):
         optimizer = self.optimizer(self.parameters(), **self.optimizer_kwargs)
@@ -110,3 +113,7 @@ class ImagenetModel(L.LightningModule):
             }
         
         return optimizer
+    
+    def freeze_backbone(self):
+        for parameter in self.backbone.parameters():
+            parameter.requires_grad = False

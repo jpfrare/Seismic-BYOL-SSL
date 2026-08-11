@@ -47,7 +47,7 @@ class TrainOrganizer():
         self.parser.add_argument("--num_classes", type=int, default=1000, help='número de classes utilizados')
         self.parser.add_argument("--per_class", type=int, default=1300, help='número de imagens por classe utilizados')
 
-        self.parser.add_argument("--test", action= "store_true", help= 'teste final')
+        self.parser.add_argument("--evaluate", action= "store_true", help= 'finetuning com as 1000 classes seguido de avaliação')
     
     def _get_dirs_and_set_model_name(self):
         dirs = Path(self.data_root)/self.task/f'{self.args.repetition}'/self.args.reduction_mode

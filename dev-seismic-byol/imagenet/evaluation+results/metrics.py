@@ -22,7 +22,6 @@ class Metrics():
     
     def _save_plot(self, fig, filename: str, save_path: Path):
         save_path.mkdir(parents=True, exist_ok=True)
-        fig.tight_layout()
         fig.savefig(
             save_path / filename,
             dpi=300,
@@ -48,7 +47,7 @@ class Metrics():
         num_models = len(self.models)
         nrows = math.ceil(num_models/ncols) #dado um número de colunas, consegue calcular o número de linhas
 
-        fig, axs = plt.subplots(nrows=nrows, ncols=ncols, figsize=(12, 8), sharey= True, sharex= True) #fig -> contém a painel que contém os demais gráficos, axs é a lista de mini gráficos
+        fig, axs = plt.subplots(nrows=nrows, ncols=ncols, figsize=(12, 8), sharey= True) #fig -> contém a painel que contém os demais gráficos, axs é a lista de mini gráficos
 
         axs = axs.flatten() if num_models > 1 else [axs]
 
@@ -89,16 +88,15 @@ class Metrics():
             labels,
             loc="upper center",
             ncol=2,
-            bbox_to_anchor=(0.5, 0.975),
+            bbox_to_anchor=(0.5, 0.98),
             frameon=False,
-            fontsize=10
+            fontsize=12
         )
-        
+
+        fig.tight_layout(rect=[0, 0, 1, 0.93])
         #apaga os quadradinhos não preenchidos
         for i in range(num_models, len(axs)):
             fig.delaxes(axs[i])
-        
-        fig.suptitle(title, fontsize=13, fontweight='bold', y=0.99)
 
         self._save_plot(fig, f'{title}.png', save_path)
     
@@ -107,7 +105,9 @@ class Metrics():
         title: str,
         save_path: Path,
         x_axis: str,
+        x_axis_label: str,
         y_axis: str,
+        y_axis_label: str,
         min_y: float | None = None,
         max_y: float | None = None,
         y_step: float | None = None,
@@ -145,9 +145,8 @@ class Metrics():
                 zorder = 2
             )
         
-            plt.title(title, fontsize=14, fontweight='bold')
-            plt.xlabel(x_axis, fontsize= 12)
-            plt.ylabel(y_axis, fontsize= 12)
+            plt.xlabel(x_axis_label, fontsize= 12)
+            plt.ylabel(y_axis_label, fontsize= 12)
 
         if yscale is not None:
             plt.yscale(yscale)
@@ -286,7 +285,6 @@ class Metrics():
 
         ax.set_xlabel("Number of pretraining images")
         ax.set_ylabel("Number of pretraining classes")
-        ax.set_title(title)
 
         # escreve valores
         for i in range(len(rows)):
@@ -312,7 +310,7 @@ class Metrics():
         else:
             cbar.set_label("Mean mIoU (%)")
             cbar.set_ticks(np.linspace(min_metric, max_metric, 6))
-
+        fig.tight_layout()
         self._save_plot(
             fig,
             f"{title}.png",
@@ -407,9 +405,9 @@ class Metrics():
         fig, ax = plt.subplots(figsize=(9,5))
 
         error_style = dict(
-            lw=1.5,
-            capsize=6,
-            capthick=1.5,
+            lw=1,
+            capsize=4,
+            capthick=1,
             ecolor="black"
         )
 
@@ -433,50 +431,19 @@ class Metrics():
             error_kw=error_style,
         )
 
-        ymax = max(max(default_mean), max(tax_mean))
-        ax.set_ylim(0, ymax + 10)
-
-        # -------- valores acima das barras --------
-
-        for bar in bars_default:
-            h = bar.get_height()
-            ax.text(
-                bar.get_x() + bar.get_width()/2 - 0.02,
-                h + 1.2,
-                f"{h:.1f}",
-                ha="center",
-                va="bottom",
-                fontsize=10,
-            )
-
-        for bar in bars_tax:
-            h = bar.get_height()
-            ax.text(
-                bar.get_x() + bar.get_width()/2 + 0.02,
-                h + 1.2,
-                f"{h:.1f}",
-                ha="center",
-                va="bottom",
-                fontsize=10,
-            )
+        ax.set_ylim(0, 100)
 
         ax.set_xticks(x)
         ax.set_xticklabels(labels, fontsize=12)
 
         ax.set_xlabel(
-            "Number of pretraining classes",
+            "Number of Pretraining Classes",
             fontsize=14,
         )
 
         ax.set_ylabel(
             "Top-1 Accuracy (%)" if pretrain else "mIoU (%)",
             fontsize=14,
-        )
-
-        ax.set_title(
-            title,
-            fontsize=18,
-            fontweight="bold",
         )
 
         ax.tick_params(axis="y", labelsize=12)
@@ -493,11 +460,10 @@ class Metrics():
         ax.legend(
             frameon=False,
             fontsize=12,
-            loc="upper right",
+            loc="best",
         )
 
         plt.tight_layout()
-
         self._save_plot(
             fig,
             f"{title}.png",

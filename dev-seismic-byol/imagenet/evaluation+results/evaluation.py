@@ -23,10 +23,12 @@ for level, num_classes in taxonomic_level_to_class.items():
                 title= f'Taxonomc ImageNet Pretrained models using {num_classes} classes Top-1 Acuraccy',
                 save_path= SAVE_PRETRAIN_ROOT,
                 y_axis= 'acc1',
+                y_axis_label= 'Top-1 Acuraccy (%)',
                 min_y= 0,
                 max_y= 100,
                 y_step= 5,
                 x_axis= 'step',
+                x_axis_label= 'Step',
                 mul_factor= 100)
         
         taxonomic_x_default_metrics += metrics_same_class
@@ -70,10 +72,12 @@ for num_classes in configs.keys():
                 title= f'ImageNet Pretrain, {num_classes} classes models Top-1 Acuraccy',
                 save_path= SAVE_PRETRAIN_ROOT,
                 y_axis= 'acc1',
+                y_axis_label= 'Top-1 Acuraccy (%)',
                 min_y= 0,
                 max_y= 100,
                 y_step= 5,
                 x_axis= 'step',
+                x_axis_label= 'Step',
                 mul_factor= 100)
 
 all_configurations = Metrics([])
@@ -114,11 +118,17 @@ for dataset in full_dataset_model.datasets:
                         save_path= SAVE_FINETUNE_ROOT,
                         y_axis= ['train_loss', 'val_loss'],
                         x_axis= 'epoch',
-                        ncols= 4,
+                        ncols= 6,
                         finetune= True,
                         dataset= dataset,
-                        protocol= protocol
+                        protocol= protocol,
+                        yscale= 'log'
                 )
+                all_configurations.save_miou_table(
+                        filename= f'Deafult mIoU table, {aliases[protocol]} - {aliases[dataset]}',
+                        save_path= SAVE_FINETUNE_ROOT, 
+                        dataset= dataset,
+                        protocol= protocol)
 
                 taxonomic_x_default_metrics.plot_taxonomic_x_default( 
                         title= f'Taxonomic mIoU, {protocol} - {dataset}',
@@ -133,7 +143,13 @@ for dataset in full_dataset_model.datasets:
                         ncols= 4,
                         finetune= True,
                         dataset= dataset,
-                        protocol= protocol
+                        protocol= protocol,
+                        yscale= 'log'
                 )
+                taxonomic_x_default_metrics.save_miou_table(
+                        filename= f'Taxonomic mIoU table, {aliases[protocol]} - {aliases[dataset]}',
+                        save_path= SAVE_FINETUNE_ROOT, 
+                        dataset= dataset,
+                        protocol= protocol)
         
 

@@ -3,17 +3,17 @@
 # --------------------------
 # Configuration
 # --------------------------
-SCRIPT_PATH="/petrobr/parceirosbr/home/joao.frare/workspace/spfm/Seismic-Byol/dev-seismic-byol/imagenet/imagenetTrain.py"
+SCRIPT_PATH="/petrobr/parceirosbr/home/joao.frare/workspace/spfm/Seismic-Byol/dev-seismic-byol/imagenet/imagenetPretrainEvaluation.py"
 WORKSPACE="/petrobr/parceirosbr/home/joao.frare/workspace"
 export SIF="/petrobr/parceirosbr/spfm/singularity/amd64/deeprock/ngc/MINERVA_v0_3_9-beta-SPINN_v0_0_1.sif"
 
-repetition=(3 4)
-level=(9 7 6 3)
-
+repetition=(3)
+per_class=(640 320 160 80 13)
+for p in "${per_class[@]}"; do
 for r in "${repetition[@]}"; do
-for l in "${level[@]}"; do
-    FLAGS="--reduction_mode taxonomic --top_down --level ${l} --repetition ${r}"
-    mkdir -p /petrobr/parceirosbr/home/joao.frare/workspace/spfm/Seismic-Byol/dev-seismic-byol/imagenet/jobs_out/imagenetTraining/repetition_${r}/taxonomic
+    FLAGS="--reduction_mode default --num_classes 1000 --per_class ${p} --repetition ${r}"
+    root=/petrobr/parceirosbr/home/joao.frare/workspace/spfm/Seismic-Byol/dev-seismic-byol/imagenet/jobs_out/imagenetSelfFinetuning/repetition_${r}/default/1000_classes
+    mkdir -p ${root}
 
     sbatch <<EOT
 #!/bin/bash
@@ -26,8 +26,8 @@ for l in "${level[@]}"; do
 #SBATCH --partition=ict-h100
 #SBATCH --account=spfm
 #SBATCH --time=24:00:00
-#SBATCH --output=/petrobr/parceirosbr/home/joao.frare/workspace/spfm/Seismic-Byol/dev-seismic-byol/imagenet/jobs_out/imagenetTraining/repetition_${r}/taxonomic/train_r${r}_l_${l}_%j.out
-#SBATCH --error=/petrobr/parceirosbr/home/joao.frare/workspace/spfm/Seismic-Byol/dev-seismic-byol/imagenet/jobs_out/imagenetTraining/repetition_${r}/taxonomic/train_r${r}_l_${l}_%j.err
+#SBATCH --output=${root}/${p}_%j.out
+#SBATCH --error=${root}/${p}_%j.err
 
 cd "\$SLURM_SUBMIT_DIR"
 

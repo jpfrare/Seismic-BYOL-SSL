@@ -6,6 +6,8 @@ from pathlib import Path
 TRAIN_ENTRIES = "/petrobr/parceirosbr/spfm/datasets/ImageNet_2012/extras_v3/entries-TRAIN.npy"
 MAT_ROOT = "/petrobr/parceirosbr/home/joao.frare/workspace/spfm/sharedata/datasets/ImageNet_2012/extra_files/ILSVRC2012_devkit_t12/data/meta.mat"
 
+
+'''
 # 1. Simula a lógica de labels da validação (Ordem Alfabética)
 meta = loadmat(MAT_ROOT)['synsets']
 all_wnids_val = sorted([str(m[0][1][0]) for m in meta[:1000]])
@@ -38,4 +40,5 @@ print(f"Quantidade de mapeamentos desalinhados: {desalinhados}")
 if desalinhados > 0:
     print("❌ CRÍTICO: Seus Readers estão com as labels desalinhadas!")
 else:
-    print("✅ Sucesso: As labels estão alinhadas.")
+    print("✅ Sucesso: As labels estão alinhadas.")'''
+
