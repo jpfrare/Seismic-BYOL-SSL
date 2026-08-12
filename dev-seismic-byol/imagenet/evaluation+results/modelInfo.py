@@ -11,9 +11,10 @@ class ModelInfo():
     finetune_path: dict[str : dict[str : Path]]                             #-> caminhos a partir da pasta raiz e repetição que levam as combinações de 
                                                                             #datasets e protocolos de finetuning
 
+    pretrain_acc1: dict[str, float]                                         #-> Top-1 Accuracy em média e desvio padrão
     pretrain_dataframe: pd.DataFrame                                        #-> dataframe que contém os dados agregados das reeptições do pré-treino por step
     finetune_dataframes: dict[str, dict[str, pd.DataFrame]]                 #-> dataframes que contém todos os dados agregados das repetiões de todas as combinações de datasets e protocolos do finetuning por época
-    finetune_miou: dict[str, dict[str, dict[str, float]]]                   #-> valores (média e desvio padrão) de todas as combinações de datasets e protocolos do finetuning
+    finetune_miou: dict[str, dict[str, dict[str, float]]] |  list[float]    #-> valores (média e desvio padrão) de todas as combinações de datasets e protocolos do finetuning
 
     model_name: str                                                         #-> nome do modelo a ser exibido
     pretrained_classes: int                                                 #-> número de classes usadas no pré-treino
@@ -166,6 +167,24 @@ class ModelInfo():
                 pretrain_csv_path = self.root_path / 'Train' / f'{repetition}' / self.pretrain_path / 'metrics.csv'
                 self.pretrain_dataframe.append(self._read_csv(pretrain_csv_path, ['step', 'train_loss_epoch', 'val_acc1', 'val_acc5', 'val_loss']))
 
+                self.pretrain_acc1 = []
+                path = self.root_path / 'Train' / self.pretrain_path / 'evaluation'
+                yaml_path = next(path.glob('metrics*.yaml'))
+                
+                with open(yaml_path, 'r') as file:
+                    data = yaml.safe_load(file)
+                    acc = data['Accuracy Top-1'][0]
+                    self.pretrain_acc1.append(acc)
+                
+                mean_acc1 = np.mean(self.pretrain_acc1)
+                std_acc1 = np.std(self.pretrain_acc1, ddof=1)
+
+                self.pretrain_acc1 = {
+                    'mean': mean_acc1,
+                    'std': std_acc1
+                }
+                
+
             #--------------------------------lendo repetições do finetuning---------------------------------------------------------
             for dataset in self.datasets:
                 for protocol in self.protocols:
@@ -220,20 +239,7 @@ class ModelInfo():
         return self.pretrain_dataframe
     
     def get_pretrain_top1acc(self) -> tuple[float, float]:
-        if self.pretrain_dataframe.empty:
-            return np.nan, np.nan
-
-        df = self.pretrain_dataframe.dropna(subset=["mean_acc1"])
-        if df.empty:
-            return np.nan, np.nan
-
-        best = df.loc[df["mean_acc1"].idxmax()]
-        mean = float(best["mean_acc1"])
-        std = float(best["std_acc1"])
-        if np.isnan(std):
-            std = 0.003
-
-        return mean, std
+        return (self.pretrain_acc1['mean'], self.pretrain_acc1['std'])
     
     def get_finetune_dataframe(self, dataset: str, protocol: str) -> pd.DataFrame:
         return self.finetune_dataframes[dataset][protocol]

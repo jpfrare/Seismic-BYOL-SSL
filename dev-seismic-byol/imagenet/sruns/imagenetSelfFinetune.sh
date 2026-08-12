@@ -7,12 +7,12 @@ SCRIPT_PATH="/petrobr/parceirosbr/home/joao.frare/workspace/spfm/Seismic-Byol/de
 WORKSPACE="/petrobr/parceirosbr/home/joao.frare/workspace"
 export SIF="/petrobr/parceirosbr/spfm/singularity/amd64/deeprock/ngc/MINERVA_v0_3_9-beta-SPINN_v0_0_1.sif"
 
-repetition=(3)
-per_class=(640 320 160 80 13)
+repetition=(0 1 2 3 4)
+per_class=(477 200 80)
 for p in "${per_class[@]}"; do
 for r in "${repetition[@]}"; do
-    FLAGS="--reduction_mode default --num_classes 1000 --per_class ${p} --repetition ${r}"
-    root=/petrobr/parceirosbr/home/joao.frare/workspace/spfm/Seismic-Byol/dev-seismic-byol/imagenet/jobs_out/imagenetSelfFinetuning/repetition_${r}/default/1000_classes
+    FLAGS="--reduction_mode default --num_classes ${p} --per_class 1300 --repetition ${r}"
+    root=/petrobr/parceirosbr/home/joao.frare/workspace/spfm/Seismic-Byol/dev-seismic-byol/imagenet/jobs_out/imagenetSelfFinetuning/repetition_${r}/taxonomic/${p}_classes
     mkdir -p ${root}
 
     sbatch <<EOT
@@ -26,8 +26,8 @@ for r in "${repetition[@]}"; do
 #SBATCH --partition=ict-h100
 #SBATCH --account=spfm
 #SBATCH --time=24:00:00
-#SBATCH --output=${root}/${p}_%j.out
-#SBATCH --error=${root}/${p}_%j.err
+#SBATCH --output=${root}/default_%j.out
+#SBATCH --error=${root}/default_%j.err
 
 cd "\$SLURM_SUBMIT_DIR"
 
