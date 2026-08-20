@@ -7,6 +7,7 @@ import yaml
 import numpy as np
 import copy
 from modelInfo import ModelInfo
+import seaborn as sns
 
 class Metrics():
     models: list[ModelInfo]
@@ -181,42 +182,43 @@ class Metrics():
     dataset: str | None = None,
     protocol: str | None = None,
     pretrain: bool = False,
-    cmap: str = "OrRd",
+    cmap: str = "rocket",
     ):
 
+        if pretrain:
+            models_to_plot = [model for model in self.models if not (model.scratch or model.torchPretrained)]
+        else:
+            models_to_plot = [model for model in self.models if not model.torchPretrained]
+
         rows = sorted(
-            {model.pretrained_classes for model in self.models},
+            {model.pretrained_classes for model in models_to_plot},
             reverse=True,
         )
 
         cols = sorted(
-            {model.pretrained_images for model in self.models},
+            {model.pretrained_images for model in models_to_plot},
         )
 
-        heatmap_mean = pd.DataFrame(
+
+        df_mean = pd.DataFrame(
             np.nan,
             index=rows,
             columns=cols,
         )
 
-        heatmap_std = pd.DataFrame(
+        df_std = pd.DataFrame(
             np.nan,
             index=rows,
             columns=cols,
         )
 
-        if not pretrain:
-            min_metric = np.inf
-            max_metric = -np.inf
+        min_metric = np.inf if not pretrain else None
+        max_metric = -np.inf if not pretrain else None
 
-        for model in self.models:
-
+        #preenchendo os dataframes e definindo o mínimo e máximo do mIoU para a escala entre os protocolos
+        for model in models_to_plot:
             # ignora modelos que não pertencem à malha
-            if model.torchPretrained:
-                continue
-
             if pretrain:
-
                 mean, std = model.get_pretrain_top1acc()
                 mean *= 100
                 std *= 100
@@ -236,80 +238,59 @@ class Metrics():
                     max_metric = max(max_metric, miou)
                     min_metric = min(min_metric, miou)
 
-            heatmap_mean.loc[
+            df_mean.loc[
                 model.pretrained_classes,
                 model.pretrained_images,
             ] = mean
 
-            heatmap_std.loc[
+            df_std.loc[
                 model.pretrained_classes,
                 model.pretrained_images,
             ] = std
 
         fig, ax = plt.subplots(figsize=(8, 6))
 
-        if pretrain:
+        df_annot = df_mean.copy().astype(object)
 
-            im = ax.imshow(
-                heatmap_mean.values,
-                cmap=cmap,
-                aspect="auto",
-            )
-
-        else:
-
-            im = ax.imshow(
-                heatmap_mean.values,
-                cmap=cmap,
-                aspect="auto",
-                vmin=min_metric,
-                vmax=max_metric,
-            )
-
-        # eixo x
-        xlabels = []
-        for n in cols:
-            if n >= 1_000_000:
-                xlabels.append(f"{n/1e6:.2f}M")
-            elif n >= 1000:
-                xlabels.append(f"{n/1000:.0f}k")
-            else:
-                xlabels.append(str(n))
-
-        ax.set_xticks(np.arange(len(cols)))
-        ax.set_xticklabels(xlabels)
-
-        # eixo y
-        ax.set_yticks(np.arange(len(rows)))
-        ax.set_yticklabels(rows)
-
-        ax.set_xlabel("Number of pretraining images")
-        ax.set_ylabel("Number of pretraining classes")
-
-        # escreve valores
         for i in range(len(rows)):
             for j in range(len(cols)):
-                mean = heatmap_mean.iloc[i, j]
-                std = heatmap_std.iloc[i, j]
+                mean = df_mean.iloc[i,j]
+                std = df_std.iloc[i,j]
 
                 if not np.isnan(mean):
-                    ax.text(
-                        j,
-                        i,
-                        f"{mean:.2f}%\n±{std:.2f}%",
-                        ha="center",
-                        va="center",
-                        color="black",
-                        fontsize=10,
-                    )
+                    df_annot.iloc[i,j] = f'{mean:.2f}%\n±{std:.2f}%'
+                else:
+                    df_annot.iloc[i,j] = ''
+        
+        def format_number(n):
+            if n >= 1_000_000:
+                return f"{n / 1_000_000:.2f}M"
+            elif n >= 1_000:
+                return f"{n / 1_000:.0f}k"
+            return str(n)
+        
+        x_labels = [format_number(n) for n in cols]
 
-        cbar = fig.colorbar(im, ax=ax)
+        sns.heatmap(
+            data= df_mean,
+            vmin = min_metric,
+            vmax= max_metric,
+            cmap= cmap,
+            annot= df_annot,
+            xticklabels= x_labels,
+            ax= ax,
+            linecolor= 'white',
+            cbar_kws = {
+                'label': 'Top-1 Accuracy (%)' if pretrain else 'mIoU (%)'
+            },
+            fmt= ''
+        )
 
-        if pretrain:
-            cbar.set_label("Top-1 Accuracy (%)")
-        else:
-            cbar.set_label("Mean mIoU (%)")
-            cbar.set_ticks(np.linspace(min_metric, max_metric, 6))
+        ax.set(xlabel= 'Number of Pretrained Images', ylabel= 'Number of Pretrained Classes')
+        ax.xaxis.set_label_position('top')
+        ax.xaxis.tick_top()
+
+        
         fig.tight_layout()
         self._save_plot(
             fig,

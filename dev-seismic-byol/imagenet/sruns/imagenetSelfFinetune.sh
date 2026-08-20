@@ -7,12 +7,13 @@ SCRIPT_PATH="/petrobr/parceirosbr/home/joao.frare/workspace/spfm/Seismic-Byol/de
 WORKSPACE="/petrobr/parceirosbr/home/joao.frare/workspace"
 export SIF="/petrobr/parceirosbr/spfm/singularity/amd64/deeprock/ngc/MINERVA_v0_3_9-beta-SPINN_v0_0_1.sif"
 
-repetition=(0 1 2 3 4)
-per_class=(477 200 80)
-for p in "${per_class[@]}"; do
+repetition=(1)
+#level=(9 7 6 3)
+#for p in "${level[@]}"; do
 for r in "${repetition[@]}"; do
-    FLAGS="--reduction_mode default --num_classes ${p} --per_class 1300 --repetition ${r}"
-    root=/petrobr/parceirosbr/home/joao.frare/workspace/spfm/Seismic-Byol/dev-seismic-byol/imagenet/jobs_out/imagenetSelfFinetuning/repetition_${r}/taxonomic/${p}_classes
+
+    FLAGS="--reduction_mode default --num_classes 500 --per_class 320 --repetition ${r}"
+    root=/petrobr/parceirosbr/home/joao.frare/workspace/spfm/Seismic-Byol/dev-seismic-byol/imagenet/jobs_out/imagenetSelfFinetuning/repetition_${r}/default/500_classes
     mkdir -p ${root}
 
     sbatch <<EOT
@@ -26,8 +27,8 @@ for r in "${repetition[@]}"; do
 #SBATCH --partition=ict-h100
 #SBATCH --account=spfm
 #SBATCH --time=24:00:00
-#SBATCH --output=${root}/default_%j.out
-#SBATCH --error=${root}/default_%j.err
+#SBATCH --output=${root}/320_%j.out
+#SBATCH --error=${root}/320_%j.err
 
 cd "\$SLURM_SUBMIT_DIR"
 
@@ -60,5 +61,4 @@ srun --unbuffered singularity exec --nv \
         python3 -u $SCRIPT_PATH $FLAGS
     "
 EOT
-done
 done

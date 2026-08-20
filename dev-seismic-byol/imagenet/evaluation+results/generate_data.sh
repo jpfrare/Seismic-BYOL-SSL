@@ -3,7 +3,7 @@
 # --------------------------
 # Configuration
 # --------------------------
-SCRIPT_PATH="/petrobr/parceirosbr/home/joao.frare/workspace/spfm/Seismic-Byol/dev-seismic-byol/imagenet/evaluation+results/evaluation.py"
+SCRIPT_PATH="/petrobr/parceirosbr/home/joao.frare/workspace/spfm/Seismic-Byol/dev-seismic-byol/imagenet/evaluation+results/traditional_eval.py"
 WORKSPACE="/petrobr/parceirosbr/home/joao.frare/workspace"
 export SIF="/petrobr/parceirosbr/spfm/singularity/amd64/deeprock/ngc/MINERVA_v0_3_9-beta-SPINN_v0_0_1.sif"
 
@@ -29,7 +29,7 @@ singularity exec --nv \
     --bind /petrobr/parceirosbr/spfm \
     "$SIF" \
     bash -c "
-        export PYTHONPATH=/petrobr/parceirosbr/home/joao.frare/workspace/spfm/Seismic-Byol/Minerva-dev:\$PYTHONPATH
+        export PYTHONPATH=/petrobr/parceirosbr/home/joao.frare/pip_custom:/petrobr/parceirosbr/home/joao.frare/workspace/spfm/Seismic-Byol/Minerva-dev:\$PYTHONPATH
         python3 $SCRIPT_PATH 
     "
 EOT

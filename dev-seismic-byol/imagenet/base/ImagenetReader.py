@@ -5,6 +5,7 @@ from pathlib import Path
 from PIL import Image
 from scipy.io import loadmat
 from .utils import reduce_taxonomic_diversity
+import time
 
 #por alguma razão mistica, tanto o dataset de teste como de treino sao arrays estruturados do numpy
 #pra cada linha do array do treino:
@@ -29,16 +30,34 @@ class ImagenetReader:
         
     def __getitem__(self, idx):
         row = self.data[idx]
+
         img_idx = row[0]
-        label = self.wind_to_coarse[row[2]] if self.wind_to_coarse is not None else int(row[1])
         wnid = row[2]
-        
-        # Reconstrói o caminho validado no teste: wnid/wnid_idx.JPEG
+
+        label = (
+            self.wind_to_coarse[wnid]
+            if self.wind_to_coarse is not None
+            else int(row[1])
+        )
+
         img_path = self.root / wnid / f"{wnid}_{img_idx}.JPEG"
-        
-        # Abre a imagem de forma segura
-        img = Image.open(img_path).convert("RGB")
-        return img, label
+
+        last_error = None
+
+        for attempt in range(3):
+            try:
+                with Image.open(img_path) as img:
+                    img = img.convert("RGB")
+
+                return img, label
+
+            except (UnidentifiedImageError, OSError) as e:
+                last_error = e
+                time.sleep(0.05 * (attempt + 1))
+
+        raise RuntimeError(
+            f"Falha ao ler {img_path} após 3 tentativas"
+        ) from last_error
     
     def to_coarse_classes(self, top_down: bool, level: int, mat_path: str):
         unique_winds = sorted(list(set(row[2] for row in self.data)))
@@ -89,9 +108,9 @@ class ImagenetValReader():
         img_path = self.root / img_name
         
         # Retorna a imagem bruta (PIL) e a label traduzida
-        img = Image.open(img_path).convert("RGB")
         label = self.targets[idx]
-        
+        with Image.open(img_path) as img:
+            img = img.convert("RGB")
         return img, label
     
     def to_coarse_classes(self, top_down: bool, level: int, mat_path: str):

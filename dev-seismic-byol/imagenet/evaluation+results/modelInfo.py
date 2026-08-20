@@ -10,8 +10,9 @@ class ModelInfo():
     pretrain_path: Path                                                     #-> caminho a partir da pasta raiz e repetição que leva aos dados do modelo
     finetune_path: dict[str : dict[str : Path]]                             #-> caminhos a partir da pasta raiz e repetição que levam as combinações de 
                                                                             #datasets e protocolos de finetuning
+    version: str                                                                            
 
-    pretrain_acc1: dict[str, float]                                         #-> Top-1 Accuracy em média e desvio padrão
+    pretrain_acc1: dict[str, float] | list                                  #-> Top-1 Accuracy em média e desvio padrão
     pretrain_dataframe: pd.DataFrame                                        #-> dataframe que contém os dados agregados das reeptições do pré-treino por step
     finetune_dataframes: dict[str, dict[str, pd.DataFrame]]                 #-> dataframes que contém todos os dados agregados das repetiões de todas as combinações de datasets e protocolos do finetuning por época
     finetune_miou: dict[str, dict[str, dict[str, float]]] |  list[float]    #-> valores (média e desvio padrão) de todas as combinações de datasets e protocolos do finetuning
@@ -20,15 +21,20 @@ class ModelInfo():
     pretrained_classes: int                                                 #-> número de classes usadas no pré-treino
     pretrained_images: int                                                  #-> número de imagens usadas no pré-treino
     reduction_mode: str                                                     #-> como de deu o modelo de treino
+    version: str                                                            #-> versão tradicional ou moderna
 
     datasets: list[str]                                                     #-> datasets usados no modelo
     protocols: list[str]                                                    #-> protocolos utlizados
+
+    torchPretrained: bool                                                   #-> modelo pretrainado do torch
+    scratch: bool                                                           #-> modelo from scratch no finetune
 
     def __init__(self, 
     root_path: Path,
     reduction_mode: str = 'full', 
     top_down: bool = False, 
-    level: int = 0, 
+    level: int = 0,
+    version: str = 'traditional',  
     num_classes: int = 1000, 
     per_class: int = 1300, 
     scratch: bool = False, 
@@ -43,7 +49,7 @@ class ModelInfo():
         self.finetune_path = self._create_dataset_protocols_dictionary(datasets, protocols)
         self.datasets = datasets
         self.protocols = protocols
-
+        self.version = version
         self.root_path = root_path
         self.torchPretrained = torchPretrained
         self.scratch = scratch
@@ -134,6 +140,7 @@ class ModelInfo():
         self.finetune_dataframes = self._create_dataset_protocols_dictionary(self.datasets, self.protocols, start_value= [])
         self.finetune_miou = self._create_dataset_protocols_dictionary(self.datasets, self.protocols, start_value= [])
         self.pretrain_dataframe = []
+        self.pretrain_acc1 = []
 
         if self.torchPretrained:
             #no caso de ser um modelo pré-treinado no torch, ja temos os valores dos resultados do vinícius para esse conjunto de datasets e protocolos
@@ -164,32 +171,33 @@ class ModelInfo():
 
             if not self.scratch:
                 #--------------------------lendo repetições do pré-treino----------------------------------------------------------
-                pretrain_csv_path = self.root_path / 'Train' / f'{repetition}' / self.pretrain_path / 'metrics.csv'
+                pretrain_csv_path = self.root_path / 'Train' / self.version / f'{repetition}' / self.pretrain_path / 'metrics.csv'
                 self.pretrain_dataframe.append(self._read_csv(pretrain_csv_path, ['step', 'train_loss_epoch', 'val_acc1', 'val_acc5', 'val_loss']))
 
-                self.pretrain_acc1 = []
-                path = self.root_path / 'Train' / self.pretrain_path / 'evaluation'
-                yaml_path = next(path.glob('metrics*.yaml'))
                 
+                path = self.root_path / 'Train' / f'{repetition}' / self.pretrain_path / 'evaluation'
+                yaml_files = list(path.glob('metrics*.yaml'))
+
+                print(f"PATH: {path}")
+                print(f"YAML FILES: {yaml_files}")
+
+                if not yaml_files:
+                    raise FileNotFoundError(
+                        f"Nenhum metrics*.yaml encontrado em {path}"
+                    )
+
+                yaml_path = yaml_files[0]
                 with open(yaml_path, 'r') as file:
                     data = yaml.safe_load(file)
-                    acc = data['Accuracy Top-1'][0]
+                    acc = data['classification']['Accuracy Top-1'][0]
                     self.pretrain_acc1.append(acc)
-                
-                mean_acc1 = np.mean(self.pretrain_acc1)
-                std_acc1 = np.std(self.pretrain_acc1, ddof=1)
-
-                self.pretrain_acc1 = {
-                    'mean': mean_acc1,
-                    'std': std_acc1
-                }
                 
 
             #--------------------------------lendo repetições do finetuning---------------------------------------------------------
             for dataset in self.datasets:
                 for protocol in self.protocols:
 
-                    finetune_path = self.root_path / 'Finetune' / f'{repetition}' / self.finetune_path[dataset][protocol]
+                    finetune_path = self.root_path / 'Finetune' / self.version / f'{repetition}' / self.finetune_path[dataset][protocol]
                     self.finetune_dataframes[dataset][protocol].append(self._read_csv(finetune_path / 'metrics.csv', ['train_loss', 'val_loss']))
 
                     finetune_yaml_path = next(finetune_path.glob('metrics*.yaml')) 
@@ -198,6 +206,17 @@ class ModelInfo():
                         miou = data['classification']['mIoU'][0]
                         self.finetune_miou[dataset][protocol].append(miou)
         
+        if not self.scratch:
+            print(
+                f"{self.model_name}: pretrain_acc1 = "
+                f"{self.pretrain_acc1}"
+            )
+
+            self.pretrain_acc1 = {
+                'mean': np.mean(self.pretrain_acc1),
+                'std': np.std(self.pretrain_acc1, ddof=1)
+            }
+
         if not self.scratch:
             #----------------------------------------agregando repetições do pré-treino----------------------------------------------
             self.pretrain_dataframe = pd.concat(self.pretrain_dataframe)
@@ -239,6 +258,7 @@ class ModelInfo():
         return self.pretrain_dataframe
     
     def get_pretrain_top1acc(self) -> tuple[float, float]:
+        print(f'Model Name: {self.model_name}')
         return (self.pretrain_acc1['mean'], self.pretrain_acc1['std'])
     
     def get_finetune_dataframe(self, dataset: str, protocol: str) -> pd.DataFrame:

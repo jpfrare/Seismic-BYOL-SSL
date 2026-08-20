@@ -109,17 +109,6 @@ training_parameters = {
     },
 }
 
-'''    "lr_scheduler": ReduceLROnPlateau,
-    "lr_scheduler_kwargs": {
-        "mode": "max",
-        "factor": 0.5,          # Aumente de 0.2 para 0.5 (redução menos agressiva)
-        "patience": 7,         # Aumente drasticamente para ignorar ruído
-        "threshold": 0.005,     # Adicione threshold: só reduz se o mIoU melhorar menos de 0.5%
-        "cooldown": 3,          # Espere mais tempo após reduzir
-        "min_lr": 1e-6,
-        "verbose": True
-    },'''
-
 if organizer.args.backbone_freeze == 'full_freeze':
     model = SeismicModel(
         freeze_backbone= True,

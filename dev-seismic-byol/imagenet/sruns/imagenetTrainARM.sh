@@ -3,11 +3,11 @@
 # --------------------------
 # Configuration
 # --------------------------
-SCRIPT_PATH="/petrobr/parceirosbr/home/joao.frare/workspace/spfm/Seismic-Byol/dev-seismic-byol/imagenet/imagenetTrain.py"
+SCRIPT_PATH="/petrobr/parceirosbr/home/joao.frare/workspace/spfm/Seismic-Byol/dev-seismic-byol/imagenet/imagenetTrainARM.py"
 WORKSPACE="/petrobr/parceirosbr/home/joao.frare/workspace"
-export SIF="/petrobr/parceirosbr/spfm/singularity/amd64/deeprock/ngc/MINERVA_v0_3_9-beta-SPINN_v0_0_1.sif"
+export SIF="/petrobr/parceirosbr/spfm/singularity/arm64/deeprock/ngc/MINERVA_v0_3_9-beta-SPINN_v0_0_1.sif"
 
-repetition=(1)
+repetition=(3)
 version=traditional
 red_mode=default
 per_class=(320)
@@ -22,13 +22,13 @@ for r in "${repetition[@]}"; do
     sbatch <<EOT
 #!/bin/bash
 
-#SBATCH --job-name=p_${p}_r_${r}
+#SBATCH --job-name=ARMp${p}r${r}
 #SBATCH --nodes=1
 #SBATCH --exclude=sdumont2nd2045
-#SBATCH --ntasks-per-node=2
+#SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=20
-#SBATCH --gpus-per-node=2
-#SBATCH --partition=ict-h100
+#SBATCH --gpus-per-node=1
+#SBATCH --partition=ict-gh200
 #SBATCH --account=spfm
 #SBATCH --time=24:00:00
 #SBATCH --output=${root}/${p}_%j.out

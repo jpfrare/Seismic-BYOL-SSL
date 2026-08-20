@@ -53,8 +53,8 @@ print(f'infos: \n {organizer}')
 #----------------------------------------------------------------valores importantes:
 full_imagenet_size = 1281167                                      #número de imagens de treino total do Imagenet
 
-devices = 2                                                        #número de gpus a serem utilizados        
-strategy= 'ddp'      
+devices = 1                                                        #número de gpus a serem utilizados        
+strategy= 'auto'      
 batch_size = 1024
 
 accumulate_grad_batches = 1                                        #variável que carrega o batch total de pouco no trainer, dribla problemas físicos (quantidade de VRAM)
@@ -94,14 +94,28 @@ model = ImagenetModel(
         "lr": 0.001,
         "weight_decay": 0.01
     },
-    lr_scheduler=OneCycleLR,
+    lr_scheduler=CosineLRScheduler,
     lr_scheduler_kwargs={
-        "max_lr": 0.001,
-        "total_steps": max_steps,              
-        "pct_start": 0.05,       
-        "anneal_strategy": 'cos',             
-        "div_factor": 4000,
-        "final_div_factor": 2000     
+        "t_initial": max_steps,
+        "lr_min": 1e-6,
+
+        "cycle_mul": 1.0,
+        "cycle_decay": 0.5,
+        "cycle_limit": 1,
+
+        "warmup_t": int(0.05*max_steps),
+        "warmup_lr_init": 1e-4,
+        "warmup_prefix": False,
+
+        "t_in_epochs": False,
+
+        "noise_range_t": None,
+        "noise_pct": 0.67,
+        "noise_std": 1.0,
+        "noise_seed": organizer.args.repetition,
+
+        "k_decay": 1.0,
+        "initialize": True,
     },
 
     batch_level_transforms= None,
@@ -120,8 +134,15 @@ model.freeze_backbone()
 train_transform_pipeline = create_transform( 
     input_size=160,
     is_training=True,
-    auto_augment='rand-m6-n2-mstd0.5', 
-    interpolation='bicubic',
+    scale=(0.08, 1.0),
+    ratio=(0.75, 4 / 3),
+    hflip=0.5,
+    vflip=0.0,
+    color_jitter=0.4,
+    re_prob= 0.0,
+    re_mode= 'pixel',
+    re_count= 1,
+    interpolation='bicubic', 
     mean=(0.485, 0.456, 0.406),
     std=(0.229, 0.224, 0.225),
 )

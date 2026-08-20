@@ -47,10 +47,11 @@ class TrainOrganizer():
         self.parser.add_argument("--num_classes", type=int, default=1000, help='número de classes utilizados')
         self.parser.add_argument("--per_class", type=int, default=1300, help='número de imagens por classe utilizados')
 
-        self.parser.add_argument("--evaluate", action= "store_true", help= 'finetuning com as 1000 classes seguido de avaliação')
+        self.parser.add_argument("--version", type= str, required= True, choices= ['modern','traditional'], help='a configuração do modelo será a moderna ou a tradicional')
     
     def _get_dirs_and_set_model_name(self):
-        dirs = Path(self.data_root)/self.task/f'{self.args.repetition}'/self.args.reduction_mode
+
+        dirs = Path(self.data_root)/self.task/self.args.version/f'{self.args.repetition}'/self.args.reduction_mode
         mode = self.args.reduction_mode
 
         if mode == 'taxonomic':
@@ -152,7 +153,7 @@ class FinetuningOrganizer(TrainOrganizer):
     def _get_finetune_dirs_and_set_model_name(self):
         if self.args.scratch:
             self.model_name = 'scratch'
-            dirs = Path(self.data_root)/self.task/f'{self.args.repetition}'/'scratch'
+            dirs = Path(self.data_root)/self.task/ self.args.version / f'{self.args.repetition}'/'scratch'
         else:
             dirs =  super()._get_dirs_and_set_model_name()
         dirs = dirs / f'finetune_{self.args.finetune_dataset}'/ f'{self.args.backbone_freeze}_{self.args.pred_head}'

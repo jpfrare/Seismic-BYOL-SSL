@@ -6,6 +6,7 @@ import torchmetrics
 import timm
 from timm.data import Mixup
 from timm.loss import BinaryCrossEntropy
+from timm.scheduler import CosineLRScheduler
 from torchmetrics import Metric
 
 class ImagenetModel(L.LightningModule):
@@ -107,7 +108,7 @@ class ImagenetModel(L.LightningModule):
                 'optimizer': optimizer,
                 'lr_scheduler': {
                     'scheduler': scheduler,
-                    'interval': 'step', # Atualiza a cada batch, não a cada época
+                    'interval': 'step', 
                     'frequency': 1,
                 },
             }
@@ -117,3 +118,6 @@ class ImagenetModel(L.LightningModule):
     def freeze_backbone(self):
         for parameter in self.backbone.parameters():
             parameter.requires_grad = False
+
+    def lr_scheduler_step(self, scheduler, metric):
+        scheduler.step_update(self.global_step)

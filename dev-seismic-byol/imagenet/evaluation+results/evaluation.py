@@ -96,7 +96,7 @@ all_configurations.plot_heatmap(
         title= 'Pretrain Models Top-1 Acuraccy',
         save_path= SAVE_PRETRAIN_ROOT,
         pretrain= True,
-        cmap= 'Blues'
+        cmap= 'crest'
 )
 
 aliases = {
