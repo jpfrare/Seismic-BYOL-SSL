@@ -2,7 +2,7 @@ from torchvision.datasets import ImageFolder
 import numpy as np
 import os
 from pathlib import Path
-from PIL import Image
+from PIL import Image, UnidentifiedImageError
 from scipy.io import loadmat
 from .utils import reduce_taxonomic_diversity
 import time

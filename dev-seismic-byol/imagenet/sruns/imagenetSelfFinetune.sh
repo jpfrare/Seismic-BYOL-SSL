@@ -5,7 +5,7 @@
 # --------------------------
 SCRIPT_PATH="/petrobr/parceirosbr/home/joao.frare/workspace/spfm/Seismic-Byol/dev-seismic-byol/imagenet/imagenetPretrainEvaluation.py"
 WORKSPACE="/petrobr/parceirosbr/home/joao.frare/workspace"
-export SIF="/petrobr/parceirosbr/spfm/singularity/amd64/deeprock/ngc/MINERVA_v0_3_9-beta-SPINN_v0_0_1.sif"
+export SIF="/petrobr/parceirosbr/spfm/singularity/arm64/deeprock/ngc/MINERVA_v0_3_9-beta-SPINN_v0_0_1.sif"
 
 repetition=(1)
 #level=(9 7 6 3)
@@ -21,10 +21,10 @@ for r in "${repetition[@]}"; do
 
 #SBATCH --job-name=imgnet_taxonomic_r${r}
 #SBATCH --nodes=1
-#SBATCH --ntasks-per-node=2
+#SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=20
-#SBATCH --gpus-per-node=2
-#SBATCH --partition=ict-h100
+#SBATCH --gpus-per-node=1
+#SBATCH --partition=ict-gh200
 #SBATCH --account=spfm
 #SBATCH --time=24:00:00
 #SBATCH --output=${root}/320_%j.out

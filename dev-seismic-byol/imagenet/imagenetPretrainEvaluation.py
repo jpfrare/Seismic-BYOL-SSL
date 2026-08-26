@@ -51,13 +51,13 @@ print('Starting ImageNet Linear Readout Evaluation')
 print(f'infos: \n {organizer}')
 
 #----------------------------------------------------------------valores importantes:
-full_imagenet_size = 1281167                                      #número de imagens de treino total do Imagenet
+full_imagenet_size = 1281167                                       #número de imagens de treino total do Imagenet
 
 devices = 1                                                        #número de gpus a serem utilizados        
 strategy= 'auto'      
-batch_size = 1024
+batch_size = 2048
 
-accumulate_grad_batches = 1                                        #variável que carrega o batch total de pouco no trainer, dribla problemas físicos (quantidade de VRAM)
+accumulate_grad_batches = 1                                        
 real_batch_size = accumulate_grad_batches * batch_size * devices
 max_steps = full_imagenet_size*25//real_batch_size + 30          
 

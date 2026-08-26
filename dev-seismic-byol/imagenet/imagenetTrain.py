@@ -39,9 +39,9 @@ organizer = TrainOrganizer(data_root= '/petrobr/parceirosbr/spfm/joao.frare/logs
 #------------------------------------------------------------------------------
 full_imagenet_size = 1281167                                      #número de imagens de treino total do Imagenet
 
-devices = 2                                                       #número de gpus a serem utilizados        
-strategy= 'ddp'      
-batch_size = 1024
+devices = 1                                                       #número de gpus a serem utilizados        
+strategy= 'auto'      
+batch_size = 2048
 
 accumulate_grad_batches = 1                                        #variável que carrega o batch total de pouco no trainer, dribla problemas físicos (quantidade de VRAM)
 real_batch_size = accumulate_grad_batches * batch_size * devices
@@ -213,7 +213,7 @@ ckpt_callback = ModelCheckpoint(
     monitor='val_acc1',                # monitorar a val_acc1
     mode='max',
     save_top_k=1,                      # Salva apenas o maior val_acc1
-    save_last=False,                    
+    save_last=True,                    
     dirpath=organizer.ckpt_dir,
     filename='best',                    
     auto_insert_metric_name=False
@@ -252,6 +252,11 @@ last_ckpt = Path(organizer.ckpt_dir)/"last.ckpt"
 best_ckpt = Path(organizer.ckpt_dir)/"best.ckpt"
 
 if last_ckpt.exists():
+    number_of_files = len(list(organizer.log_dir.glob('metrics*.csv')))
+    old_file = organizer.log_dir / 'metrics.csv'
+    new_file = organizer.log_dir / f'metrics{number_of_files}.csv'
+    os.rename(old_file, new_file)
+
     pipeline.run(data_module, task="fit", ckpt_path= last_ckpt)
 else:
     pipeline.run(data_module, task="fit")

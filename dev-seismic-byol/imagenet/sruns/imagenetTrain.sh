@@ -5,34 +5,33 @@
 # --------------------------
 SCRIPT_PATH="/petrobr/parceirosbr/home/joao.frare/workspace/spfm/Seismic-Byol/dev-seismic-byol/imagenet/imagenetTrain.py"
 WORKSPACE="/petrobr/parceirosbr/home/joao.frare/workspace"
-export SIF="/petrobr/parceirosbr/spfm/singularity/amd64/deeprock/ngc/MINERVA_v0_3_9-beta-SPINN_v0_0_1.sif"
+export SIF="/petrobr/parceirosbr/spfm/singularity/arm64/deeprock/ngc/MINERVA_v0_3_9-beta-SPINN_v0_0_1.sif"
 
-repetition=(1)
+repetition=(0 1 2)
 version=traditional
-red_mode=default
-per_class=(320)
-num_classes=1000
+red_mode=taxonomic
+num_classes=(477 200 80 9)
 
-for p in "${per_class[@]}"; do
+for n in "${num_classes[@]}"; do
 for r in "${repetition[@]}"; do
-    FLAGS="--reduction_mode ${red_mode} --version ${version} --num_classes ${num_classes} --per_class ${p} --repetition ${r}"
-    root=/petrobr/parceirosbr/home/joao.frare/workspace/spfm/Seismic-Byol/dev-seismic-byol/imagenet/jobs_out/imagenetTraining/${version}/repetition_${r}/${red_mode}/${num_classes}
+
+    FLAGS="--reduction_mode default --version ${version} --num_classes ${n} --per_class 1300 --repetition ${r}"
+    root=/petrobr/parceirosbr/home/joao.frare/workspace/spfm/Seismic-Byol/dev-seismic-byol/imagenet/jobs_out/imagenetTraining/${version}/repetition_${r}/${red_mode}/${n}
     mkdir -p ${root}
 
     sbatch <<EOT
 #!/bin/bash
 
-#SBATCH --job-name=p_${p}_r_${r}
+#SBATCH --job-name=${n}dr${r}
 #SBATCH --nodes=1
-#SBATCH --exclude=sdumont2nd2045
-#SBATCH --ntasks-per-node=2
+#SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=20
-#SBATCH --gpus-per-node=2
-#SBATCH --partition=ict-h100
+#SBATCH --gpus-per-node=1
+#SBATCH --partition=ict-gh200
 #SBATCH --account=spfm
 #SBATCH --time=24:00:00
-#SBATCH --output=${root}/${p}_%j.out
-#SBATCH --error=${root}/${p}_%j.err
+#SBATCH --output=${root}/${red_mode}_%j.out
+#SBATCH --error=${root}/${red_mode}_%j.err
 
 cd "\$SLURM_SUBMIT_DIR"
 
@@ -48,12 +47,6 @@ nvidia-smi
 # Exporta as variáveis de ambiente necessárias para o Singularity
 export SINGULARITYENV_CUDA_VISIBLE_DEVICES=\$CUDA_VISIBLE_DEVICES
 
-# SOLUÇÃO DO ERRO: Sorteia uma porta e um IP dinâmicos para o DDP antes do srun
-export SINGULARITYENV_MASTER_PORT=\$(shuf -i 50000-65000 -n 1)
-export SINGULARITYENV_MASTER_ADDR=\$(hostname -i)
-
-echo "Porta DDP Sorteada: \$SINGULARITYENV_MASTER_PORT"
-echo "IP do Nó Master: \$SINGULARITYENV_MASTER_ADDR"
 
 srun --unbuffered singularity exec --nv \
     --bind "$WORKSPACE":"$WORKSPACE" \
