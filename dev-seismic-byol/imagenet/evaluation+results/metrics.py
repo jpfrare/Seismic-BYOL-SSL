@@ -16,10 +16,12 @@ class Metrics():
         self.models = models
     
     def __add__(self, other):
-        return Metrics(self.models + other.models)
-    
-    def add_model(self, model: ModelInfo):
-        self.models.append(model)
+        if isinstance(other, Metrics):
+            return Metrics(self.models + other.models)
+        elif isinstance(other, ModelInfo):
+            self.models.append(other)
+            return self
+        return NotImplemented
     
     def _save_plot(self, fig, filename: str, save_path: Path):
         save_path.mkdir(parents=True, exist_ok=True)

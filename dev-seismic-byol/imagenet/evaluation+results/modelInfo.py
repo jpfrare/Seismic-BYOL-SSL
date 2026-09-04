@@ -167,7 +167,7 @@ class ModelInfo():
                     self.finetune_dataframes[dataset][protocol] = pd.DataFrame()
             return
 
-        for repetition in range(5):
+        for repetition in range(3):
 
             if not self.scratch:
                 #--------------------------lendo repetições do pré-treino----------------------------------------------------------
@@ -175,7 +175,7 @@ class ModelInfo():
                 self.pretrain_dataframe.append(self._read_csv(pretrain_csv_path, ['step', 'train_loss_epoch', 'val_acc1', 'val_acc5', 'val_loss']))
 
                 
-                path = self.root_path / 'Train' / f'{repetition}' / self.pretrain_path / 'evaluation'
+                path = self.root_path / 'Train' / self.version / f'{repetition}' / self.pretrain_path / 'evaluation'
                 yaml_files = list(path.glob('metrics*.yaml'))
 
                 print(f"PATH: {path}")

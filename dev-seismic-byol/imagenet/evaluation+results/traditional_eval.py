@@ -17,24 +17,40 @@ full_dataset = ModelInfo(
     datasets= [],
     protocols= [])
 
-metrics = Metrics([full_dataset])
+default_trad_metrics = Metrics([full_dataset])
 
-metrics.individual_plot(
-        title= 'models trans x val_loss',
+configs = {
+    1000: [640, 320, 160, 80, 40, 20],
+    500:  [1300, 640, 320, 160, 80, 40],
+    250:  [1300, 640, 320, 160, 80],
+    125:  [1300, 640, 320, 160],
+}
+
+for num_classes, per_class_list in configs.items():
+        for per_class in per_class_list:
+                model_info = ModelInfo(
+                        root_path= ROOT,
+                        reduction_mode= 'default',  
+                        num_classes= num_classes, 
+                        per_class= per_class, 
+                        datasets=[],
+                        protocols=[])
+                default_trad_metrics += model_info
+
+
+
+default_trad_metrics.individual_plot(
+        title= 'Traditional Models Train and Val Loss x Steps',
         save_path= SAVE_PATH,
         y_axis= ['train_loss', 'val_loss'],
         x_axis= 'step',
-        ncols= 1,
+        ncols= 4,
         yscale= 'log')
 
-metrics.group_plot(
-        title= f'ImageNet Pretrain, 1000 classes models Top-1 Acuraccy',
+default_trad_metrics.plot_heatmap(
+        title= 'Traditional Pretrain Top-1 Accuracy',
         save_path= SAVE_PATH,
-        y_axis= 'acc1',
-        y_axis_label= 'Top-1 Acuraccy (%)',
-        min_y= 0,
-        max_y= 100,
-        y_step= 5,
-        x_axis= 'step',
-        x_axis_label= 'Step',
-        mul_factor= 100)
+        pretrain= True,
+        cmap= 'crest'
+)
+

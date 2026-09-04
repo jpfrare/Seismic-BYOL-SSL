@@ -3,26 +3,42 @@
 # --------------------------
 # Configuration
 # --------------------------
+
 SCRIPT_PATH="/petrobr/parceirosbr/home/joao.frare/workspace/spfm/Seismic-Byol/dev-seismic-byol/imagenet/imagenetTrain.py"
 WORKSPACE="/petrobr/parceirosbr/home/joao.frare/workspace"
 export SIF="/petrobr/parceirosbr/spfm/singularity/arm64/deeprock/ngc/MINERVA_v0_3_9-beta-SPINN_v0_0_1.sif"
 
-repetition=(0 1 2)
-version=traditional
+repetition=(1 2)
+version=modern
 red_mode=taxonomic
-num_classes=(477 200 80 9)
+level=(9)
 
-for n in "${num_classes[@]}"; do
+#--reduction_mode taxonomic --version traditional --top_down --level 6 --repetition 0
+
+for l in "${level[@]}"; do
 for r in "${repetition[@]}"; do
 
-    FLAGS="--reduction_mode default --version ${version} --num_classes ${n} --per_class 1300 --repetition ${r}"
-    root=/petrobr/parceirosbr/home/joao.frare/workspace/spfm/Seismic-Byol/dev-seismic-byol/imagenet/jobs_out/imagenetTraining/${version}/repetition_${r}/${red_mode}/${n}
+    if [ ${l} -eq 9 ]; then
+        n=477
+    elif [ ${l} -eq 7 ]; then
+        n=200
+    elif [ ${l} -eq 6 ]; then
+        n=80
+    elif [ ${l} -eq 3 ]; then
+        n=9
+    else
+        echo "erro"
+        exit
+    fi
+
+    FLAGS="--reduction_mode ${red_mode} --version ${version} --top_down --level ${l} --repetition ${r}"
+    root=/petrobr/parceirosbr/home/joao.frare/workspace/spfm/Seismic-Byol/dev-seismic-byol/imagenet/jobs_out/imagenetTraining/${version}/repetition_${r}/taxonomic/${n}
     mkdir -p ${root}
 
     sbatch <<EOT
 #!/bin/bash
 
-#SBATCH --job-name=${n}dr${r}
+#SBATCH --job-name=${red_mode}l${l}r${r}
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=20
@@ -30,8 +46,8 @@ for r in "${repetition[@]}"; do
 #SBATCH --partition=ict-gh200
 #SBATCH --account=spfm
 #SBATCH --time=24:00:00
-#SBATCH --output=${root}/${red_mode}_%j.out
-#SBATCH --error=${root}/${red_mode}_%j.err
+#SBATCH --output=${root}/taxonomic_%j.out
+#SBATCH --error=${root}/taxonomic_%j.err
 
 cd "\$SLURM_SUBMIT_DIR"
 
@@ -61,4 +77,3 @@ echo "Data de Término: \$(date)"
 EOT
 done
 done
-

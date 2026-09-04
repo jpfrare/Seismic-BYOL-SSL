@@ -18,7 +18,7 @@ sbatch <<EOT
 #SBATCH --gpus-per-node=1       
 #SBATCH --partition=ict-h100
 #SBATCH --account=spfm
-#SBATCH --time=00:10:00
+#SBATCH --time=00:01:00
 #SBATCH --output="${root}"/output_%j.out
 #SBATCH --error="${root}"/error_%j.err
 

@@ -13,6 +13,7 @@ import timm
 import timm.optim
 from timm.data import Mixup, create_transform
 from timm.loss import BinaryCrossEntropy
+from timm.scheduler import CosineLRScheduler
 
 # -------------------- Lightning --------------------
 import lightning as L
@@ -20,7 +21,6 @@ from lightning import Trainer
 from lightning.pytorch import seed_everything
 from lightning.pytorch.loggers.csv_logs import CSVLogger
 from lightning.pytorch.callbacks import ModelCheckpoint, LearningRateMonitor
-from torch.optim.lr_scheduler import OneCycleLR
 
 # -------------------- Minerva & Custom Modules (Seus Módulos) --------------------
 from minerva.pipelines.lightning_pipeline import SimpleLightningPipeline
@@ -71,6 +71,7 @@ seed_everything(organizer.args.repetition)
 #-------------------------------------------------pegando os pesos e colocando no modelo:
 ckpt = torch.load(Path(organizer.ckpt_dir)/'best.ckpt', map_location = 'cpu')
 state_dict = ckpt['state_dict']
+
 
 new_state_dict = {k.replace('backbone.',''): v for k,v in state_dict.items() if k.startswith('backbone.')} #isso precisa ser feito pq na hora de salvar o lightning coloca o prefixo 'backbone.' no state dict
 backbone = timm.create_model('resnet50', num_classes= 0, pretrained= False)
@@ -201,7 +202,9 @@ ckpt_callback = ModelCheckpoint(
     auto_insert_metric_name=False
 )
 
-callbacks = [ckpt_callback]
+lr_monitor = LearningRateMonitor(logging_interval= 'step', log_momentum= True)
+
+callbacks = [ckpt_callback, lr_monitor]
 
 
 #-----------------------------treino e avaliação

@@ -44,7 +44,7 @@ class ImagenetReader:
 
         last_error = None
 
-        for attempt in range(3):
+        for attempt in range(10):
             try:
                 with Image.open(img_path) as img:
                     img = img.convert("RGB")
@@ -109,9 +109,16 @@ class ImagenetValReader():
         
         # Retorna a imagem bruta (PIL) e a label traduzida
         label = self.targets[idx]
-        with Image.open(img_path) as img:
-            img = img.convert("RGB")
-        return img, label
+
+        for attempt in range(10):
+            try:
+                with Image.open(img_path) as img:
+                    img = img.convert("RGB")
+                return img, label
+            except(UnidentifiedImageError, OSError) as e:
+                last_error = e
+                time.sleep(0.05 * (attempt + 1))
+        raise RuntimeError('Falha de Leitura na Validação') from e
     
     def to_coarse_classes(self, top_down: bool, level: int, mat_path: str):
         wnid_to_coarse, num_classes = reduce_taxonomic_diversity(self.all_wnids, top_down, level, mat_path)
