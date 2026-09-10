@@ -8,10 +8,10 @@ SCRIPT_PATH="/petrobr/parceirosbr/home/joao.frare/workspace/spfm/Seismic-Byol/de
 WORKSPACE="/petrobr/parceirosbr/home/joao.frare/workspace"
 export SIF="/petrobr/parceirosbr/spfm/singularity/arm64/deeprock/ngc/MINERVA_v0_3_9-beta-SPINN_v0_0_1.sif"
 
-repetition=(1 2)
-version=modern
+repetition=(1)
+version=traditional
 red_mode=taxonomic
-level=(9)
+level=(3)
 
 #--reduction_mode taxonomic --version traditional --top_down --level 6 --repetition 0
 

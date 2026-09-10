@@ -176,10 +176,8 @@ class ModelInfo():
 
                 
                 path = self.root_path / 'Train' / self.version / f'{repetition}' / self.pretrain_path / 'evaluation'
+                print(f'model name: {self.model_name}, path: {path}')
                 yaml_files = list(path.glob('metrics*.yaml'))
-
-                print(f"PATH: {path}")
-                print(f"YAML FILES: {yaml_files}")
 
                 if not yaml_files:
                     raise FileNotFoundError(
@@ -207,11 +205,6 @@ class ModelInfo():
                         self.finetune_miou[dataset][protocol].append(miou)
         
         if not self.scratch:
-            print(
-                f"{self.model_name}: pretrain_acc1 = "
-                f"{self.pretrain_acc1}"
-            )
-
             self.pretrain_acc1 = {
                 'mean': np.mean(self.pretrain_acc1),
                 'std': np.std(self.pretrain_acc1, ddof=1)
@@ -258,7 +251,6 @@ class ModelInfo():
         return self.pretrain_dataframe
     
     def get_pretrain_top1acc(self) -> tuple[float, float]:
-        print(f'Model Name: {self.model_name}')
         return (self.pretrain_acc1['mean'], self.pretrain_acc1['std'])
     
     def get_finetune_dataframe(self, dataset: str, protocol: str) -> pd.DataFrame:

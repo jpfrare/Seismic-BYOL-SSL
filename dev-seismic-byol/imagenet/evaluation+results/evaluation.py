@@ -1,155 +1,114 @@
 from metrics import Metrics
 from modelInfo import ModelInfo
 from pathlib import Path
-
 ROOT = Path('/petrobr/parceirosbr/spfm/joao.frare/logs+checkpoints_imagenet')
-SAVE_FINETUNE_ROOT = Path('data/finetune')
-SAVE_PRETRAIN_ROOT = Path('data/pretrain')
+SAVE_PATH = Path('data/pretrain')
 
-taxonomic_level_to_class = {
-        9: 477,
-        7: 200,
-        6: 80,
-        3: 10
-}
+def build_default_metrics(root_path: Path, version: str, datasets: list[str], protocols: list[str]):
+        full_dataset = ModelInfo(
+        root_path= root_path,
+        reduction_mode= 'full', 
+        version= version,  
+        datasets= datasets,
+        protocols= protocols)
 
-taxonomic_x_default_metrics = Metrics([])
-for level, num_classes in taxonomic_level_to_class.items():
-        taxonomic_x_default_models = []
-        taxonomic_x_default_models.append(ModelInfo(root_path= ROOT, reduction_mode= 'taxonomic', top_down= True, level= level, num_classes= num_classes))
-        taxonomic_x_default_models.append(ModelInfo(root_path= ROOT, reduction_mode= 'default', num_classes= num_classes, per_class= 1300))
-        metrics_same_class = Metrics(taxonomic_x_default_models)
-        metrics_same_class.group_plot(
-                title= f'Taxonomc ImageNet Pretrained models using {num_classes} classes Top-1 Acuraccy',
-                save_path= SAVE_PRETRAIN_ROOT,
-                y_axis= 'acc1',
-                y_axis_label= 'Top-1 Acuraccy (%)',
-                min_y= 0,
-                max_y= 100,
-                y_step= 5,
-                x_axis= 'step',
-                x_axis_label= 'Step',
-                mul_factor= 100)
+        default_metrics = Metrics([full_dataset])
+
+        configs = {
+        1000: [640, 320, 160, 80, 40, 20],
+        500:  [1300, 640, 320, 160, 80, 40],
+        250:  [1300, 640, 320, 160, 80],
+        125:  [1300, 640, 320, 160],
+        }
+
+        for num_classes, per_class_list in configs.items():
+                for per_class in per_class_list:
+                        model_info = ModelInfo(
+                                root_path= root_path,
+                                reduction_mode= 'default',  
+                                num_classes= num_classes, 
+                                per_class= per_class,
+                                version= version, 
+                                datasets= datasets,
+                                protocols= protocols)
+                        default_metrics += model_info
         
-        taxonomic_x_default_metrics += metrics_same_class
+        return default_metrics
 
-taxonomic_x_default_metrics.individual_plot(
-        title= f'Taxonomic ImageNet Pretrained models Train and Val Loss',
-        save_path= SAVE_PRETRAIN_ROOT,
-        y_axis= ['train_loss', 'val_loss'],
-        x_axis= 'step',
-        ncols= 4,
-        yscale= 'log')
-taxonomic_x_default_metrics.plot_taxonomic_x_default(
-        title= f'Taxonomic - Pretrain Top 1 Acuraccy',
-        save_path= SAVE_PRETRAIN_ROOT,
-        pretrain= True
+
+def build_taxonomic_metrics(root_path: Path, version: str, datasets: list[str], protocols: list[str]):
+        level_to_classes = {
+                9: 477,
+                7: 200,
+                6: 80,
+                3: 9
+        }
+
+        taxonomic_experiments = []
+
+        for level, num_classes in level_to_classes.items():
+                taxonomic = ModelInfo(
+                        root_path = ROOT,
+                        reduction_mode = 'taxonomic',
+                        version= version,
+                        top_down = True,
+                        level= level,
+                        num_classes= num_classes,
+                        torchPretrained= False,
+                        datasets= datasets,
+                        protocols = protocols
+                )
+                default = ModelInfo(
+                        root_path= ROOT,
+                        reduction_mode= 'default',
+                        version= version,
+                        num_classes= num_classes,
+                        per_class= 1300,
+                        datasets= datasets,
+                        protocols= protocols
+                )
+                taxonomic_experiments.extend([taxonomic, default])
+        
+        return Metrics(taxonomic_experiments)
+
+
+#pretrain
+for version in ['traditional', 'modern']:
+        PRETRAIN_SAVE = SAVE_PATH / version 
+        capitalized_version = version.capitalize()
+
+        default_metrics = build_default_metrics(root_path= ROOT, version= version, datasets= [], protocols= [])
+
+        default_metrics.individual_plot(
+                title= f'{capitalized_version} Default Models Train and Val Loss x Steps',
+                save_path= PRETRAIN_SAVE,
+                y_axis= ['train_loss', 'val_loss'],
+                x_axis= 'step',
+                ncols= 4,
+                yscale= 'log'
         )
 
-#default configs
-configs = {
-    1000: [640, 320, 160, 80, 13],
-    500:  [1300, 640, 320, 160],
-    250:  [1300, 640, 320],
-    125:  [1300, 640],
-    10:   [1300],
-}
+        default_metrics.plot_heatmap(
+                title= f'{capitalized_version} Default Pretrain Top-1 Accuracy',
+                save_path= PRETRAIN_SAVE,
+                pretrain= True,
+                cmap= 'crest'
+        )
 
-#metricas de full dataset
-full_dataset_model = ModelInfo(root_path= ROOT)
-scratch_finetune_model = ModelInfo(root_path= ROOT, scratch= True)
+        taxonomic_metrics = build_taxonomic_metrics(root_path= ROOT, version= version, datasets= [], protocols= [])
 
-metrics_default = {}
-#preencher um métrics pra cada número de classes e plotar as informações de pré-treino
-for num_classes in configs.keys():
-        models = [full_dataset_model] if num_classes == 1000 else []
-        
-        for per_class in configs[num_classes]:
-                models.append(ModelInfo(root_path= ROOT, reduction_mode= 'default', num_classes= num_classes, per_class= per_class))
-
-        metrics_default[num_classes] = Metrics(models)
-        metrics_default[num_classes].group_plot(
-                title= f'ImageNet Pretrain, {num_classes} classes models Top-1 Acuraccy',
-                save_path= SAVE_PRETRAIN_ROOT,
-                y_axis= 'acc1',
-                y_axis_label= 'Top-1 Acuraccy (%)',
-                min_y= 0,
-                max_y= 100,
-                y_step= 5,
+        taxonomic_metrics.individual_plot(
+                title= f'{capitalized_version} Taxonomic Models Train and Val Loss x Steps',
+                save_path= PRETRAIN_SAVE,
+                y_axis= ['train_loss', 'val_loss'],
                 x_axis= 'step',
-                x_axis_label= 'Step',
-                mul_factor= 100)
+                ncols= 2,
+                yscale= 'log'
+        )
 
-all_configurations = Metrics([])
-for metric in metrics_default.values():
-        all_configurations += metric
-
-all_configurations.individual_plot(
-        title= f'ImageNet Pretrained models, Train and Val Loss x Steps',
-        save_path= SAVE_PRETRAIN_ROOT,
-        y_axis= ['train_loss', 'val_loss'],
-        x_axis= 'step',
-        ncols= 4,
-        yscale= 'log')
-all_configurations.add_model(scratch_finetune_model)
-all_configurations.plot_heatmap(
-        title= 'Pretrain Models Top-1 Acuraccy',
-        save_path= SAVE_PRETRAIN_ROOT,
-        pretrain= True,
-        cmap= 'crest'
-)
-
-aliases = {
-        'full_finetuning_deeplab': 'Full Finetuning',
-        'full_freeze_linear': 'Linear Redout',
-        'f3_N': 'F3',
-        'seam_ai_N': 'Parihaka'
-}
-
-for dataset in full_dataset_model.datasets:
-        for protocol in full_dataset_model.protocols:
-                all_configurations.plot_heatmap(
-                        title= f'Default mIoU, {aliases[protocol]} - {aliases[dataset]}',
-                        save_path= SAVE_FINETUNE_ROOT,
-                        dataset= dataset,
-                        protocol= protocol)
-                all_configurations.individual_plot(
-                        title= f'Defaul Train and Validation loss curves, {aliases[protocol]} - {aliases[dataset]}',
-                        save_path= SAVE_FINETUNE_ROOT,
-                        y_axis= ['train_loss', 'val_loss'],
-                        x_axis= 'epoch',
-                        ncols= 6,
-                        finetune= True,
-                        dataset= dataset,
-                        protocol= protocol,
-                        yscale= 'log'
-                )
-                all_configurations.save_miou_table(
-                        filename= f'Deafult mIoU table, {aliases[protocol]} - {aliases[dataset]}',
-                        save_path= SAVE_FINETUNE_ROOT, 
-                        dataset= dataset,
-                        protocol= protocol)
-
-                taxonomic_x_default_metrics.plot_taxonomic_x_default( 
-                        title= f'Taxonomic mIoU, {protocol} - {dataset}',
-                        save_path= SAVE_FINETUNE_ROOT,
-                        dataset= dataset,
-                        protocol= protocol)
-                taxonomic_x_default_metrics.individual_plot(
-                        title= f'Taxonomic Train and Validation loss curves, {aliases[protocol]} - {aliases[dataset]}',
-                        save_path= SAVE_FINETUNE_ROOT,
-                        y_axis= ['train_loss', 'val_loss'],
-                        x_axis= 'epoch',
-                        ncols= 4,
-                        finetune= True,
-                        dataset= dataset,
-                        protocol= protocol,
-                        yscale= 'log'
-                )
-                taxonomic_x_default_metrics.save_miou_table(
-                        filename= f'Taxonomic mIoU table, {aliases[protocol]} - {aliases[dataset]}',
-                        save_path= SAVE_FINETUNE_ROOT, 
-                        dataset= dataset,
-                        protocol= protocol)
-        
+        taxonomic_metrics.plot_taxonomic_x_default(
+                title= f'{capitalized_version} Taxonomic Models Pretrain Top-1 Accuracy',
+                save_path= PRETRAIN_SAVE,
+                pretrain = True,
+        )
 

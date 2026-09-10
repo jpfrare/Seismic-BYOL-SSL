@@ -31,7 +31,7 @@ from minerva.models.loaders import FromPretrained
 from base.ImagenetDataset import ImagenetDataset, DefaultTrainSubset, DefaultValSubset
 from base.ImagenetReader import ImagenetReader, ImagenetValReader
 from base.ImagenetModel import ImagenetModel
-from base.InformationOrganizer import TrainOrganizer
+from base.InformationOrganizer import PretrainEvaluationOrganizer
 
 from base.ImagenetDataset import DefaultValSubset
 from base.utils import *
@@ -44,7 +44,7 @@ VAL_ROOT = "/petrobr/parceirosbr/spfm/datasets/ImageNet_2012/val"
 GT_ROOT = "/petrobr/parceirosbr/home/joao.frare/workspace/spfm/sharedata/datasets/ImageNet_2012/extra_files/ILSVRC2012_devkit_t12/data/ILSVRC2012_validation_ground_truth.txt"
 MAT_ROOT = "/petrobr/parceirosbr/home/joao.frare/workspace/spfm/sharedata/datasets/ImageNet_2012/extra_files/ILSVRC2012_devkit_t12/data/meta.mat"
 
-organizer = TrainOrganizer(data_root= '/petrobr/parceirosbr/spfm/joao.frare/logs+checkpoints_imagenet')
+organizer = PretrainEvaluationOrganizer(data_root= '/petrobr/parceirosbr/spfm/joao.frare/logs+checkpoints_imagenet')
 
 
 print('Starting ImageNet Linear Readout Evaluation')
@@ -170,83 +170,85 @@ train_dataset = ImagenetDataset(
     transform= train_transform_pipeline,
 )
 
-try:
-    cpus_disponiveis = len(os.sched_getaffinity(0))
-except AttributeError:
-    cpus_disponiveis = os.cpu_count() or 1
-num_workers = min(24, cpus_disponiveis)
+#pipeline de finetuning e posterior avaliação
+if organizer.parser.evaluate_top1:
+    try:
+        cpus_disponiveis = len(os.sched_getaffinity(0))
+    except AttributeError:
+        cpus_disponiveis = os.cpu_count() or 1
+    num_workers = min(24, cpus_disponiveis)
 
-data_module = MinervaDataModule(
-            train_dataset=train_dataset,
-            val_dataset= val_dataset,
-            test_dataset= val_dataset,
-            batch_size=batch_size,
-            drop_last=True,
-            shuffle_train=True,
-            name="imagenet",
-            num_workers= num_workers,
-            additional_train_dataloader_kwargs={"persistent_workers": True, "pin_memory": True, "drop_last": True},
-            additional_val_dataloader_kwargs={"persistent_workers": True, "pin_memory": True, "drop_last": False}
+    data_module = MinervaDataModule(
+                train_dataset=train_dataset,
+                val_dataset= val_dataset,
+                test_dataset= val_dataset,
+                batch_size=batch_size,
+                drop_last=True,
+                shuffle_train=True,
+                name="imagenet",
+                num_workers= num_workers,
+                additional_train_dataloader_kwargs={"persistent_workers": True, "pin_memory": True, "drop_last": True},
+                additional_val_dataloader_kwargs={"persistent_workers": True, "pin_memory": True, "drop_last": False}
+            )
+
+    #-----------------------------------DIRETORIOS, LOGGERS E CALLBACKS----------------------------------------
+    CSVlogger = CSVLogger(Path(organizer.evaluation_dir), name= '', version='')
+
+    ckpt_callback = ModelCheckpoint(
+        monitor='val_acc1',                # monitorar a val_acc1
+        mode='max',
+        save_top_k=1,                      # Salva apenas o maior val_acc1
+        save_last=False,                   
+        dirpath=Path(organizer.evaluation_ckpt_dir),
+        filename='best',                    
+        auto_insert_metric_name=False
+    )
+
+    lr_monitor = LearningRateMonitor(logging_interval= 'step', log_momentum= True)
+
+    callbacks = [ckpt_callback, lr_monitor]
+
+
+    #-----------------------------treino e avaliação
+
+    if not Path(organizer.evaluation_ckpt_dir/'best.ckpt').exists():
+        trainer = Trainer(
+            accelerator='gpu',
+            devices=devices,
+            strategy=strategy,
+            precision=precision,
+            logger=CSVlogger,
+            callbacks= callbacks,
+            max_steps= max_steps,
+            accumulate_grad_batches = accumulate_grad_batches,
+            check_val_every_n_epoch=None,
+            val_check_interval=625,                                              
+            limit_val_batches=limit_val_batches,                                 
+            log_every_n_steps=log_every_n_steps,              
+            benchmark=True,
         )
+        pipeline = SimpleLightningPipeline(
+            model=model,
+            trainer=trainer,
+            log_dir=Path(organizer.evaluation_dir),
+            save_run_status=True,
+        )
+        pipeline.run(data_module, task= 'fit')
 
-#-----------------------------------DIRETORIOS, LOGGERS E CALLBACKS----------------------------------------
-CSVlogger = CSVLogger(Path(organizer.log_dir)/'evaluation', name= '', version='')
-
-ckpt_callback = ModelCheckpoint(
-    monitor='val_acc1',                # monitorar a val_acc1
-    mode='max',
-    save_top_k=1,                      # Salva apenas o maior val_acc1
-    save_last=False,                   
-    dirpath=Path(organizer.ckpt_dir)/'evaluation',
-    filename='best',                    
-    auto_insert_metric_name=False
-)
-
-lr_monitor = LearningRateMonitor(logging_interval= 'step', log_momentum= True)
-
-callbacks = [ckpt_callback, lr_monitor]
-
-
-#-----------------------------treino e avaliação
-
-if not Path(organizer.ckpt_dir/'evaluation'/'best.ckpt').exists():
     trainer = Trainer(
         accelerator='gpu',
-        devices=devices,
-        strategy=strategy,
-        precision=precision,
-        logger=CSVlogger,
-        callbacks= callbacks,
-        max_steps= max_steps,
-        accumulate_grad_batches = accumulate_grad_batches,
-        check_val_every_n_epoch=None,
-        val_check_interval=625,                                              #vai validar depois de uma época considerando o full dataset
-        limit_val_batches=limit_val_batches,                                 #quantos batches serão usados na validação
-        log_every_n_steps=log_every_n_steps,              
-        benchmark=True,
+        devices=1,
+        strategy='auto',
+        precision= precision
     )
-    pipeline = SimpleLightningPipeline(
-        model=model,
-        trainer=trainer,
-        log_dir=Path(organizer.log_dir)/'evaluation',
-        save_run_status=True,
+
+    metrics = {'Accuracy Top-1': torchmetrics.Accuracy(task= 'multiclass', num_classes= 1000, top_k= 1)}
+    eval_pipeline = SimpleLightningPipeline(
+        model= model,
+        trainer= trainer,
+        log_dir= Path(organizer.evaluation_dir),
+        seed=organizer.args.repetition,
+        classification_metrics=metrics
     )
-    pipeline.run(data_module, task= 'fit')
 
-trainer = Trainer(
-    accelerator='gpu',
-    devices=1,
-    strategy='auto',
-    precision= precision
-)
-
-metrics = {'Accuracy Top-1' :torchmetrics.Accuracy(task= 'multiclass', num_classes= 1000, top_k= 1)}
-eval_pipeline = SimpleLightningPipeline(
-    model= model,
-    trainer= trainer,
-    log_dir= Path(organizer.log_dir)/'evaluation',
-    seed=organizer.args.repetition,
-    classification_metrics=metrics
-)
-
-eval_pipeline.run(data_module, task= 'evaluate', ckpt_path = Path(organizer.ckpt_dir)/'evaluation'/'best.ckpt')
+    eval_pipeline.run(data_module, task= 'evaluate', ckpt_path = Path(organizer.evaluation_ckpt_dir)/'best.ckpt')

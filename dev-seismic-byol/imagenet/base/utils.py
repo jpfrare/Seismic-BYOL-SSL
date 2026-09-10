@@ -138,12 +138,13 @@ def check_transfer_learning(missing_keys):
         print(" [SUCESSO ABSOLUTO] Todas as camadas da ResNet50 foram transferidas e estão tranquilas!")
     else:
         print(" [ALERTA] Algumas camadas da ResNet não foram preenchidas:")
-        # Printa as primeiras 10 camadas que falharam para você inspecionar o nome
         for layer in missing_resnet_layers[:10]:
             print(f"   └─> Falhou: {layer}")
         if len(missing_resnet_layers) > 10:
             print(f"   └─> ... e mais {len(missing_resnet_layers) - 10} camadas.")
         raise RuntimeError("Mismatch de chaves no Transfer Learning! O esqueleto da ResNet ficou vazio.")
+
+def 
 
 
 

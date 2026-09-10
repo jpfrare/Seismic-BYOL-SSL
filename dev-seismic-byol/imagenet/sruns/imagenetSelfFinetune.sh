@@ -8,24 +8,35 @@ WORKSPACE="/petrobr/parceirosbr/home/joao.frare/workspace"
 export SIF="/petrobr/parceirosbr/spfm/singularity/arm64/deeprock/ngc/MINERVA_v0_3_9-beta-SPINN_v0_0_1.sif"
 
 repetition=(2)
-version=modern
-red_mode=default
-num_classes=500
-per_class=(640)
+version=traditional
+red_mode=taxonomic
+level=(9)
 
-#--reduction_mode default --version modern --num_classes 500 --per_class 640 --repetition 2
+#--reduction_mode taxonomic --version traditional --top_down --level 9 --repetition 2
 
-for p in "${per_class[@]}"; do
+for l in "${level[@]}"; do
 for r in "${repetition[@]}"; do
+    if [ ${l} -eq 9 ]; then
+        n=477
+    elif [ ${l} -eq 7 ]; then
+        n=200
+    elif [ ${l} -eq 6 ]; then
+        n=80
+    elif [ ${l} -eq 3 ]; then
+        n=9
+    else
+        echo "erro"
+        exit
+    fi
 
-    FLAGS="--reduction_mode ${red_mode} --version ${version} --num_classes ${num_classes} --per_class ${p} --repetition ${r}"
-    root=/petrobr/parceirosbr/home/joao.frare/workspace/spfm/Seismic-Byol/dev-seismic-byol/imagenet/jobs_out/imagenetSelfFinetuning/${version}/repetition_${r}/${red_mode}/${num_classes}
+    FLAGS="--reduction_mode ${red_mode} --version ${version} --top_down --level ${l} --repetition ${r}"
+    root=/petrobr/parceirosbr/home/joao.frare/workspace/spfm/Seismic-Byol/dev-seismic-byol/imagenet/jobs_out/imagenetSelfFinetuning/${version}/repetition_${r}/taxonomic/${n}
     mkdir -p "${root}"
 
     sbatch <<EOT
 #!/bin/bash
 
-#SBATCH --job-name=p${p}r${r}
+#SBATCH --job-name=SSv${version}${red_mode}n${n}r${r}
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=20
@@ -33,8 +44,8 @@ for r in "${repetition[@]}"; do
 #SBATCH --partition=ict-gh200
 #SBATCH --account=spfm
 #SBATCH --time=24:00:00
-#SBATCH --output=${root}/p${p}_%j.out
-#SBATCH --error=${root}/p${p}_%j.err
+#SBATCH --output=${root}/${red_mode}_%j.out
+#SBATCH --error=${root}/${red_mode}_%j.err
 
 cd "\$SLURM_SUBMIT_DIR"
 

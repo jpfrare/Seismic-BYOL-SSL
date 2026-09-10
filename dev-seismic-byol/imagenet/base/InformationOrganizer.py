@@ -153,7 +153,7 @@ class FinetuningOrganizer(TrainOrganizer):
     def _get_finetune_dirs_and_set_model_name(self):
         if self.args.scratch:
             self.model_name = 'scratch'
-            dirs = Path(self.data_root)/self.task/ self.args.version / f'{self.args.repetition}'/'scratch'
+            dirs = Path(self.data_root)/ self.task / f'{self.args.repetition}'/'scratch'
         else:
             dirs =  super()._get_dirs_and_set_model_name()
         dirs = dirs / f'finetune_{self.args.finetune_dataset}'/ f'{self.args.backbone_freeze}_{self.args.pred_head}'
@@ -171,4 +171,19 @@ class FinetuningOrganizer(TrainOrganizer):
         info = '\n'.join(info)
 
         return sup_info + '\n' +  info
+
+class PretrainEvaluationOrganizer(TrainOrganizer):
+    evaluation_dir: Path
+    evaluation_ckpt_dir: Path
+
+    def __init__(self, data_root: Path):
+        super().__init__(data_root)
+        dirs = super()._get_dirs_and_set_model_name()
+
+        self.evaluation_dir = dirs / 'logs' / 'evaluation'
+        self.evaluation_ckpt_dir = dirs / 'checkpoints' / 'evaluation'
+
+    def _set_up_parser(self):
+        self.parser.add_argument("--eval_class_recall", action= 'store_true', help= 'se o balanceamento de classes será avaliado')
+        self.parser.add_argument("--eval_top1", action= 'store_true', help= 'fazer avaliação da acurácia top 1')
     

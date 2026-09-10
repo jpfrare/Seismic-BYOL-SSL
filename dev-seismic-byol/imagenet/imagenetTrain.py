@@ -48,7 +48,7 @@ real_batch_size = accumulate_grad_batches * batch_size * devices
 max_steps = full_imagenet_size*100//real_batch_size + 30          #número de passos para se treinar uma imagenet completa por 150 épocas
 
 
-precision= "16-mixed" if torch.cuda.is_available() else "32"       #precisão -> quanto maior melhor
+precision= "32-true" if torch.cuda.is_available() else "32"       #precisão -> quanto maior melhor
 limit_val_batches = 1.0
 log_every_n_steps = 600
 

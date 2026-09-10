@@ -73,6 +73,7 @@ class ImagenetModel(L.LightningModule):
         self.log('train_loss', loss, on_epoch= True, prog_bar= True, sync_dist= self.sync_dist)
 
         return loss
+
     
     def validation_step(self, batch, batch_idx):
         x, y = batch
@@ -88,6 +89,8 @@ class ImagenetModel(L.LightningModule):
             y_loss = F.one_hot(y, num_classes= self.num_classes).to(y_hat.dtype)
 
         val_loss = self.val_loss_fn(y_hat, y_loss)
+    
+
         self.log("val_loss", val_loss, on_epoch=True, prog_bar=True, sync_dist= self.sync_dist)
         return val_loss
     
