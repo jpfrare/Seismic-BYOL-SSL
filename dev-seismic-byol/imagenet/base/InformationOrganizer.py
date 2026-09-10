@@ -184,6 +184,6 @@ class PretrainEvaluationOrganizer(TrainOrganizer):
         self.evaluation_ckpt_dir = dirs / 'checkpoints' / 'evaluation'
 
     def _set_up_parser(self):
-        self.parser.add_argument("--eval_class_recall", action= 'store_true', help= 'se o balanceamento de classes será avaliado')
-        self.parser.add_argument("--eval_top1", action= 'store_true', help= 'fazer avaliação da acurácia top 1')
+        super()._set_up_parser()
+        self.parser.add_argument("--eval_acc", action= 'store_true', help= 'avaliação de acurácia por classe e global')
     

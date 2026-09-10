@@ -124,3 +124,47 @@ class ImagenetModel(L.LightningModule):
 
     def lr_scheduler_step(self, scheduler, metric):
         scheduler.step_update(self.global_step)
+
+    def evaluate_acc(self, val_loader) -> list:
+        '''função que roda uma validação e retorna uma lista onde lista[i] é a acurácia referente a cada classe
+        como o dataset de validação é balanceado, a média dessa lista retorna a acurácia total'''
+        
+        print("len(val_loader):", len(val_loader))
+        print("batch size:", val_loader.batch_size)
+        print("self.device:", self.device)
+        print("backbone device:", next(self.backbone.parameters()).device)
+        print("fc device:", next(self.fc.parameters()).device)
+        class_acc = {
+            c: {'count': 0, 'matches': 0}
+            for c in range(self.num_classes)
+        }
+        self.eval()
+
+        with torch.no_grad():
+
+            for var, (x, y) in enumerate(val_loader):
+
+                print(f'Batch {var}')
+
+                x = x.to(self.device)
+                y = y.to(self.device)
+
+                y_hat = self(x)
+
+                y_hat = torch.argmax(y_hat, dim=1)
+
+                for target, prediction in zip(y, y_hat):
+
+                    target = target.item()
+                    prediction = prediction.item()
+
+                    class_acc[target]['count'] += 1
+
+                    if target == prediction:
+                        class_acc[target]['matches'] += 1
+
+        return [
+            class_acc[c]['matches'] / class_acc[c]['count']
+            for c in class_acc
+            if class_acc[c]['count'] > 0
+        ]

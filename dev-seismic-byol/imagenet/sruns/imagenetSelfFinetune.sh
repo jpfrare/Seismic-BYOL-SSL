@@ -7,30 +7,16 @@ SCRIPT_PATH="/petrobr/parceirosbr/home/joao.frare/workspace/spfm/Seismic-Byol/de
 WORKSPACE="/petrobr/parceirosbr/home/joao.frare/workspace"
 export SIF="/petrobr/parceirosbr/spfm/singularity/arm64/deeprock/ngc/MINERVA_v0_3_9-beta-SPINN_v0_0_1.sif"
 
-repetition=(2)
-version=traditional
-red_mode=taxonomic
-level=(9)
+repetition=(0)
+version=modern
+red_mode=full
 
 #--reduction_mode taxonomic --version traditional --top_down --level 9 --repetition 2
 
-for l in "${level[@]}"; do
 for r in "${repetition[@]}"; do
-    if [ ${l} -eq 9 ]; then
-        n=477
-    elif [ ${l} -eq 7 ]; then
-        n=200
-    elif [ ${l} -eq 6 ]; then
-        n=80
-    elif [ ${l} -eq 3 ]; then
-        n=9
-    else
-        echo "erro"
-        exit
-    fi
 
-    FLAGS="--reduction_mode ${red_mode} --version ${version} --top_down --level ${l} --repetition ${r}"
-    root=/petrobr/parceirosbr/home/joao.frare/workspace/spfm/Seismic-Byol/dev-seismic-byol/imagenet/jobs_out/imagenetSelfFinetuning/${version}/repetition_${r}/taxonomic/${n}
+    FLAGS="--reduction_mode ${red_mode} --version ${version} --repetition ${r} --eval_per_class_acc"
+    root=/petrobr/parceirosbr/home/joao.frare/workspace/spfm/Seismic-Byol/dev-seismic-byol/imagenet/jobs_out/imagenetSelfFinetuning/${version}/repetition_${r}/${red_mode}/eval_per_class_acc
     mkdir -p "${root}"
 
     sbatch <<EOT
@@ -72,5 +58,4 @@ srun --unbuffered singularity exec --nv \
         python3 -u $SCRIPT_PATH $FLAGS
     "
 EOT
-done
 done

@@ -1,5 +1,7 @@
 from scipy.io import loadmat
 import os
+import torch
+import numpy as np
 
 def get_state_dict(model):
         # O state_dict é um dicionário que representa o estado atual do modelo,
@@ -75,7 +77,7 @@ def build_son_to_father_dict(father_id, sysnets, dic):
         dic[int_children_id] = father_id
         build_son_to_father_dict(int_children_id, sysnets, dic)
     
-def build_heritage_path(mat_path):
+def build_heritage_path(mat_path) -> dict:
     mat = loadmat(mat_path)
     synsets = mat['synsets']
 
@@ -103,7 +105,7 @@ def build_heritage_path(mat_path):
     return heritage_path
 
 
-def reduce_taxonomic_diversity(wnids: list, top_down: bool, level: int, mat_path: str) -> (dict, int):
+def reduce_taxonomic_diversity(wnids: list, top_down: bool, level: int, mat_path: str) -> tuple[dict, int]:
     wnid_to_class = {}
     coarse_to_class = {}
     current_class_id = 0
@@ -144,7 +146,8 @@ def check_transfer_learning(missing_keys):
             print(f"   └─> ... e mais {len(missing_resnet_layers) - 10} camadas.")
         raise RuntimeError("Mismatch de chaves no Transfer Learning! O esqueleto da ResNet ficou vazio.")
 
-def 
+        
+
 
 
 
