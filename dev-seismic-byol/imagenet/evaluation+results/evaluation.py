@@ -72,6 +72,8 @@ def build_taxonomic_metrics(root_path: Path, version: str, datasets: list[str], 
 
 
 
+csv_acc = {'traditional': None, 'modern': None}
+
 #pretrain
 for version in ['traditional', 'modern']:
         PRETRAIN_SAVE = SAVE_PATH / version 
@@ -115,5 +117,6 @@ for version in ['traditional', 'modern']:
         )
 
         all_metrics = default_metrics + taxonomic_metrics
-        all_metrics.get_pretrain_acc_eval(PRETRAIN_SAVE / f'{capitalized_version} Accuracy Evaluation')
+
+        csv_acc[version] = all_metrics.get_pretrain_acc_eval(PRETRAIN_SAVE / f'{capitalized_version}_Accuracy_Evaluation.csv')
 

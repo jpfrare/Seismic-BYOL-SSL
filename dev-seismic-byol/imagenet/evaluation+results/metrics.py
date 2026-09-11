@@ -457,18 +457,27 @@ class Metrics():
 
     def get_pretrain_acc_eval(self, save_path) -> pd.DataFrame:
         data = {'Model Name': [],
-                'Version': [],
                 'Mean': [],
-                'Min': [],
-                'Max': [],
-                'Median': []}
+                'Inferior Distance': [],
+                'Superior Distance': [],
+                'Std': [],}
 
         for model in self.models:
             data['Model Name'].append(model.model_name)
-            data['Version'].append(model.version)
-            data['Max'].append(model.get_pretrain_top1acc('Max'))
-            data['Min'].append(model.get_pretrain_top1acc('Mean'))
-            data['Median'].append(model.get_pretrain_top1acc('Median'))
+            median, _ = model.get_pretrain_top1acc('Median')
+            mIn, _ = model.get_pretrain_top1acc('Min')
+            mAx, _ = model.get_pretrain_top1acc('Max')
+            Std, _ = model.get_pretrain_top1acc('Std')
+            mean, _ = model.get_pretrain_top1acc('Mean')
+
+            inferior_distance = median - mIn
+            superior_distance = mAx - median
+
+            data['Mean'].append(round(mean, 3))
+            data['Superior Distance'].append(round(superior_distance, 3))
+            data['Inferior Distance'].append(round(inferior_distance, 3))
+            data['Std'].append(round(Std), 3)
+            
 
         data = pd.DataFrame(data)
         data.to_csv(save_path, index= False)
