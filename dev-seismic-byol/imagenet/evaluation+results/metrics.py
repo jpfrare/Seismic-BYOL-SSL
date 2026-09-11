@@ -411,7 +411,7 @@ class Metrics():
             tax_mean,
             width,
             yerr=tax_std,
-            color="#DD8452",
+            color="#D67137",
             label="Taxonomic",
             error_kw=error_style,
         )
@@ -454,5 +454,25 @@ class Metrics():
             f"{title}.png",
             save_path,
         )
+
+    def get_pretrain_acc_eval(self, save_path) -> pd.DataFrame:
+        data = {'Model Name': [],
+                'Version': [],
+                'Mean': [],
+                'Min': [],
+                'Max': [],
+                'Median': []}
+
+        for model in self.models:
+            data['Model Name'].append(model.model_name)
+            data['Version'].append(model.version)
+            data['Max'].append(model.get_pretrain_top1acc('Max'))
+            data['Min'].append(model.get_pretrain_top1acc('Mean'))
+            data['Median'].append(model.get_pretrain_top1acc('Median'))
+
+        data = pd.DataFrame(data)
+        data.to_csv(save_path, index= False)
+
+        return data
 
 

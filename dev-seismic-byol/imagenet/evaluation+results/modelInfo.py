@@ -145,7 +145,7 @@ class ModelInfo():
                 with open(path, 'r') as file:
                     data = yaml.safe_load(file)
                     for key in data.keys():
-                        self.pretrain_acc1[key].append(data[key][0])
+                        self.pretrain_acc1[key].append(data[key])
                 
 
             #--------------------------------lendo repetições do finetuning---------------------------------------------------------

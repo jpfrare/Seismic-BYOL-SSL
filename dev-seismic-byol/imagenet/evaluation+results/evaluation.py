@@ -48,18 +48,17 @@ def build_taxonomic_metrics(root_path: Path, version: str, datasets: list[str], 
 
         for level, num_classes in level_to_classes.items():
                 taxonomic = ModelInfo(
-                        root_path = ROOT,
+                        root_path = root_path,
                         reduction_mode = 'taxonomic',
                         version= version,
                         top_down = True,
                         level= level,
                         num_classes= num_classes,
-                        torchPretrained= False,
                         datasets= datasets,
                         protocols = protocols
                 )
                 default = ModelInfo(
-                        root_path= ROOT,
+                        root_path= root_path,
                         reduction_mode= 'default',
                         version= version,
                         num_classes= num_classes,
@@ -70,6 +69,7 @@ def build_taxonomic_metrics(root_path: Path, version: str, datasets: list[str], 
                 taxonomic_experiments.extend([taxonomic, default])
         
         return Metrics(taxonomic_experiments)
+
 
 
 #pretrain
@@ -113,4 +113,7 @@ for version in ['traditional', 'modern']:
                 pretrain = True,
                 pretrain_key= 'Mean'
         )
+
+        all_metrics = default_metrics + taxonomic_metrics
+        all_metrics.get_pretrain_acc_eval(PRETRAIN_SAVE / f'{capitalized_version} Accuracy Evaluation')
 
