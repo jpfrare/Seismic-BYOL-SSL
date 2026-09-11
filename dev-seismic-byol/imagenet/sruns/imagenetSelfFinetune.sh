@@ -7,22 +7,42 @@ SCRIPT_PATH="/petrobr/parceirosbr/home/joao.frare/workspace/spfm/Seismic-Byol/de
 WORKSPACE="/petrobr/parceirosbr/home/joao.frare/workspace"
 export SIF="/petrobr/parceirosbr/spfm/singularity/arm64/deeprock/ngc/MINERVA_v0_3_9-beta-SPINN_v0_0_1.sif"
 
-repetition=(0)
-version=modern
-red_mode=full
+repetition=(0 1 2)
+version=(modern traditional)
+num_classes=(1000 500 477 250 200 125 80 9)
+red_mode=default
+task=PretrainEval
 
-#--reduction_mode taxonomic --version traditional --top_down --level 9 --repetition 2
-
+for v in "${version[@]}"; do
 for r in "${repetition[@]}"; do
+for n in "${num_classes[@]}"; do
 
-    FLAGS="--reduction_mode ${red_mode} --version ${version} --repetition ${r} --eval_per_class_acc"
-    root=/petrobr/parceirosbr/home/joao.frare/workspace/spfm/Seismic-Byol/dev-seismic-byol/imagenet/jobs_out/imagenetSelfFinetuning/${version}/repetition_${r}/${red_mode}/eval_per_class_acc
-    mkdir -p "${root}"
+    if [ ${n} -eq 1000 ]; then
+        per_class=(640 320 160 80 40 20)
+
+    elif [ ${n} -eq 500 ]; then
+        per_class=(1300 640 320 160 80 40)
+
+    elif [ ${n} -eq 250 ]; then
+        per_class=(1300 640 320 160 80)
+    
+    elif [ ${n} -eq 125 ]; then
+        per_class=(1300 640 320 160)
+    else
+        per_class=(1300)
+
+    fi
+
+    for p in ${per_class[@]}; do
+
+    FLAGS="--reduction_mode ${red_mode} --version ${v} --per_class ${p} --num_classes ${n} --repetition ${r} --eval_acc"
+    ROOT=/petrobr/parceirosbr/home/joao.frare/workspace/spfm/Seismic-Byol/dev-seismic-byol/imagenet/jobs_out/${task}/${v}/repetition_${r}/${red_mode}/${n}
+    mkdir -p ${ROOT}
 
     sbatch <<EOT
 #!/bin/bash
 
-#SBATCH --job-name=SSv${version}${red_mode}n${n}r${r}
+#SBATCH --job-name=v${v}t${red_mode}r${r}
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=20
@@ -30,8 +50,8 @@ for r in "${repetition[@]}"; do
 #SBATCH --partition=ict-gh200
 #SBATCH --account=spfm
 #SBATCH --time=24:00:00
-#SBATCH --output=${root}/${red_mode}_%j.out
-#SBATCH --error=${root}/${red_mode}_%j.err
+#SBATCH --output=${ROOT}/${p}_%j.out
+#SBATCH --error=${ROOT}/${p}_%j.err
 
 cd "\$SLURM_SUBMIT_DIR"
 
@@ -58,4 +78,7 @@ srun --unbuffered singularity exec --nv \
         python3 -u $SCRIPT_PATH $FLAGS
     "
 EOT
+done
+done
+done 
 done

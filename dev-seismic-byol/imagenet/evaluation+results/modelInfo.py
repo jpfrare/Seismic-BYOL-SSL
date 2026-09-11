@@ -12,7 +12,7 @@ class ModelInfo():
                                                                             #datasets e protocolos de finetuning
     version: str                                                                            
 
-    pretrain_acc1: dict[str, float] | list                                  #-> Top-1 Accuracy em média e desvio padrão
+    pretrain_acc1: dict[str, float]                                         #-> Top-1 Accuracy em média e desvio padrão
     pretrain_dataframe: pd.DataFrame                                        #-> dataframe que contém os dados agregados das reeptições do pré-treino por step
     finetune_dataframes: dict[str, dict[str, pd.DataFrame]]                 #-> dataframes que contém todos os dados agregados das repetiões de todas as combinações de datasets e protocolos do finetuning por época
     finetune_miou: dict[str, dict[str, dict[str, float]]] |  list[float]    #-> valores (média e desvio padrão) de todas as combinações de datasets e protocolos do finetuning
@@ -26,7 +26,6 @@ class ModelInfo():
     datasets: list[str]                                                     #-> datasets usados no modelo
     protocols: list[str]                                                    #-> protocolos utlizados
 
-    torchPretrained: bool                                                   #-> modelo pretrainado do torch
     scratch: bool                                                           #-> modelo from scratch no finetune
 
     def __init__(self, 
@@ -38,7 +37,6 @@ class ModelInfo():
     num_classes: int = 1000, 
     per_class: int = 1300, 
     scratch: bool = False, 
-    torchPretrained: bool = False,
     datasets: list = ['seam_ai_N', 'f3_N'],
     protocols: list = ['full_finetuning_deeplab', 'full_freeze_linear']):
 
@@ -51,7 +49,6 @@ class ModelInfo():
         self.protocols = protocols
         self.version = version
         self.root_path = root_path
-        self.torchPretrained = torchPretrained
         self.scratch = scratch
 
         if scratch:
@@ -62,14 +59,6 @@ class ModelInfo():
             self.pretrain_path = None
             base = Path('scratch')
             self._set_finetune_paths(base)
-
-        elif torchPretrained:
-            self.pretrained_images = 1_280_000
-            self.pretrained_classes = 1000
-            self.model_name = 'Torch Pretrained'
-
-            self.pretrain_path = None
-            self.finetune_path = None
 
         elif reduction_mode == 'full':
             self.pretrained_images = 1_280_000
@@ -140,32 +129,7 @@ class ModelInfo():
         self.finetune_dataframes = self._create_dataset_protocols_dictionary(self.datasets, self.protocols, start_value= [])
         self.finetune_miou = self._create_dataset_protocols_dictionary(self.datasets, self.protocols, start_value= [])
         self.pretrain_dataframe = []
-        self.pretrain_acc1 = []
-
-        if self.torchPretrained:
-            #no caso de ser um modelo pré-treinado no torch, ja temos os valores dos resultados do vinícius para esse conjunto de datasets e protocolos
-            self.finetune_miou['f3_N']['full_finetuning_deeplab'] = {
-                'mean': 0.75,
-                'std': 0.01,
-            }
-            self.finetune_miou['f3_N']['full_freeze_linear'] = {
-                'mean': 0.47,
-                'std': 0.00,
-            }
-            self.finetune_miou['seam_ai_N']['full_finetuning_deeplab'] = {
-                'mean': 0.72,
-                'std': 0.01,
-            }
-            self.finetune_miou['seam_ai_N']['full_freeze_linear'] = {
-                'mean': 0.36,
-                'std': 0.00,
-            }
-
-            self.pretrain_dataframe = pd.DataFrame()
-            for dataset in self.datasets:
-                for protocol in self.protocols:
-                    self.finetune_dataframes[dataset][protocol] = pd.DataFrame()
-            return
+        self.pretrain_acc1 = {'Max': [], 'Min': [], 'Median': [], 'Mean': [], 'Std': []}
 
         for repetition in range(3):
 
@@ -175,20 +139,13 @@ class ModelInfo():
                 self.pretrain_dataframe.append(self._read_csv(pretrain_csv_path, ['step', 'train_loss_epoch', 'val_acc1', 'val_acc5', 'val_loss']))
 
                 
-                path = self.root_path / 'Train' / self.version / f'{repetition}' / self.pretrain_path / 'evaluation'
+                path = self.root_path / 'Train' / self.version / f'{repetition}' / self.pretrain_path / 'evaluation' / 'acc_summary.yaml'
                 print(f'model name: {self.model_name}, path: {path}')
-                yaml_files = list(path.glob('metrics*.yaml'))
 
-                if not yaml_files:
-                    raise FileNotFoundError(
-                        f"Nenhum metrics*.yaml encontrado em {path}"
-                    )
-
-                yaml_path = yaml_files[0]
-                with open(yaml_path, 'r') as file:
+                with open(path, 'r') as file:
                     data = yaml.safe_load(file)
-                    acc = data['classification']['Accuracy Top-1'][0]
-                    self.pretrain_acc1.append(acc)
+                    for key in data.keys():
+                        self.pretrain_acc1[key].append(data[key][0])
                 
 
             #--------------------------------lendo repetições do finetuning---------------------------------------------------------
@@ -205,10 +162,9 @@ class ModelInfo():
                         self.finetune_miou[dataset][protocol].append(miou)
         
         if not self.scratch:
-            self.pretrain_acc1 = {
-                'mean': np.mean(self.pretrain_acc1),
-                'std': np.std(self.pretrain_acc1, ddof=1)
-            }
+            for key in self.pretrain_acc1.keys():
+                self.pretrain_acc1[key] = {'mean': np.mean(self.pretrain_acc1[key]), 'std': np.std(self.pretrain_acc1[key], ddof= 1)}
+                
 
         if not self.scratch:
             #----------------------------------------agregando repetições do pré-treino----------------------------------------------
@@ -250,8 +206,8 @@ class ModelInfo():
     def get_pretrain_dataframe(self) -> pd.DataFrame:
         return self.pretrain_dataframe
     
-    def get_pretrain_top1acc(self) -> tuple[float, float]:
-        return (self.pretrain_acc1['mean'], self.pretrain_acc1['std'])
+    def get_pretrain_top1acc(self, key: str = 'Mean') -> tuple[float, float]:
+        return (self.pretrain_acc1[key]['mean'], self.pretrain_acc1[key]['std'])
     
     def get_finetune_dataframe(self, dataset: str, protocol: str) -> pd.DataFrame:
         return self.finetune_dataframes[dataset][protocol]

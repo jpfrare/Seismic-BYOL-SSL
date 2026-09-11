@@ -92,6 +92,7 @@ for version in ['traditional', 'modern']:
                 title= f'{capitalized_version} Default Pretrain Top-1 Accuracy',
                 save_path= PRETRAIN_SAVE,
                 pretrain= True,
+                pretrain_key= 'Mean',
                 cmap= 'crest'
         )
 
@@ -110,5 +111,6 @@ for version in ['traditional', 'modern']:
                 title= f'{capitalized_version} Taxonomic Models Pretrain Top-1 Accuracy',
                 save_path= PRETRAIN_SAVE,
                 pretrain = True,
+                pretrain_key= 'Mean'
         )
 

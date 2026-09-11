@@ -1,7 +1,9 @@
 import argparse 
 import os
 from pathlib import Path
-
+import yaml
+import numpy as np
+import shutil
 # -------------------- Torch & TorchVision --------------------
 import torch
 import torch.nn as nn
@@ -233,19 +235,31 @@ if not Path(organizer.evaluation_ckpt_dir/'best.ckpt').exists():
         save_run_status=True,
     )
     pipeline.run(data_module, task= 'fit')
+
 elif organizer.args.eval_acc:
 
     ckpt = torch.load(Path(organizer.evaluation_ckpt_dir) / 'best.ckpt',map_location='cpu')
     model.load_state_dict(ckpt['state_dict'])
-    
+
     print('Starting Evaluation Top-1 Accuracy')
     model = model.cuda()
-    accs = model.evaluate_per_class_acc(
-        data_module.val_dataloader()
-    )
+    accs = np.array(model.evaluate_acc(data_module.val_dataloader()))
 
-    print(f'Número de classes: {len(accs)}')
-    print(f'Menor acurácia: {min(accs):.4f}')
-    print(f'Maior acurácia: {max(accs):.4f}')
-    print(f'Média: {sum(accs) / len(accs):.4f}')
-    print(f'Primeiras 20 classes: {accs[:20]}')
+    summary = {
+        'Mean': float(accs.mean()),
+        'Std': float(accs.std()),
+        'Min': float(accs.min()),
+        'Max': float(accs.max()),
+        'Median': float(np.median(accs))
+    }
+
+    if organizer.evaluation_dir.exists():
+        shutil.rmtree(organizer.evaluation_dir) #exclui a pasta para evitar lixo, pode ser que com o crescimento das métricas isso dva ser removido, mas nao por agora
+        
+    organizer.evaluation_dir.mkdir(parents= True, exist_ok= True)
+    save_yaml_path = organizer.evaluation_dir / 'acc_summary.yaml'
+
+    with open(save_yaml_path, 'w') as file:
+        yaml.dump(summary, file)
+
+    print(f'Saved Accuracy summary at {save_yaml_path}!')

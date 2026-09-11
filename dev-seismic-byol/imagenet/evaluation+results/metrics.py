@@ -184,13 +184,14 @@ class Metrics():
     dataset: str | None = None,
     protocol: str | None = None,
     pretrain: bool = False,
+    pretrain_key: str = 'Mean',
     cmap: str = "rocket",
     ):
 
         if pretrain:
-            models_to_plot = [model for model in self.models if not (model.scratch or model.torchPretrained)]
+            models_to_plot = [model for model in self.models if not (model.scratch)]
         else:
-            models_to_plot = [model for model in self.models if not model.torchPretrained]
+            models_to_plot = [model for model in self.models]
 
         rows = sorted(
             {model.pretrained_classes for model in models_to_plot},
@@ -221,7 +222,7 @@ class Metrics():
         for model in models_to_plot:
             # ignora modelos que não pertencem à malha
             if pretrain:
-                mean, std = model.get_pretrain_top1acc()
+                mean, std = model.get_pretrain_top1acc(pretrain_key)
                 mean *= 100
                 std *= 100
 
@@ -331,6 +332,7 @@ class Metrics():
     dataset: str | None = None,
     protocol: str | None = None,
     pretrain: bool = False,
+    pretrain_key: str = 'Mean'
     ):
 
         classes = sorted({model.pretrained_classes for model in self.models})
@@ -363,7 +365,7 @@ class Metrics():
                 continue
 
             mean, std = (
-                default_model.get_pretrain_top1acc()
+                default_model.get_pretrain_top1acc(pretrain_key)
                 if pretrain
                 else default_model.get_finetune_miou(dataset, protocol)
             )
@@ -372,7 +374,7 @@ class Metrics():
             default_std.append(std * 100)
 
             mean, std = (
-                tax_model.get_pretrain_top1acc()
+                tax_model.get_pretrain_top1acc(pretrain_key)
                 if pretrain
                 else tax_model.get_finetune_miou(dataset, protocol)
             )
