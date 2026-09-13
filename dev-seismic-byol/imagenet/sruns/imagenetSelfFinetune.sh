@@ -7,21 +7,23 @@ SCRIPT_PATH="/petrobr/parceirosbr/home/joao.frare/workspace/spfm/Seismic-Byol/de
 WORKSPACE="/petrobr/parceirosbr/home/joao.frare/workspace"
 export SIF="/petrobr/parceirosbr/spfm/singularity/arm64/deeprock/ngc/MINERVA_v0_3_9-beta-SPINN_v0_0_1.sif"
 
-version=(traditional modern)
 repetition=(0 1 2)
-red_mode=full
+level=(9 7 6 3)
+red_mode=taxonomic
+version=(modern traditional)
 task=PretrainEval
-
 for v in "${version[@]}"; do
 for r in "${repetition[@]}"; do
-    FLAGS=" --reduction_mode ${red_mode} --version ${v} --repetition ${r} --eval_acc"
+for l in "${level[@]}"; do
+
+    FLAGS="--reduction_mode ${red_mode} --version ${v} --top_down --level ${l} --repetition ${r} --eval_acc"
     ROOT=/petrobr/parceirosbr/home/joao.frare/workspace/spfm/Seismic-Byol/dev-seismic-byol/imagenet/jobs_out/${task}/${v}/repetition_${r}/${red_mode}/
     mkdir -p ${ROOT}
 
     sbatch <<EOT
 #!/bin/bash
 
-#SBATCH --job-name=v${v}t${red_mode}_r${r}
+#SBATCH --job-name=v${v}t${red_mode}_r${r}_l${l}
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=20
@@ -57,5 +59,6 @@ srun --unbuffered singularity exec --nv \
         python3 -u $SCRIPT_PATH $FLAGS
     "
 EOT
+done
 done
 done
