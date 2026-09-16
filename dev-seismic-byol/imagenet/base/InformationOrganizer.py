@@ -150,6 +150,8 @@ class FinetuningOrganizer(TrainOrganizer):
         )
         self.parser.add_argument("--finetune_dataset", type= str, choices= ['f3_N', 'seam_ai_N'], required= True, help= 'dataset de finetune')
 
+        self.parser.add_argument("--eval", action= 'store_true', help= 'será feita a avaliação')
+
     def _get_finetune_dirs_and_set_model_name(self):
         if self.args.scratch:
             self.model_name = 'scratch'
@@ -185,5 +187,5 @@ class PretrainEvaluationOrganizer(TrainOrganizer):
 
     def _set_up_parser(self):
         super()._set_up_parser()
-        self.parser.add_argument("--eval_acc", action= 'store_true', help= 'avaliação de acurácia por classe e global')
+        self.parser.add_argument("--eval", action= 'store_true', help= 'avaliação de acurácia por classe e global')
     

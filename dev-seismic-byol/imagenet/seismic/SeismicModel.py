@@ -34,3 +34,23 @@ class SeismicModel(DeepLabV3):
             "optimizer": optimizer,
             "lr_scheduler": scheduler,
         }
+
+    def test_and_evaluate_IoU(self, val_dataloader, metric_collection):
+
+        self.cuda()
+        self.eval()
+        metric_collection.reset()
+
+        with torch.no_grad():
+
+            for batch_idx , (x,y) in enumerate(val_dataloader):
+                print(f'Batch: {batch_idx}')
+
+                x = x.to(self.device)
+                y = y.to(self.device)
+                y_hat = self(x)
+
+                metric_collection.update(y_hat, y)
+
+
+        return metric_collection.compute()

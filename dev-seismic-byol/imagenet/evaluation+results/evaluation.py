@@ -72,7 +72,44 @@ def build_taxonomic_metrics(root_path: Path, version: str, datasets: list[str], 
 
 
 
-csv_acc = {'traditional': None, 'modern': None}
+modern_full = ModelInfo(
+        root_path= ROOT,
+        reduction_mode= 'full', 
+        version= 'modern',  
+        datasets= [],
+        protocols= [])
+
+traditional_full = ModelInfo(
+        root_path= ROOT,
+        reduction_mode= 'full', 
+        version= 'traditional',  
+        datasets= [],
+        protocols= [])
+
+modern_few =  ModelInfo(
+        root_path= ROOT,
+        reduction_mode= 'default',  
+        num_classes= 125, 
+        per_class= 1300,
+        version= 'modern', 
+        datasets= [],
+        protocols= [])
+
+tradidional_few = ModelInfo(
+        root_path= ROOT,
+        reduction_mode= 'default',  
+        num_classes= 125, 
+        per_class= 1300,
+        version= 'traditional', 
+        datasets= [],
+        protocols= [])
+
+metrics = Metrics([])
+
+metrics.compare_acc_histogram(traditional_model= traditional_full, modern_model= modern_full, save_path= Path('./data'), name= 'Full Dataset Hstogram')
+metrics.compare_acc_histogram(traditional_model= tradidional_few, modern_model= modern_few, save_path= Path('./data'), name= 'Few Dataset Hstogram')
+metrics.compare_acc_per_class(modern_model= modern_full, traditional_model= traditional_full, save_path= Path('./data'), name= 'Full Dataset Per Class')
+metrics.compare_acc_per_class(modern_model= modern_few, traditional_model= tradidional_few, save_path= Path('./data'), name= '125C 1300 IpC Per Class')
 
 #pretrain
 for version in ['traditional', 'modern']:
@@ -84,10 +121,13 @@ for version in ['traditional', 'modern']:
         default_metrics.individual_plot(
                 title= f'{capitalized_version} Default Models Train and Val Loss x Steps',
                 save_path= PRETRAIN_SAVE,
-                y_axis= ['train_loss', 'val_loss'],
+                y1_axis= ['train_loss', 'val_loss'],
+                y2_axis= ['acc1'],
+                y2_limits= (0, 100),
+                mul_factor2= 100,
                 x_axis= 'step',
                 ncols= 4,
-                yscale= 'log'
+                y1scale= 'log',
         )
 
         default_metrics.plot_heatmap(
@@ -103,10 +143,13 @@ for version in ['traditional', 'modern']:
         taxonomic_metrics.individual_plot(
                 title= f'{capitalized_version} Taxonomic Models Train and Val Loss x Steps',
                 save_path= PRETRAIN_SAVE,
-                y_axis= ['train_loss', 'val_loss'],
+                y1_axis= ['train_loss', 'val_loss'],
+                y2_axis= ['acc1'],
+                y2_limits= (0, 100),
+                mul_factor2= 100,
                 x_axis= 'step',
                 ncols= 2,
-                yscale= 'log'
+                y1scale= 'log',
         )
 
         taxonomic_metrics.plot_taxonomic_x_default(
@@ -116,7 +159,5 @@ for version in ['traditional', 'modern']:
                 pretrain_key= 'Mean'
         )
 
-        all_metrics = default_metrics + taxonomic_metrics
-
-        csv_acc[version] = all_metrics.get_pretrain_acc_eval(PRETRAIN_SAVE / f'{capitalized_version}_Accuracy_Evaluation.csv')
+        
 

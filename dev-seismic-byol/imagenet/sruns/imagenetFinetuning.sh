@@ -5,12 +5,12 @@
 # --------------------------
 SCRIPT_PATH="/petrobr/parceirosbr/home/joao.frare/workspace/spfm/Seismic-Byol/dev-seismic-byol/imagenet/imagenetFinetuning.py"
 WORKSPACE="/petrobr/parceirosbr/home/joao.frare/workspace"
-export SIF="/petrobr/parceirosbr/spfm/singularity/amd64/deeprock/ngc/MINERVA_v0_3_9-beta-SPINN_v0_0_1.sif"
+export SIF="/petrobr/parceirosbr/spfm/singularity/arm64/deeprock/ngc/MINERVA_v0_3_9-beta-SPINN_v0_0_1.sif"
 
-repetition=(3 4)
-finetune_dataset=('seam_ai_N' 'f3_N')
-protocol=('full_freeze' 'full_finetuning')
-level=(9 7 6 3)
+repetition=(0)
+finetune_dataset=('seam_ai_N')
+protocol=('full_freeze')
+level=(9)
 
 for l in "${level[@]}"; do
     for r in "${repetition[@]}"; do
@@ -27,7 +27,7 @@ for l in "${level[@]}"; do
 
                 fi
 
-                FLAGS="--reduction_mode taxonomic --level ${l} --top_down --backbone_freeze ${freeze} --pred_head ${head} --repetition ${r} --finetune_dataset ${d}"
+                FLAGS="--reduction_mode taxonomic --level ${l} --top_down --backbone_freeze ${freeze} --pred_head ${head} --repetition ${r} --version modern --finetune_dataset ${d}"
                 root=/petrobr/parceirosbr/home/joao.frare/workspace/spfm/Seismic-Byol/dev-seismic-byol/imagenet/jobs_out/imagenetFinetune/finetune_${d}/taxonomic/repetition_${r}
                 mkdir -p "${root}"
 
@@ -39,7 +39,7 @@ for l in "${level[@]}"; do
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=24
 #SBATCH --gpus-per-node=1       
-#SBATCH --partition=ict-h100
+#SBATCH --partition=ict-gh200
 #SBATCH --account=spfm
 #SBATCH --time=01:30:00
 #SBATCH --output=${root}/taxonomic_level_${l}_${p}_%j.out

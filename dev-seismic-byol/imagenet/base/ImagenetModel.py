@@ -128,6 +128,7 @@ class ImagenetModel(L.LightningModule):
     def evaluate_acc(self, val_loader) -> list:
         '''função que roda uma validação e retorna uma lista onde lista[i] é a acurácia referente a cada classe
         como o dataset de validação é balanceado, a média dessa lista retorna a acurácia total'''
+        model = model.cuda()
         
         print("len(val_loader):", len(val_loader))
         print("batch size:", val_loader.batch_size)
@@ -165,6 +166,5 @@ class ImagenetModel(L.LightningModule):
 
         return [
             class_acc[c]['matches'] / class_acc[c]['count']
-            for c in class_acc
-            if class_acc[c]['count'] > 0
+            for c in range((self.num_classes))
         ]

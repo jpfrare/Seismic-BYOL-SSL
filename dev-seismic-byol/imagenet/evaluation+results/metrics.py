@@ -36,11 +36,15 @@ class Metrics():
         self,
         title: str,
         save_path: Path,
-        y_axis: list[str],
+        y1_axis: list[str],
+        y2_axis: list[str] | None,
+        y2_limits: tuple[float, float] | None,
         x_axis: str,
-        mul_factor: float = 1,
+        mul_factor1: float = 1,
+        mul_factor2: float = 1,
         ncols: int = 4,
-        yscale: str | None = None,
+        y1scale: str | None = None,
+        y2scale: str | None = None,
         finetune: bool = False,
         dataset: str | None = None,
         protocol: str | None = None):
@@ -54,15 +58,18 @@ class Metrics():
 
         axs = axs.flatten() if num_models > 1 else [axs]
 
+        handles = []
+        labels = []
+
         for i in range(num_models):
             ax = axs[i]
             dataframe = self.models[i].get_pretrain_dataframe() if not finetune else self.models[i].get_finetune_dataframe(dataset, protocol)
             if dataframe.empty:
                 continue
 
-            for metric in y_axis:
-                mean = dataframe[f'mean_{metric}']*mul_factor
-                std = dataframe[f'std_{metric}']*mul_factor
+            for metric in y1_axis:
+                mean = dataframe[f'mean_{metric}']*mul_factor1
+                std = dataframe[f'std_{metric}']*mul_factor1
 
                 ax.plot(
                     dataframe[x_axis],
@@ -81,10 +88,49 @@ class Metrics():
             ax.set_title(self.models[i].model_name, fontsize=12, fontweight='bold')
             ax.grid(True, linestyle='--', alpha=0.5)
 
-            if yscale is not None:
-                ax.set_yscale(yscale)
-        
-        handles, labels = axs[0].get_legend_handles_labels()
+            if y1scale is not None:
+                ax.set_yscale(y1scale)
+
+            if i == 0:
+                handle, label = ax.get_legend_handles_labels()
+                handles.extend(handle)
+                labels.extend(label)
+
+            if y2_axis is not None:
+                ax2 = ax.twinx()
+
+                for metric in y2_axis:
+                    mean = dataframe[f'mean_{metric}'] * mul_factor2
+                    std = dataframe[f'std_{metric}'] * mul_factor2
+
+                    ax2.plot(
+                        dataframe[x_axis],
+                        mean,
+                        linewidth = 1.2,
+                        label = metric,
+                        color= 'green',
+                        alpha= 0.5
+                    )
+
+                    ax2.fill_between(
+                        dataframe[x_axis],
+                        mean - std,
+                        mean + std,
+                        alpha= 0.15,
+                        zorder= 2,
+                        color= 'green'
+                    )
+
+                if y2scale is not None:
+                    ax2.set_yscale(y2scale)
+
+                ax2.set_ylim(y2_limits)
+
+                if i == 0:
+                    handle, label = ax2.get_legend_handles_labels()
+                    handles.extend(handle)
+                    labels.extend(label)
+            
 
         fig.legend(
             handles,
@@ -222,7 +268,7 @@ class Metrics():
         for model in models_to_plot:
             # ignora modelos que não pertencem à malha
             if pretrain:
-                mean, std = model.get_pretrain_top1acc(pretrain_key)
+                mean, std = model.get_pretrain_top1acc()
                 mean *= 100
                 std *= 100
 
@@ -365,7 +411,7 @@ class Metrics():
                 continue
 
             mean, std = (
-                default_model.get_pretrain_top1acc(pretrain_key)
+                default_model.get_pretrain_top1acc()
                 if pretrain
                 else default_model.get_finetune_miou(dataset, protocol)
             )
@@ -374,7 +420,7 @@ class Metrics():
             default_std.append(std * 100)
 
             mean, std = (
-                tax_model.get_pretrain_top1acc(pretrain_key)
+                tax_model.get_pretrain_top1acc()
                 if pretrain
                 else tax_model.get_finetune_miou(dataset, protocol)
             )
@@ -455,33 +501,70 @@ class Metrics():
             save_path,
         )
 
-    def get_pretrain_acc_eval(self, save_path) -> pd.DataFrame:
-        data = {'Model Name': [],
-                'Mean': [],
-                'Inferior Distance': [],
-                'Superior Distance': [],
-                'Std': [],}
+    def compare_acc_per_class(self, traditional_model, modern_model, save_path, name):
+        trad_y_axis_mean, trad_y_axis_std = traditional_model.get_pretrain_acc_per_class()
+        modern_y_axis_mean, modern_y_axis_std = modern_model.get_pretrain_acc_per_class()
 
-        for model in self.models:
-            data['Model Name'].append(model.model_name)
-            median, _ = model.get_pretrain_top1acc('Median')
-            mIn, _ = model.get_pretrain_top1acc('Min')
-            mAx, _ = model.get_pretrain_top1acc('Max')
-            Std, _ = model.get_pretrain_top1acc('Std')
-            mean, _ = model.get_pretrain_top1acc('Mean')
+        x_axis = np.arange(1000)
 
-            inferior_distance = median - mIn
-            superior_distance = mAx - median
+        fig, ax  = plt.subplots(figsize=(20,6))
 
-            data['Mean'].append(round(mean, 3))
-            data['Superior Distance'].append(round(superior_distance, 3))
-            data['Inferior Distance'].append(round(inferior_distance, 3))
-            data['Std'].append(round(Std), 3)
-            
+        diff = trad_y_axis_mean - modern_y_axis_mean
 
-        data = pd.DataFrame(data)
-        data.to_csv(save_path, index= False)
+        ax.bar(x_axis, diff, width= 1.0)
+        ax.axhline(0, linewidth=1)
 
-        return data
+        ax.set_xlabel('Class')
+        ax.set_ylabel('Trad - Modern Accuracy')
+
+        ax.set_xticks(np.arange(0, len(x_axis), 100))
+
+        ax.legend()
+        ax.grid(axis='y', alpha=0.2)
+
+        self._save_plot(fig, name, save_path)
+
+    def compare_acc_histogram(
+            self,
+            traditional_model,
+            modern_model,
+            save_path,
+            name
+        ):
+
+        trad_mean, _ = traditional_model.get_pretrain_acc_per_class()
+        modern_mean, _ = modern_model.get_pretrain_acc_per_class()
+
+        diff = trad_mean - modern_mean
+
+        n_trad = np.sum(diff > 0)
+        n_modern = np.sum(diff < 0)
+        n_equal = np.sum(diff == 0)
+
+        fig, ax = plt.subplots(figsize=(8, 5))
+
+        ax.hist(
+            diff,
+            bins=40
+        )
+
+        ax.axvline(
+            0,
+            linestyle='--',
+            linewidth=1
+        )
+
+        ax.set_xlabel('Traditional - Modern Top-1 Accuracy')
+        ax.set_ylabel('Number of Classes')
+
+        ax.set_title(
+            f'Traditional > Modern: {n_trad} | '
+            f'Modern > Traditional: {n_modern} | '
+            f'Equal: {n_equal}'
+        )
+
+        fig.tight_layout()
+
+        self._save_plot(fig, name, save_path)
 
 

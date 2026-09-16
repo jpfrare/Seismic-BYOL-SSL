@@ -1,18 +1,18 @@
 #!/bin/bash
 
 #full:
-version=(modern default)
+version=(modern tradicional)
 repetition=(0 1 2)
 red_mode=full
 task=PretrainEval
 for v in "${version[@]}"; do
 for r in "${repetition[@]}"; do
-    FLAGS=" --reduction_mode ${red_mode} --version ${v} --repetition ${r}"
+    FLAGS=" --reduction_mode ${red_mode} --version ${v} --repetition ${r} --eval_acc"
     ROOT=/petrobr/parceirosbr/home/joao.frare/workspace/spfm/Seismic-Byol/dev-seismic-byol/imagenet/jobs_out/${task}/${v}/repetition_${r}/${red_mode}/
     mkdir -p ${ROOT}
 
 #default
-nrepetition=(0 1 2)
+repetition=(0 1 2)
 version=(modern traditional)
 num_classes=(1000 500 477 250 200 125 80 9)
 red_mode=default

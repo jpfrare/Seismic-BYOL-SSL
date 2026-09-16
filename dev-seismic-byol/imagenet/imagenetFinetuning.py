@@ -1,11 +1,12 @@
 # -------------------- Python base --------------------
 import os
 from pathlib import Path
+import yaml
 
 # -------------------- PyTorch & Timm --------------------
 import torch
 import torch.nn as nn
-from torchmetrics import Accuracy, JaccardIndex, F1Score
+from torchmetrics import JaccardIndex, MetricCollection
 import timm
 import timm.optim
 from timm.loss import BinaryCrossEntropy
@@ -90,11 +91,7 @@ else:
 val_metrics = {
     "mIoU": JaccardIndex(
         num_classes=num_classes, average="macro", task="multiclass"
-    ),
-    "acc": Accuracy(num_classes=num_classes, task="multiclass"),
-    "f1-weighted": F1Score(
-        num_classes=num_classes, task="multiclass", average="weighted"
-    ),
+    )
 }
 #Parametros em comum: ajustar o freeze_backbone e o freeze_layers
 training_parameters = {
@@ -159,7 +156,6 @@ data_module = SeismicDataModule(
     test_dataset = None,
     )
 
-#DEBUG
 
 batch = next(iter(data_module.val_dataloader()))
 x, y = batch
@@ -171,58 +167,69 @@ print("val size:", len(data_module.val_dataset))
 print("test size:", len(data_module.test_dataset))
 print("predict size:", len(data_module.predict_dataset))
 
-csv_logger = CSVLogger(organizer.finetune_log_dir, name='', version= '')
-#------------------------Callbacks-------------------------------------------------------------------------
-ckpt_callback = ModelCheckpoint(
-    monitor= 'val_mIoU',
-    mode= 'max',
-    save_top_k=1,
-    save_last= False,
-    dirpath= organizer.finetune_ckpt_dir,
-    filename= 'best',
-    auto_insert_metric_name=False
-)
-#------------------------TRAINER---------------------------------------------------------------------------
+if not (organizer.finetune_ckpt_dir / 'best.ckpt').exists():
+    csv_logger = CSVLogger(organizer.finetune_log_dir, name='', version= '')
+    #------------------------Callbacks-------------------------------------------------------------------------
+    ckpt_callback = ModelCheckpoint(
+        monitor= 'val_mIoU',
+        mode= 'max',
+        save_top_k=1,
+        save_last= False,
+        dirpath= organizer.finetune_ckpt_dir,
+        filename= 'best',
+        auto_insert_metric_name=False
+    )
+    #------------------------TRAINER---------------------------------------------------------------------------
 
-trainer = Trainer(
-    logger= csv_logger,
-    max_epochs= num_epochs,
-    limit_val_batches = 1.0,
-    strategy= 'auto',
-    devices= 1,
-    check_val_every_n_epoch=1,
-    callbacks= [ckpt_callback]
-)
+    trainer = Trainer(
+        logger= csv_logger,
+        max_epochs= num_epochs,
+        limit_val_batches = 1.0,
+        strategy= 'auto',
+        devices= 1,
+        check_val_every_n_epoch=1,
+        callbacks= [ckpt_callback]
+    )
 
-pipeline = SimpleLightningPipeline(
-    model=model,
-    trainer=trainer,
-    log_dir=organizer.finetune_log_dir,
-    save_run_status=True,
-)
+    pipeline = SimpleLightningPipeline(
+        model=model,
+        trainer=trainer,
+        log_dir=organizer.finetune_log_dir,
+        save_run_status=True,
+    )
 
-pipeline.run(data_module, task="fit")
-    
-num_classes = 6
+    pipeline.run(data_module, task="fit")
 
-metrics = {
-    "mIoU": JaccardIndex(
-        num_classes=num_classes, average="macro", task="multiclass"
-    ),
-    "acc": Accuracy(num_classes=num_classes, task="multiclass"),
-    "f1-weighted": F1Score(
-        num_classes=num_classes, task="multiclass", average="weighted"
-    ),
-}
-    
-pipeline = SimpleLightningPipeline(
-    model=model,
-    trainer=trainer,
-    log_dir=organizer.finetune_log_dir,
-    save_run_status=True,
-    seed=organizer.args.repetition,
-    apply_metrics_per_sample=False,
-    classification_metrics=metrics,
-)
-    
-pipeline.run(data_module, task="evaluate", ckpt_path= organizer.finetune_ckpt_dir / 'best.ckpt')
+
+if organizer.args.eval:
+
+    ckpt = torch.load(organizer.finetune_ckpt_dir / 'best.ckpt')
+    model.load_state_dict(ckpt['state_dict'])
+
+    num_classes = 6
+
+    metrics = MetricCollection({
+        "mIoU": JaccardIndex(
+            num_classes = num_classes,
+            average = 'macro',
+            task = 'multiclass'
+        ),
+
+        "IoU": JaccardIndex(
+            num_classes = num_classes,
+            average = None,
+            task = 'multiclass'
+        )
+    })
+
+    metrics = model.test_and_evaluate_IoU(data_module.val_dataloader(), metrics)
+
+    data = {
+        "mIoU": metrics["mIoU"].item(),
+        "IoU": metrics["IoU"].tolist()
+    }
+
+    with open(organizer.finetune_log_dir / 'metrics.yaml', 'w') as file:
+        yaml.safe_dump(data, file)
+
+

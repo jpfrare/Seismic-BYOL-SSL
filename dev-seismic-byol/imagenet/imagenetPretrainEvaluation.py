@@ -242,7 +242,6 @@ elif organizer.args.eval_acc:
     model.load_state_dict(ckpt['state_dict'])
 
     print('Starting Evaluation Top-1 Accuracy')
-    model = model.cuda()
     accs = np.array(model.evaluate_acc(data_module.val_dataloader()))
 
     summary = {
@@ -257,9 +256,8 @@ elif organizer.args.eval_acc:
         shutil.rmtree(organizer.evaluation_dir) #exclui a pasta para evitar lixo, pode ser que com o crescimento das métricas isso dva ser removido, mas nao por agora
         
     organizer.evaluation_dir.mkdir(parents= True, exist_ok= True)
-    save_yaml_path = organizer.evaluation_dir / 'acc_summary.yaml'
+    save_accs_path = organizer.evaluation_dir / 'acc_per_class'
 
-    with open(save_yaml_path, 'w') as file:
-        yaml.dump(summary, file)
+    np.save(save_accs_path, accs)
 
-    print(f'Saved Accuracy summary at {save_yaml_path}!')
+    print(f'Saved Accuracy summary at {save_accs_path}!')

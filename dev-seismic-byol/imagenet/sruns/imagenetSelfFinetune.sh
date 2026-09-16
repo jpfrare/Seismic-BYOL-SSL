@@ -16,7 +16,7 @@ for v in "${version[@]}"; do
 for r in "${repetition[@]}"; do
 for l in "${level[@]}"; do
 
-    FLAGS="--reduction_mode ${red_mode} --version ${v} --top_down --level ${l} --repetition ${r} --eval_acc"
+    FLAGS="--reduction_mode ${red_mode} --version ${v} --top_down --level ${l} --repetition ${r} --eval"
     ROOT=/petrobr/parceirosbr/home/joao.frare/workspace/spfm/Seismic-Byol/dev-seismic-byol/imagenet/jobs_out/${task}/${v}/repetition_${r}/${red_mode}/
     mkdir -p ${ROOT}
 
