@@ -1,5 +1,5 @@
 from minerva.models.nets.image.deeplabv3 import DeepLabV3Backbone, DeepLabV3, DeepLabV3PredictionHead
-from torch.optim.lr_scheduler import ReduceLROnPlateau
+from torch.optim.lr_scheduler import ReduceLROnPlateau, OneCycleLR, CosineAnnealingLR
 import torch
 
 class SeismicModel(DeepLabV3):
@@ -8,18 +8,23 @@ class SeismicModel(DeepLabV3):
 
         optimizer = self.optimizer(
             self.parameters(),
-            **self.optimizer_kwargs,
+            **self.optimizer_kwargs
         )
 
         if self.lr_scheduler is None:
             return optimizer
 
+        scheduler_kwargs = dict(self.lr_scheduler_kwargs)
+
+        if self.lr_scheduler is OneCycleLR:
+            scheduler_kwargs["total_steps"] = self.trainer.estimated_stepping_batches
+
         scheduler = self.lr_scheduler(
             optimizer,
-            **self.lr_scheduler_kwargs,
+            **scheduler_kwargs
         )
 
-        if isinstance(scheduler, torch.optim.lr_scheduler.ReduceLROnPlateau):
+        if isinstance(scheduler, ReduceLROnPlateau):
             return {
                 "optimizer": optimizer,
                 "lr_scheduler": {
@@ -30,16 +35,38 @@ class SeismicModel(DeepLabV3):
                 },
             }
 
+        if isinstance(scheduler, OneCycleLR):
+            return {
+                "optimizer": optimizer,
+                "lr_scheduler": {
+                    "scheduler": scheduler,
+                    "interval": "step",
+                    "frequency": 1,
+                },
+            }
+
+        if isinstance(scheduler, CosineAnnealingLR):
+            return {
+                "optimizer": optimizer,
+                "lr_scheduler": {
+                    "scheduler": scheduler,
+                    "interval": "epoch",
+                    "frequency": 1,
+                },
+            }
+
         return {
             "optimizer": optimizer,
             "lr_scheduler": scheduler,
         }
+        
 
     def test_and_evaluate_IoU(self, val_dataloader, metric_collection):
 
         self.cuda()
         self.eval()
         metric_collection.reset()
+        metric_collection = metric_collection.to(self.device)
 
         with torch.no_grad():
 
@@ -49,6 +76,7 @@ class SeismicModel(DeepLabV3):
                 x = x.to(self.device)
                 y = y.to(self.device)
                 y_hat = self(x)
+                y = y.squeeze(1)
 
                 metric_collection.update(y_hat, y)
 

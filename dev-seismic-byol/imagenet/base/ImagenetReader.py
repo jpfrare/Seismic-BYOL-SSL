@@ -4,7 +4,7 @@ import os
 from pathlib import Path
 from PIL import Image, UnidentifiedImageError
 from scipy.io import loadmat
-from .utils import reduce_taxonomic_diversity
+from .TaxonomicHandler import TaxonomicHandler
 import time
 
 #por alguma razão mistica, tanto o dataset de teste como de treino sao arrays estruturados do numpy
@@ -60,9 +60,10 @@ class ImagenetReader:
         ) from last_error
     
     def to_coarse_classes(self, top_down: bool, level: int, mat_path: str):
+        handler = TaxonomicHandler(mat_path)
         unique_winds = sorted(list(set(row[2] for row in self.data)))
 
-        self.wind_to_coarse, num_classes = reduce_taxonomic_diversity(unique_winds, top_down, level, mat_path)
+        self.wind_to_coarse, num_classes = handler.reduce_taxonomic_diversity(unique_winds, top_down, level)
         self.targets = [self.wind_to_coarse[row[2]] for row in self.data]
     
         return num_classes
@@ -121,7 +122,8 @@ class ImagenetValReader():
         raise RuntimeError('Falha de Leitura na Validação') from e
     
     def to_coarse_classes(self, top_down: bool, level: int, mat_path: str):
-        wnid_to_coarse, num_classes = reduce_taxonomic_diversity(self.all_wnids, top_down, level, mat_path)
+        handler = TaxonomicHandler(mat_path)
+        wnid_to_coarse, num_classes = handler.reduce_taxonomic_diversity(self.all_wnids, top_down, level)
         
         old_label_to_new_label = {self.wnid_to_label[wnid] : wnid_to_coarse[wnid] for wnid in self.all_wnids}
         self.targets = [old_label_to_new_label[label] for label in self.targets]

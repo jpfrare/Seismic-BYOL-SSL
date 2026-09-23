@@ -10,19 +10,20 @@ from torchmetrics import JaccardIndex, MetricCollection
 import timm
 import timm.optim
 from timm.loss import BinaryCrossEntropy
-from torch.optim.lr_scheduler import ReduceLROnPlateau
+from torch.optim.lr_scheduler import CosineAnnealingLR
 
 # -------------------- Lightning --------------------
 from lightning import Trainer
 from lightning.pytorch.loggers.csv_logs import CSVLogger
 from lightning.fabric import seed_everything
-from lightning.pytorch.callbacks import ModelCheckpoint
+from lightning.pytorch.callbacks import ModelCheckpoint, EarlyStopping, LearningRateMonitor
 
 # -------------------- Minerva --------------------
 from minerva.models.nets.image.deeplabv3 import DeepLabV3Backbone, DeepLabV3, DeepLabV3PredictionHead
 from minerva.models.loaders import FromPretrained
 from minerva.pipelines.lightning_pipeline import SimpleLightningPipeline
 from minerva.transforms.transform import TransformPipeline, Transpose, Padding
+from minerva.transforms.random_transform import RandomCrop
 
 #--------------------- Locais & Custom -----------------------
 from base.utils import * 
@@ -44,8 +45,8 @@ seed_everything(organizer.args.repetition)
 #----------------------------------MODELO - Transfer Learning---------------------------
 num_classes = 6
 learning_rate = 1e-3
-num_epochs = 30
-batch_size = 8
+num_epochs = 50
+batch_size = 32
 deeplab_backbone = DeepLabV3Backbone(num_classes=num_classes)
 
 print(f'Scratch: {organizer.args.scratch} || Backbone Config: {organizer.args.backbone_freeze} || Pred_Head: {organizer.args.pred_head}')
@@ -99,12 +100,21 @@ training_parameters = {
     'pred_head': pred_head,
     'num_classes': num_classes,
     'val_metrics': val_metrics,
+
     'optimizer': torch.optim.AdamW,
     'optimizer_kwargs': {
         'weight_decay': 1e-4,
         'lr': learning_rate,
     },
+
 }
+'''
+'lr_scheduler': CosineAnnealingLR,
+    'lr_scheduler_kwargs': {
+        'T_max': num_epochs,
+        'eta_min': 1e-5,
+    },
+'''
 
 if organizer.args.backbone_freeze == 'full_freeze':
     model = SeismicModel(
@@ -157,28 +167,27 @@ data_module = SeismicDataModule(
     )
 
 
-batch = next(iter(data_module.val_dataloader()))
-x, y = batch
-
-print("predict split:", data_module._predict_split)
-
-print("train size:", len(data_module.train_dataset))
-print("val size:", len(data_module.val_dataset))
-print("test size:", len(data_module.test_dataset))
-print("predict size:", len(data_module.predict_dataset))
-
 if not (organizer.finetune_ckpt_dir / 'best.ckpt').exists():
     csv_logger = CSVLogger(organizer.finetune_log_dir, name='', version= '')
     #------------------------Callbacks-------------------------------------------------------------------------
     ckpt_callback = ModelCheckpoint(
-        monitor= 'val_mIoU',
-        mode= 'max',
+        monitor= 'val_loss',
+        mode= 'min',
         save_top_k=1,
         save_last= False,
         dirpath= organizer.finetune_ckpt_dir,
         filename= 'best',
         auto_insert_metric_name=False
     )
+
+    early_stopping = EarlyStopping(
+        monitor= 'val_loss',
+        patience= 20,
+        mode= 'min'
+    )
+
+    lr_monitor = LearningRateMonitor(logging_interval="step")
+
     #------------------------TRAINER---------------------------------------------------------------------------
 
     trainer = Trainer(
@@ -188,7 +197,7 @@ if not (organizer.finetune_ckpt_dir / 'best.ckpt').exists():
         strategy= 'auto',
         devices= 1,
         check_val_every_n_epoch=1,
-        callbacks= [ckpt_callback]
+        callbacks= [ckpt_callback, lr_monitor, early_stopping]
     )
 
     pipeline = SimpleLightningPipeline(
@@ -202,6 +211,18 @@ if not (organizer.finetune_ckpt_dir / 'best.ckpt').exists():
 
 
 if organizer.args.eval:
+
+    data_module = SeismicDataModule(
+    root = dataset_path,
+    batch_size=batch_size,
+    cap=1.0,
+    drop_last=False,
+    transform=transform_pipeline,
+    test_transform=transform_pipeline,
+    train_dataset = train_dataset,
+    val_dataset = None,
+    test_dataset = None,
+    )
 
     ckpt = torch.load(organizer.finetune_ckpt_dir / 'best.ckpt')
     model.load_state_dict(ckpt['state_dict'])
@@ -221,8 +242,9 @@ if organizer.args.eval:
             task = 'multiclass'
         )
     })
+    
 
-    metrics = model.test_and_evaluate_IoU(data_module.val_dataloader(), metrics)
+    metrics = model.test_and_evaluate_IoU(data_module.test_dataloader(), metrics)
 
     data = {
         "mIoU": metrics["mIoU"].item(),
@@ -231,5 +253,7 @@ if organizer.args.eval:
 
     with open(organizer.finetune_log_dir / 'metrics.yaml', 'w') as file:
         yaml.safe_dump(data, file)
+
+    print(f"metrics saved at: {organizer.finetune_log_dir / 'metrics.yaml'}")
 
 

@@ -7,7 +7,7 @@ SCRIPT_PATH="/petrobr/parceirosbr/home/joao.frare/workspace/spfm/Seismic-Byol/de
 WORKSPACE="/petrobr/parceirosbr/home/joao.frare/workspace"
 export SIF="/petrobr/parceirosbr/spfm/singularity/arm64/deeprock/ngc/MINERVA_v0_3_9-beta-SPINN_v0_0_1.sif"
 
-repetition=(0)
+repetition=(1 2)
 finetune_dataset=('seam_ai_N')
 protocol=('full_freeze')
 level=(9)
@@ -27,7 +27,7 @@ for l in "${level[@]}"; do
 
                 fi
 
-                FLAGS="--reduction_mode taxonomic --level ${l} --top_down --backbone_freeze ${freeze} --pred_head ${head} --repetition ${r} --version modern --finetune_dataset ${d}"
+                FLAGS="--reduction_mode taxonomic --level ${l} --top_down --backbone_freeze ${freeze} --pred_head ${head} --repetition ${r} --version modern --finetune_dataset ${d} --eval"
                 root=/petrobr/parceirosbr/home/joao.frare/workspace/spfm/Seismic-Byol/dev-seismic-byol/imagenet/jobs_out/imagenetFinetune/finetune_${d}/taxonomic/repetition_${r}
                 mkdir -p "${root}"
 
