@@ -7,12 +7,15 @@ SCRIPT_PATH="/petrobr/parceirosbr/home/joao.frare/workspace/spfm/Seismic-Byol/de
 WORKSPACE="/petrobr/parceirosbr/home/joao.frare/workspace"
 export SIF="/petrobr/parceirosbr/spfm/singularity/arm64/deeprock/ngc/MINERVA_v0_3_9-beta-SPINN_v0_0_1.sif"
 
-repetition=(1 2)
-finetune_dataset=('seam_ai_N')
-protocol=('full_freeze')
-level=(9)
+repetition=(0 1 2)
+finetune_dataset=(f3_N seam_ai_N)
+protocol=(linear_readout full_finetuning)
+version=(traditional modern)
+level=(9 7 6 3)
+red_mode=taxonomic
 
 for l in "${level[@]}"; do
+for v in "${version[@]}"; do
     for r in "${repetition[@]}"; do
         for d in "${finetune_dataset[@]}"; do
             for p in "${protocol[@]}"; do
@@ -27,14 +30,14 @@ for l in "${level[@]}"; do
 
                 fi
 
-                FLAGS="--reduction_mode taxonomic --level ${l} --top_down --backbone_freeze ${freeze} --pred_head ${head} --repetition ${r} --version modern --finetune_dataset ${d} --eval"
-                root=/petrobr/parceirosbr/home/joao.frare/workspace/spfm/Seismic-Byol/dev-seismic-byol/imagenet/jobs_out/imagenetFinetune/finetune_${d}/taxonomic/repetition_${r}
-                mkdir -p "${root}"
+                    FLAGS="--reduction_mode ${red_mode} --top_down --level ${l} --version ${v} --backbone_freeze ${freeze} --pred_head ${head} --finetune_dataset ${d} --repetition ${r} --eval"
+                    root=/petrobr/parceirosbr/home/joao.frare/workspace/spfm/Seismic-Byol/dev-seismic-byol/imagenet/jobs_out/imagenetFinetune/finetune_${d}/${red_mode}/${l}/repetition_${r}
+                    mkdir -p "${root}"
 
         sbatch <<EOT
 #!/bin/bash
 
-#SBATCH --job-name=${p}_taxonomic_${r}_${d}
+#SBATCH --job-name=${red_mode}_l${l}_d${d}_p${p}_v${v}_r${r}
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=24
@@ -42,8 +45,8 @@ for l in "${level[@]}"; do
 #SBATCH --partition=ict-gh200
 #SBATCH --account=spfm
 #SBATCH --time=01:30:00
-#SBATCH --output=${root}/taxonomic_level_${l}_${p}_%j.out
-#SBATCH --error=${root}/taxonomic_level_${l}_${p}_%j.err
+#SBATCH --output=${root}/${l}_${d}_${p}_${v}_${r}_%j.out
+#SBATCH --error=${root}/${l}_${d}_${p}_${v}_${r}_%j.err
 
 cd "\$SLURM_SUBMIT_DIR"
 
@@ -70,3 +73,4 @@ EOT
     done
 done
 done
+done 

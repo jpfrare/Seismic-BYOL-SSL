@@ -155,9 +155,10 @@ class FinetuningOrganizer(TrainOrganizer):
     def _get_finetune_dirs_and_set_model_name(self):
         if self.args.scratch:
             self.model_name = 'scratch'
-            dirs = Path(self.data_root)/ self.task / f'{self.args.repetition}'/'scratch'
+            dirs = Path(self.data_root)/ self.task / 'scratch' / f'{self.args.repetition}'
         else:
             dirs =  super()._get_dirs_and_set_model_name()
+            
         dirs = dirs / f'finetune_{self.args.finetune_dataset}'/ f'{self.args.backbone_freeze}_{self.args.pred_head}'
         self.finetune_model_name = f'{self.model_name}_finetune_{self.args.finetune_dataset}'
         return dirs

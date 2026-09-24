@@ -13,7 +13,7 @@ repetition=(0 1 2)
 finetune_dataset=(f3_N seam_ai_N)
 protocol=(linear_readout full_finetuning)
 version=(traditional modern)
-num_classes=(125)
+num_classes=(80 9)
 red_mode=default
 
 for n in "${num_classes[@]}"; do

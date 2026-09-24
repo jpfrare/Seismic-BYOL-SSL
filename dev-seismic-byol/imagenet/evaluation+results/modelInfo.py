@@ -150,8 +150,11 @@ class ModelInfo():
             #--------------------------------lendo repetições do finetuning---------------------------------------------------------
             for dataset in self.datasets:
                 for protocol in self.protocols:
+                    if self.scratch:
+                        finetune_path = self.root_path / 'Finetune' / 'scratch' / f'{repetition}' / self.finetune_path[self.datasets][self.protocol]
+                    else:
+                        finetune_path = self.root_path / 'Finetune' / self.version / f'{repetition}' / self.finetune_path[dataset][protocol]
 
-                    finetune_path = self.root_path / 'Finetune' / self.version / f'{repetition}' / self.finetune_path[dataset][protocol]
                     self.finetune_dataframes[dataset][protocol].append(self._read_csv(finetune_path / 'metrics.csv', ['train_loss', 'val_loss']))
 
                     finetune_yaml_path = finetune_path / 'metrics.yaml' 
@@ -159,8 +162,10 @@ class ModelInfo():
                         data = yaml.safe_load(file)
                         self.finetune_metrics[dataset][protocol]['mIoU'].append(data['mIoU'])
                         self.finetune_metrics[dataset][protocol]['IoU'].append(data['IoU'])
-        
+                
+
         if not self.scratch:
+            #----------------------------------------agregando repetições do pré-treino----------------------------------------------
             mean_accs_per_class = np.mean(self.pretrain_acc_per_class['raw'], axis= 0)
             std_accs_per_class = np.std(self.pretrain_acc_per_class['raw'], axis= 0)
             
@@ -173,11 +178,7 @@ class ModelInfo():
                 'mean': np.mean(mean_accs_per_repetition),
                 'std': np.std(mean_accs_per_repetition)
             }
-            
-                
 
-        if not self.scratch:
-            #----------------------------------------agregando repetições do pré-treino----------------------------------------------
             self.pretrain_dataframe = pd.concat(self.pretrain_dataframe)
             self.pretrain_dataframe = self.pretrain_dataframe.groupby('step').agg(
                     mean_val_loss= ('val_loss', 'mean'),

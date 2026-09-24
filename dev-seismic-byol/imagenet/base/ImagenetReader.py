@@ -69,7 +69,7 @@ class ImagenetReader:
         return num_classes
 
 '''o arquivo matlab é um pouco complicado de se entender: em primeiro lugar, a conversão matlab -> python faz com que surjam dimensões extras fantasmas.
-Seja x o arquivo do matlab carregado em python, as informações úteis estão contidas em y = x['sysnets'], que é um vetor onde cada indice i (y[i][0]) se refere
+Seja x o arquivo do matlab carregado em python, as informações úteis estão contidas em y = x['synsets'], que é um vetor onde cada indice i (y[i][0]) se refere
 a uma das classes relacionadas ao desafio (1000 classes do desafio + classes que compõem a árvore de herança do worldnet até chegar nas classes folhas (as 1000 do desafio))
 obs: o id 1001 (1000 no array) se refere a classe 'Entidade' a raiz dessa árvore.
 Dada a existencia das dimensões extras, cada y[i][0] contém a seguinte estrutura:

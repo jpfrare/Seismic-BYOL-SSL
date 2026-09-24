@@ -2,7 +2,8 @@ from metrics import Metrics
 from modelInfo import ModelInfo
 from pathlib import Path
 ROOT = Path('/petrobr/parceirosbr/spfm/joao.frare/logs+checkpoints_imagenet')
-SAVE_PATH = Path('data/pretrain')
+SAVE_PRETRAIN_PATH = Path('data/pretrain')
+SAVE_FINETUNE_PATH = Path('data/finetune')
 
 def build_default_metrics(root_path: Path, version: str, datasets: list[str], protocols: list[str]):
         full_dataset = ModelInfo(
@@ -70,53 +71,20 @@ def build_taxonomic_metrics(root_path: Path, version: str, datasets: list[str], 
         
         return Metrics(taxonomic_experiments)
 
+datasets = ['seam_ai_N', 'f3_N']
+protocols = ['full_finetuning_deeplab', 'full_freeze_linear']
+
+scratch_baseline = ModelInfo(ROOT, scratch= True, datasets= datasets, protocols= protocols)
 
 
-modern_full = ModelInfo(
-        root_path= ROOT,
-        reduction_mode= 'full', 
-        version= 'modern',  
-        datasets= [],
-        protocols= [])
-
-traditional_full = ModelInfo(
-        root_path= ROOT,
-        reduction_mode= 'full', 
-        version= 'traditional',  
-        datasets= [],
-        protocols= [])
-
-modern_few =  ModelInfo(
-        root_path= ROOT,
-        reduction_mode= 'default',  
-        num_classes= 125, 
-        per_class= 1300,
-        version= 'modern', 
-        datasets= [],
-        protocols= [])
-
-tradidional_few = ModelInfo(
-        root_path= ROOT,
-        reduction_mode= 'default',  
-        num_classes= 125, 
-        per_class= 1300,
-        version= 'traditional', 
-        datasets= [],
-        protocols= [])
-
-metrics = Metrics([])
-
-metrics.compare_acc_histogram(traditional_model= traditional_full, modern_model= modern_full, save_path= Path('./data'), name= 'Full Dataset Hstogram')
-metrics.compare_acc_histogram(traditional_model= tradidional_few, modern_model= modern_few, save_path= Path('./data'), name= 'Few Dataset Hstogram')
-metrics.compare_acc_per_class(modern_model= modern_full, traditional_model= traditional_full, save_path= Path('./data'), name= 'Full Dataset Per Class')
-metrics.compare_acc_per_class(modern_model= modern_few, traditional_model= tradidional_few, save_path= Path('./data'), name= '125C 1300 IpC Per Class')
-
-#pretrain
 for version in ['traditional', 'modern']:
-        PRETRAIN_SAVE = SAVE_PATH / version 
+
+        #pre-treino
+        PRETRAIN_SAVE = SAVE_PRETRAIN_PATH / version 
+        
         capitalized_version = version.capitalize()
 
-        default_metrics = build_default_metrics(root_path= ROOT, version= version, datasets= [], protocols= [])
+        default_metrics = build_default_metrics(root_path= ROOT, version= version, datasets= datasets, protocols= protocols)
 
         default_metrics.individual_plot(
                 title= f'{capitalized_version} Default Models Train and Val Loss x Steps',
@@ -138,7 +106,7 @@ for version in ['traditional', 'modern']:
                 cmap= 'crest'
         )
 
-        taxonomic_metrics = build_taxonomic_metrics(root_path= ROOT, version= version, datasets= [], protocols= [])
+        taxonomic_metrics = build_taxonomic_metrics(root_path= ROOT, version= version, datasets= datasets, protocols= protocols)
 
         taxonomic_metrics.individual_plot(
                 title= f'{capitalized_version} Taxonomic Models Train and Val Loss x Steps',
@@ -158,6 +126,15 @@ for version in ['traditional', 'modern']:
                 pretrain = True,
                 pretrain_key= 'Mean'
         )
+
+        default_metrics += scratch_baseline
+        taxonomic_metrics += scratch_baseline
+
+        #finetuning
+        for dataset in datasets:
+                for protocol in protocols:
+                        FINETUNE_SAVE = SAVE_FINETUNE_PATH / dataset / protocol
+                        
 
         
 

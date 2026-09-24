@@ -15,7 +15,7 @@ class TaxonomicHandler:
 
 
     def build_wnid_to_description(self):
-        y = loadmat(self.mat_path)['sysnets']
+        y = loadmat(self.mat_path)['synsets']
         wnid_to_description = {}
 
         for i in range(len(y)):

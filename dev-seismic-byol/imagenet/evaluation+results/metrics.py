@@ -230,7 +230,6 @@ class Metrics():
     dataset: str | None = None,
     protocol: str | None = None,
     pretrain: bool = False,
-    pretrain_key: str = 'Mean',
     cmap: str = "rocket",
     ):
 
@@ -378,7 +377,6 @@ class Metrics():
     dataset: str | None = None,
     protocol: str | None = None,
     pretrain: bool = False,
-    pretrain_key: str = 'Mean'
     ):
 
         classes = sorted({model.pretrained_classes for model in self.models})
@@ -434,6 +432,11 @@ class Metrics():
         width = 0.35
 
         fig, ax = plt.subplots(figsize=(9,5))
+
+        if not pretrain:
+            scratch_baseline = next((model for model in self.models if model.scratch), None)
+            mean, std = scratch_baseline.get_finetune_miou(dataset, protocol)
+            ax.axhline(mean*100, color= 'black', linestyle= '--', linewidth= 1.0, label= 'Scrath Baseline')
 
         error_style = dict(
             lw=1,
@@ -500,71 +503,5 @@ class Metrics():
             f"{title}.png",
             save_path,
         )
-
-    def compare_acc_per_class(self, traditional_model, modern_model, save_path, name):
-        trad_y_axis_mean, trad_y_axis_std = traditional_model.get_pretrain_acc_per_class()
-        modern_y_axis_mean, modern_y_axis_std = modern_model.get_pretrain_acc_per_class()
-
-        x_axis = np.arange(1000)
-
-        fig, ax  = plt.subplots(figsize=(20,6))
-
-        diff = trad_y_axis_mean - modern_y_axis_mean
-
-        ax.bar(x_axis, diff, width= 1.0)
-        ax.axhline(0, linewidth=1)
-
-        ax.set_xlabel('Class')
-        ax.set_ylabel('Trad - Modern Accuracy')
-
-        ax.set_xticks(np.arange(0, len(x_axis), 100))
-
-        ax.legend()
-        ax.grid(axis='y', alpha=0.2)
-
-        self._save_plot(fig, name, save_path)
-
-    def compare_acc_histogram(
-            self,
-            traditional_model,
-            modern_model,
-            save_path,
-            name
-        ):
-
-        trad_mean, _ = traditional_model.get_pretrain_acc_per_class()
-        modern_mean, _ = modern_model.get_pretrain_acc_per_class()
-
-        diff = trad_mean - modern_mean
-
-        n_trad = np.sum(diff > 0)
-        n_modern = np.sum(diff < 0)
-        n_equal = np.sum(diff == 0)
-
-        fig, ax = plt.subplots(figsize=(8, 5))
-
-        ax.hist(
-            diff,
-            bins=40
-        )
-
-        ax.axvline(
-            0,
-            linestyle='--',
-            linewidth=1
-        )
-
-        ax.set_xlabel('Traditional - Modern Top-1 Accuracy')
-        ax.set_ylabel('Number of Classes')
-
-        ax.set_title(
-            f'Traditional > Modern: {n_trad} | '
-            f'Modern > Traditional: {n_modern} | '
-            f'Equal: {n_equal}'
-        )
-
-        fig.tight_layout()
-
-        self._save_plot(fig, name, save_path)
 
 
