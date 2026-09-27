@@ -102,7 +102,6 @@ for version in ['traditional', 'modern']:
                 title= f'{capitalized_version} Default Pretrain Top-1 Accuracy',
                 save_path= PRETRAIN_SAVE,
                 pretrain= True,
-                pretrain_key= 'Mean',
                 cmap= 'crest'
         )
 
@@ -124,17 +123,18 @@ for version in ['traditional', 'modern']:
                 title= f'{capitalized_version} Taxonomic Models Pretrain Top-1 Accuracy',
                 save_path= PRETRAIN_SAVE,
                 pretrain = True,
-                pretrain_key= 'Mean'
         )
 
         default_metrics += scratch_baseline
         taxonomic_metrics += scratch_baseline
-
         #finetuning
         for dataset in datasets:
                 for protocol in protocols:
-                        FINETUNE_SAVE = SAVE_FINETUNE_PATH / dataset / protocol
-                        
+                        FINETUNE_SAVE = SAVE_FINETUNE_PATH / version / dataset / protocol
+                        default_metrics.plot_heatmap('default_miou', FINETUNE_SAVE, dataset= dataset, protocol= protocol)
+                        taxonomic_metrics.plot_taxonomic_x_default('taxonomic_miou',  FINETUNE_SAVE, dataset= dataset, protocol= protocol)
+                        default_metrics.individual_plot('default val loss', FINETUNE_SAVE, ['train_loss', 'val_loss'], y1scale= 'log', finetune= True, dataset= dataset, protocol= protocol, x_axis= 'epoch', y2_axis= None, y2_limits= None)
+                        taxonomic_metrics.individual_plot('taxonomic val loss', FINETUNE_SAVE, ['train_loss', 'val_loss'], y1scale= 'log', finetune= True, dataset= dataset, protocol= protocol, x_axis= 'epoch', y2_axis= None, y2_limits= None)
 
         
 

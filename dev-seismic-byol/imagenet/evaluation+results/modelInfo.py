@@ -58,7 +58,7 @@ class ModelInfo():
             self.model_name = 'Scratch'
 
             self.pretrain_path = None
-            base = Path('scratch')
+            base = None
             self._set_finetune_paths(base)
 
         elif reduction_mode == 'full':
@@ -110,12 +110,15 @@ class ModelInfo():
         
         return ans
     
-    def _set_finetune_paths(self, base: Path) -> None:
+    def _set_finetune_paths(self, base: Path | None) -> None:
         for dataset in self.datasets:
             for protocol in self.protocols:
-                self.finetune_path[dataset][protocol] = (
-                    base / f"finetune_{dataset}" / protocol / "logs"
-                )
+                if base is not None:
+                    self.finetune_path[dataset][protocol] = (
+                        base / f"finetune_{dataset}" / protocol / "logs"
+                    )
+                else:
+                    self.finetune_path[dataset][protocol] = Path(f'finetune_{dataset}/{protocol}/logs')
     
     def _read_csv(self, csv_path: Path, dropna_subset: list[str]) -> pd.DataFrame:
         data_frame = pd.read_csv(csv_path)
@@ -151,7 +154,7 @@ class ModelInfo():
             for dataset in self.datasets:
                 for protocol in self.protocols:
                     if self.scratch:
-                        finetune_path = self.root_path / 'Finetune' / 'scratch' / f'{repetition}' / self.finetune_path[self.datasets][self.protocol]
+                        finetune_path = self.root_path / 'Finetune' / 'scratch' / f'{repetition}' / self.finetune_path[dataset][protocol]
                     else:
                         finetune_path = self.root_path / 'Finetune' / self.version / f'{repetition}' / self.finetune_path[dataset][protocol]
 

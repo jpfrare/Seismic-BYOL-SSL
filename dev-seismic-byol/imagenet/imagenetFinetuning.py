@@ -45,7 +45,7 @@ seed_everything(organizer.args.repetition)
 #----------------------------------MODELO - Transfer Learning---------------------------
 num_classes = 6
 learning_rate = 1e-3
-num_epochs = 50
+num_epochs = 70
 batch_size = 32
 deeplab_backbone = DeepLabV3Backbone(num_classes=num_classes)
 
@@ -107,14 +107,14 @@ training_parameters = {
         'lr': learning_rate,
     },
 
-}
-'''
-'lr_scheduler': CosineAnnealingLR,
+    'lr_scheduler': CosineAnnealingLR,
     'lr_scheduler_kwargs': {
         'T_max': num_epochs,
-        'eta_min': 1e-5,
+        'eta_min': 1e-6,
     },
-'''
+
+}
+
 
 if organizer.args.backbone_freeze == 'full_freeze':
     model = SeismicModel(

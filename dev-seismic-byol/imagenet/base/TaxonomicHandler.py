@@ -19,12 +19,9 @@ class TaxonomicHandler:
         wnid_to_description = {}
 
         for i in range(len(y)):
-            wnid_to_description[str(y[i][0][1][0])] = str(y[i][0][3][0])
+            wnid_to_description[str(y[i][0][1][0])] = str(y[i][0][2][0])
 
         return wnid_to_description
-
-    def get_descriptions(self):
-        return [self.wnid_to_description[wnid] for wnid in self.chosen_wnids]
 
     def build_son_to_father_dict(self, father_id, sysnets, dic):
         infos = sysnets[father_id - 1][0]

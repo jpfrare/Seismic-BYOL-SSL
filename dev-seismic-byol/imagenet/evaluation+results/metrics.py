@@ -321,8 +321,6 @@ class Metrics():
 
         sns.heatmap(
             data= df_mean,
-            vmin = min_metric,
-            vmax= max_metric,
             cmap= cmap,
             annot= df_annot,
             xticklabels= x_labels,

@@ -6,6 +6,7 @@
 SCRIPT_PATH="/petrobr/parceirosbr/home/joao.frare/workspace/spfm/Seismic-Byol/dev-seismic-byol/imagenet/imagenetFinetuning.py"
 WORKSPACE="/petrobr/parceirosbr/home/joao.frare/workspace"
 export SIF="/petrobr/parceirosbr/spfm/singularity/arm64/deeprock/ngc/MINERVA_v0_3_9-beta-SPINN_v0_0_1.sif"
+ERROR_FILE="/petrobr/parceirosbr/home/joao.frare/workspace/spfm/Seismic-Byol/dev-seismic-byol/imagenet/jobs_out/imagenetFinetune/failed_jobs.txt"
 
 #80 9
 
@@ -88,6 +89,22 @@ singularity exec --nv \
         export PYTHONPATH=/petrobr/parceirosbr/home/joao.frare/workspace/spfm/Seismic-Byol/Minerva-dev:\$PYTHONPATH
         python3 $SCRIPT_PATH $FLAGS
     "
+
+STATUS=\$?
+
+if [ \$STATUS -ne 0 ]; then
+
+    echo "Job \$SLURM_JOB_ID FAILED with exit code \$STATUS"
+
+    (
+        flock -x 200
+
+        echo "JOB_ID=\$SLURM_JOB_ID | EXIT_CODE=\$STATUS | FLAGS=$FLAGS | DATE=\$(date)"
+
+    ) 200>"${ERROR_FILE}.lock"
+
+fi
+
 EOT
         done
     done
