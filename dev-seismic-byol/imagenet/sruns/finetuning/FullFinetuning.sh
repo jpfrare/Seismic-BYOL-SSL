@@ -7,10 +7,10 @@ SCRIPT_PATH="/petrobr/parceirosbr/home/joao.frare/workspace/spfm/Seismic-Byol/de
 WORKSPACE="/petrobr/parceirosbr/home/joao.frare/workspace"
 export SIF="/petrobr/parceirosbr/spfm/singularity/arm64/deeprock/ngc/MINERVA_v0_3_9-beta-SPINN_v0_0_1.sif"
 
-repetition=(0 1 2)
-finetune_dataset=(f3_N seam_ai_N)
-protocol=(linear_readout full_finetuning)
-version=(traditional modern)
+repetition=(2)
+finetune_dataset=(seam_ai_N)
+protocol=(full_finetuning)
+version=(modern)
 red_mode=full
 
 for v in "${version[@]}"; do

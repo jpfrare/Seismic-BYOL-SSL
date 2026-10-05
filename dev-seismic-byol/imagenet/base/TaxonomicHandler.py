@@ -23,44 +23,23 @@ class TaxonomicHandler:
 
         return wnid_to_description
 
-    def build_son_to_father_dict(self, father_id, sysnets, dic):
-        infos = sysnets[father_id - 1][0]
-        num_children = int(infos[4][0][0])
 
+    def build_stf_and_lti(self, father_id, level, son_to_father, level_to_ids, synsets):
+        infos = synsets[father_id - 1][0]
+
+        if level not in level_to_ids:
+            level_to_ids[level] = [father_id]
+        else:
+            level_to_ids[level].append(father_id)
+
+        num_children = int(infos[4][0][0])
         if num_children == 0:
             return
-        
+
         for children_id in infos[5][0]:
-            int_children_id = int(children_id)
-            dic[int_children_id] = father_id
-            self.build_son_to_father_dict(int_children_id, sysnets, dic)
-        
-    def build_heritage_path(self) -> dict:
-        mat = loadmat(self.mat_path)
-        synsets = mat['synsets']
-
-        dic = {}
-        self.build_son_to_father_dict(1001, synsets, dic)
-
-        heritage_path = {} #wnid -> lista do wnid de todos os parentes começando por ele mesmo até a classe entidade
-
-        for i in range(0,1000):
-            imagenet_id = i + 1
-            wnid = str(synsets[i][0][1][0])
-
-            heritage_path[wnid] = [wnid]
-            
-            current_id = imagenet_id
-
-            while current_id in dic:
-                father_id = dic[current_id]
-                father_wnid = str(synsets[father_id - 1][0][1][0])
-                heritage_path[wnid].append(father_wnid)
-
-                current_id = father_id
-
-        
-        return heritage_path
+            i_children_id = int(children_id)
+            son_to_father[i_children_id] = father_id
+            self.build_stf_and_lti(i_children_id, level + 1, son_to_father, level_to_ids, synsets)
 
 
     def reduce_taxonomic_diversity(self, wnids: list, top_down: bool, level: int) -> tuple[dict, int]:
