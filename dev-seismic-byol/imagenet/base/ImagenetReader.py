@@ -7,18 +7,30 @@ from scipy.io import loadmat
 from .TaxonomicHandler import TaxonomicHandler
 import time
 
+
+class ImagenetReader():
+    wnid_to_id: dict                                #mapeia o wnid para o id do meta.mat
+    id_to_label: dict                               #mapeia o id do meta.mat para a label real (alterável)
+    mat: list
+
+    def __init__(self, mat_root):
+        self.mat = loadmat(mat_root)['synsets']
+        self.wnid_to_id = {str(row[0][1][0]) : int(row[0][0][0][0]) for row in self.mat[:1000]}
+        self.id_to_label = {i : i - 1 for i in self.wnid_to_id.values()}
+
 #por alguma razão mistica, tanto o dataset de teste como de treino sao arrays estruturados do numpy
 #pra cada linha do array do treino:
 #linha[0] é o id do arquivo ex: 10026
 #linha[1] é a label dele
 #linha[2] é o prefixo/subpasta ex: n01440764 (wnid)
 #você consegue fazer o caminho da imagem juntando essas informações e a label obviamente está na linha[1], ai você forma uma sample
-class ImagenetReader:
+    
+class ImagenetTrainReader:
     def __init__(self, root, entries_path):
         self.root = Path(root)
         # Carrega o array estruturado 
         self.data = np.load(entries_path, allow_pickle=True)
-        print(f' tamanho das entries do treino: {len(self.data)}')
+        print(f'tamanho das entries do treino: {len(self.data)}')
         
         # Mapeia as labels (coluna index 1) para o StratifiedSubset
         # Fazemos isso no init para o subset não precisar iterar depois
