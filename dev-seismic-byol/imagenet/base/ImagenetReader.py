@@ -1,4 +1,3 @@
-from torchvision.datasets import ImageFolder
 import numpy as np
 import os
 from pathlib import Path
@@ -8,77 +7,12 @@ from .TaxonomicHandler import TaxonomicHandler
 import time
 
 
-class ImagenetReader():
-    wnid_to_id: dict                                #mapeia o wnid para o id do meta.mat
-    id_to_label: dict                               #mapeia o id do meta.mat para a label real (alterável)
-    mat: list
-
-    def __init__(self, mat_root):
-        self.mat = loadmat(mat_root)['synsets']
-        self.wnid_to_id = {str(row[0][1][0]) : int(row[0][0][0][0]) for row in self.mat[:1000]}
-        self.id_to_label = {i : i - 1 for i in self.wnid_to_id.values()}
-
-#por alguma razão mistica, tanto o dataset de teste como de treino sao arrays estruturados do numpy
-#pra cada linha do array do treino:
-#linha[0] é o id do arquivo ex: 10026
-#linha[1] é a label dele
-#linha[2] é o prefixo/subpasta ex: n01440764 (wnid)
-#você consegue fazer o caminho da imagem juntando essas informações e a label obviamente está na linha[1], ai você forma uma sample
-    
-class ImagenetTrainReader:
-    def __init__(self, root, entries_path):
-        self.root = Path(root)
-        # Carrega o array estruturado 
-        self.data = np.load(entries_path, allow_pickle=True)
-        print(f'tamanho das entries do treino: {len(self.data)}')
-        
-        # Mapeia as labels (coluna index 1) para o StratifiedSubset
-        # Fazemos isso no init para o subset não precisar iterar depois
-        self.targets = [int(row[1]) for row in self.data]
-        self.wind_to_coarse = None
-
-    def __len__(self):
-        return len(self.data)
-        
-    def __getitem__(self, idx):
-        row = self.data[idx]
-
-        img_idx = row[0]
-        wnid = row[2]
-
-        label = (
-            self.wind_to_coarse[wnid]
-            if self.wind_to_coarse is not None
-            else int(row[1])
-        )
-
-        img_path = self.root / wnid / f"{wnid}_{img_idx}.JPEG"
-
-        last_error = None
-
-        for attempt in range(10):
-            try:
-                with Image.open(img_path) as img:
-                    img = img.convert("RGB")
-
-                return img, label
-
-            except (UnidentifiedImageError, OSError) as e:
-                last_error = e
-                time.sleep(0.05 * (attempt + 1))
-
-        raise RuntimeError(
-            f"Falha ao ler {img_path} após 3 tentativas"
-        ) from last_error
-    
-    def to_coarse_classes(self, top_down: bool, level: int, mat_path: str):
-        handler = TaxonomicHandler(mat_path)
-        unique_winds = sorted(list(set(row[2] for row in self.data)))
-
-        self.wind_to_coarse, num_classes = handler.reduce_taxonomic_diversity(unique_winds, top_down, level)
-        self.targets = [self.wind_to_coarse[row[2]] for row in self.data]
-    
-        return num_classes
+''' Exemplo de shape das entries do treino e validação: y = (10095, 0, 'n01440764', ' tench Tinca tinca')
+    y[0]: id da imagem, se usa para conseguir acessar a imagem na pasta de destino
+    y[1]: label declarada para o desafio (não será usada)
+    y[2]: wnid referente a classe contida na imagem
+    y[3]: uma breve descrição da classe correspondente (não será usada)
+'''
 
 '''o arquivo matlab é um pouco complicado de se entender: em primeiro lugar, a conversão matlab -> python faz com que surjam dimensões extras fantasmas.
 Seja x o arquivo do matlab carregado em python, as informações úteis estão contidas em y = x['synsets'], que é um vetor onde cada indice i (y[i][0]) se refere
@@ -94,52 +28,85 @@ y[i][0][5][0] é um vetor de tamanho número de nós filhos com os ids desses n�
 os indices 6 e 7 são meio inuteis para a nossa task então vou poupar citá-los
 '''
 
-class ImagenetValReader():
-    def __init__(self, root, gt_path, mat_path):
-        self.root = Path(root)
-        
-        meta = loadmat(mat_path)['synsets']
-        id_to_wnid = {int(m[0][0][0][0]): str(m[0][1][0]) for m in meta[:1000]} #ids arbitrários (1 a 1000) para o wnid respectivo
-        
-        self.all_wnids = sorted([str(m[0][1][0]) for m in meta[:1000]]) #ordena os winds
-        self.wnid_to_label = {wnid: i for i, wnid in enumerate(self.all_wnids)} #baseado na ordenação, atribui um label (indice posicional)
-        id_to_label = {comp_id: self.wnid_to_label[wnid] for comp_id, wnid in id_to_wnid.items()} #faz a ponte entre o id arbitrário e o label atribuido
-        
-        #lê o ground truth, é o arquivo que faz a ponte (linha x contém o id arbitrário, mas x também é o valor numérico
-        #que faz parte do caminho da imagem correspondente (ILSVRC2012_val_x.JPEG) -> entao se faz um vetor onde na posição x temos o indice arbitrário
-        with open(gt_path, 'r') as f:
-            raw_ids = [int(line.strip()) for line in f.readlines()]
-            
-        self.targets = [id_to_label[id_bruto] for id_bruto in raw_ids] #faz a conversão do id arbitrário para a label dada
+class ImagenetReader():
+    wnid_to_id: dict                                #mapeia o wnid para o id do meta.mat
+    id_to_label: dict                               #mapeia o id do meta.mat para a label real (alterável)
+    mat: list                                       #.mat com as informações do desafio
+    entries: list                                   #entries da partição desejada (treino / validação)
+    partition_path: Path                            #caminho da partição (treino / validação)
+
+    def __init__(self, mat_path, entries_path, partition_path):
+        self.mat = loadmat(mat_path)['synsets']
+        self.wnid_to_id = {str(row[0][1][0]) : int(row[0][0][0][0]) for row in self.mat[:1000]}
+        self.id_to_label = {i : i - 1 for i in self.wnid_to_id.values()}
+        self.entries = np.load(entries_path, allow_pickle = True)
+        self.partition_path = partition_path
 
     def __len__(self):
-        return len(self.targets)
+        return len(self.entries)
 
     def __getitem__(self, idx):
-        # Localiza a imagem (ILSVRC2012_val_00000001.JPEG)
-        img_name = f"ILSVRC2012_val_{idx+1:08d}.JPEG"
-        img_path = self.root / img_name
+        return NotImplementedError()
+    
+class ImagenetTrainReader(ImagenetReader):
         
-        # Retorna a imagem bruta (PIL) e a label traduzida
-        label = self.targets[idx]
+    def __getitem__(self, idx):
+        row = self.entries[idx]
+
+        img_idx = int(row[0])
+        wnid = str(row[2])
+
+        challenge_id = self.wnid_to_id[wnid]
+        label = self.id_to_label[challenge_id]
+
+        img_path = self.partition_path / wnid / f"{wnid}_{img_idx}.JPEG"
+
+        last_error = None
 
         for attempt in range(10):
             try:
                 with Image.open(img_path) as img:
                     img = img.convert("RGB")
+
                 return img, label
-            except(UnidentifiedImageError, OSError) as e:
+
+            except (UnidentifiedImageError, OSError) as e:
                 last_error = e
                 time.sleep(0.05 * (attempt + 1))
-        raise RuntimeError('Falha de Leitura na Validação') from e
-    
-    def to_coarse_classes(self, top_down: bool, level: int, mat_path: str):
-        handler = TaxonomicHandler(mat_path)
-        wnid_to_coarse, num_classes = handler.reduce_taxonomic_diversity(self.all_wnids, top_down, level)
-        
-        old_label_to_new_label = {self.wnid_to_label[wnid] : wnid_to_coarse[wnid] for wnid in self.all_wnids}
-        self.targets = [old_label_to_new_label[label] for label in self.targets]
 
-        return num_classes
+        raise RuntimeError(
+            f"Falha ao ler {img_path} após 10 tentativas"
+        ) from last_error
+    
+class ImagenetValReader(ImagenetReader):
+
+    def __getitem__(self, idx):
+
+        row = self.entries[idx]
+
+        img_idx = int(row[0])
+        wnid = str(row[2])
+
+        challenge_id = self.wnid_to_id[wnid]
+        label = self.id_to_label[challenge_id]
+
+        img_path = Path(self.partition_path / f'ILSVRC2012_val_{img_idx:08d}.JPEG')
+
+        last_error = None
+        
+        for attempt in range(10):
+            try:
+                with Image.open(img_path) as img:
+                    img = img.convert("RGB")
+
+                return img, label
+
+            except (UnidentifiedImageError, OSError) as e:
+                last_error = e
+                time.sleep(0.05 * (attempt + 1))
+
+        raise RuntimeError(
+            f"Falha ao ler {img_path} após 10 tentativas"
+        ) from last_error
 
 
