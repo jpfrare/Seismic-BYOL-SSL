@@ -34,9 +34,13 @@ class ImagenetReader():
     mat: list                                       #.mat com as informações do desafio
     entries: list                                   #entries da partição desejada (treino / validação)
     partition_path: Path                            #caminho da partição (treino / validação)
+    taxonomic_handler = TaxonomicHandler            #handler taxonomico caso necessário
+    
 
     def __init__(self, mat_path, entries_path, partition_path):
         self.mat = loadmat(mat_path)['synsets']
+        self.taxonomic_handler = TaxonomicHandler(mat_path)
+
         self.wnid_to_id = {str(row[0][1][0]) : int(row[0][0][0][0]) for row in self.mat[:1000]}
         self.id_to_label = {i : i - 1 for i in self.wnid_to_id.values()}
         self.entries = np.load(entries_path, allow_pickle = True)
@@ -47,6 +51,12 @@ class ImagenetReader():
 
     def __getitem__(self, idx):
         return NotImplementedError()
+
+    def to_coarse_classes(self, level) -> int:
+        id_to_label, number_of_classes = self.taxonomic_handler.top_down_cut(level= level)
+        self.id_to_label = id_to_label
+        return number_of_classes
+
     
 class ImagenetTrainReader(ImagenetReader):
         

@@ -2,30 +2,27 @@ from pathlib import Path
 from typing import Any, Tuple, Union
 from scipy.io import loadmat
 
+#id aqui é o id do desafio
 class TaxonomicHandler:
-    mat_path: Path
+    mat: list
     chosen_wnids: list
     wnid_to_description: dict
+    son_to_father: dict
+    level_to_id: dict
 
 
     def __init__(self, mat_path):
         self.chosen_wnids = []
-        self.mat_path = mat_path
-        self.wnid_to_description = self.build_wnid_to_description()
+        self.mat = loadmat(mat_path)["synsets"]
+        self.son_to_father = {}
+        self.level_to_id = {}
+
+        self.build_stf_and_lti(1001, 0, self.son_to_father, self.level_to_id)
+        
 
 
-    def build_wnid_to_description(self):
-        y = loadmat(self.mat_path)['synsets']
-        wnid_to_description = {}
-
-        for i in range(len(y)):
-            wnid_to_description[str(y[i][0][1][0])] = str(y[i][0][2][0])
-
-        return wnid_to_description
-
-
-    def build_stf_and_lti(self, father_id, level, son_to_father, level_to_ids, synsets):
-        infos = synsets[father_id - 1][0]
+    def build_stf_and_lti(self, father_id, level, son_to_father, level_to_ids):
+        infos = self.mat[father_id - 1][0]
 
         if level not in level_to_ids:
             level_to_ids[level] = [father_id]
@@ -39,34 +36,32 @@ class TaxonomicHandler:
         for children_id in infos[5][0]:
             i_children_id = int(children_id)
             son_to_father[i_children_id] = father_id
-            self.build_stf_and_lti(i_children_id, level + 1, son_to_father, level_to_ids, synsets)
+            self.build_stf_and_lti(i_children_id, level + 1, son_to_father, level_to_ids)
 
 
-    def reduce_taxonomic_diversity(self, wnids: list, top_down: bool, level: int) -> tuple[dict, int]:
-        #wnids: lista com todos os wnids dos quais se deseja generalizar em determinado nivel
-        wnid_to_class = {}
-        coarse_to_class = {}
-        self.chosen_wnids = []
-        current_class_id = 0
+    def top_down_cut(self, level: int) -> tuple[dict, int]:
+        leaf_to_coarse = {}
+        original_challenge_ids = range(1,1001)
+        coarse_ids = set(self.level_to_id[level])
 
-        heritage_path = self.build_heritage_path()
+        for challenge_id in original_challenge_ids:
+            father = challenge_id
+            while father not in coarse_ids:
+                father = self.son_to_father[father]
 
-        for wnid in wnids:
-            ancestors = heritage_path[wnid] #lista de todos os wnids antepassados até entidade (o último elemento é a classe entidade)
+            leaf_to_coarse[challenge_id] = father
 
-            if top_down:
-                pos = len(ancestors) - 1 - level
-                chosen_wnid = ancestors[pos] if pos > 0 else ancestors[0]
-            else:
-                chosen_wnid = ancestors[level] if level < len(ancestors) else ancestors[3]
+        new_classes = sorted(set(leaf_to_coarse.values()))
+        number_of_new_classes = len(new_classes)
+        new_labels = {new_classes[i] : i for i in range(number_of_new_classes)}
 
-            if chosen_wnid not in self.chosen_wnids:
-                self.chosen_wnids.append(chosen_wnid)
+        id_to_label = {}
+        for challenge_id in original_challenge_ids:
+            coarse_id = leaf_to_coarse[challenge_id]
+            new_label = new_labels[coarse_id]
 
-            if chosen_wnid not in coarse_to_class:
-                coarse_to_class[chosen_wnid] = current_class_id
-                current_class_id += 1
-            
-            wnid_to_class[wnid] = coarse_to_class[chosen_wnid]
+            id_to_label[challenge_id] = new_label
 
-        return (wnid_to_class, current_class_id)
+        return (id_to_label, number_of_new_classes)
+
+        

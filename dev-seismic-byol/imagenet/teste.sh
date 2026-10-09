@@ -13,7 +13,7 @@ sbatch <<EOT
 #SBATCH --gpus-per-node=1       
 #SBATCH --partition=ict-gh200
 #SBATCH --account=spfm
-#SBATCH --time=00:10:00
+#SBATCH --time=24:00:00
 #SBATCH --output=/petrobr/parceirosbr/home/joao.frare/workspace/spfm/Seismic-Byol/dev-seismic-byol/imagenet/jobs_out/teste_readers/%j.out
 #SBATCH --error=/petrobr/parceirosbr/home/joao.frare/workspace/spfm/Seismic-Byol/dev-seismic-byol/imagenet/jobs_out/teste_readers/%j.err
 
