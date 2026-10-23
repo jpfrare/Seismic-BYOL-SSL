@@ -34,6 +34,7 @@ class Metrics():
     
     def individual_plot(
         self,
+        version: str,
         title: str,
         save_path: Path,
         y1_axis: list[str],
@@ -63,7 +64,7 @@ class Metrics():
 
         for i in range(num_models):
             ax = axs[i]
-            dataframe = self.models[i].get_pretrain_dataframe() if not finetune else self.models[i].get_finetune_dataframe(dataset, protocol)
+            dataframe = self.models[i].get_pretrain_dataframe(version) if not finetune else self.models[i].get_finetune_dataframe(version,dataset, protocol)
             if dataframe.empty:
                 continue
 
@@ -151,6 +152,7 @@ class Metrics():
     
     def group_plot(
         self,
+        version: str,
         title: str,
         save_path: Path,
         x_axis: str,
@@ -172,7 +174,7 @@ class Metrics():
         plt.figure(figsize=(16,6))
 
         for model in self.models:
-            dataframe = model.get_pretrain_dataframe() if not finetune else model.get_finetune_dataframe(dataset, protocol)
+            dataframe = model.get_pretrain_dataframe(version) if not finetune else model.get_finetune_dataframe(version,dataset, protocol)
             if dataframe.empty:
                 continue
 
@@ -222,84 +224,57 @@ class Metrics():
         save_path = save_path / f'{title}.png'
         plt.savefig(save_path, dpi= 300, bbox_inches='tight')
         plt.close()
-    
-    def plot_heatmap(
-    self,
-    title: str,
-    save_path: Path,
-    dataset: str | None = None,
-    protocol: str | None = None,
-    pretrain: bool = False,
-    cmap: str = "rocket",
-    ):
+
+    def build_default_dataframe(
+        self, 
+        version: str, 
+        pretrain: bool = True, 
+        dataset: str | None = None, 
+        protocol: str | None = None) -> tuple[pd.DataFrame, pd.DataFrame]:
+        '''monta o heat map para os experimentos default'''
 
         if pretrain:
-            models_to_plot = [model for model in self.models if not (model.scratch)]
+            models = [model for model in self.models if not (model.scratch)]
         else:
-            models_to_plot = [model for model in self.models]
+            models = [model for model in self.models]
 
-        rows = sorted(
-            {model.pretrained_classes for model in models_to_plot},
-            reverse=True,
-        )
+        rows = sorted({model.pretrained_classes for model in models}, reverse= True)
+        cols = sorted({model.pretrained_images for model in models})
 
-        cols = sorted(
-            {model.pretrained_images for model in models_to_plot},
-        )
+        df_mean = pd.DataFrame(np.nan, index= rows, columns= cols)
+        df_std = pd.DataFrame(np.nan, index= rows, columns= cols)
 
-
-        df_mean = pd.DataFrame(
-            np.nan,
-            index=rows,
-            columns=cols,
-        )
-
-        df_std = pd.DataFrame(
-            np.nan,
-            index=rows,
-            columns=cols,
-        )
-
-        min_metric = np.inf if not pretrain else None
-        max_metric = -np.inf if not pretrain else None
-
-        #preenchendo os dataframes e definindo o mínimo e máximo do mIoU para a escala entre os protocolos
-        for model in models_to_plot:
-            # ignora modelos que não pertencem à malha
+        for model in self.models:
             if pretrain:
-                mean, std = model.get_pretrain_top1acc()
+                mean, std = model.get_pretrain_top1acc(version)
                 mean *= 100
                 std *= 100
 
             else:
+                mean, std = model.get_finetune_miou(version, dataset, protocol)
+                mean *= 100
+                std *= 100
 
-                for p in model.protocols:
+            df_mean.loc[model.pretrained_classes, model.pretrained_images] = mean
+            df_std.loc[model.pretrained_classes, model.pretrained_images] = std
 
-                    miou, std_miou = model.get_finetune_miou(dataset, p)
-                    miou *= 100
-                    std_miou *= 100
-
-                    if p == protocol:
-                        mean = miou
-                        std = std_miou
-
-                    max_metric = max(max_metric, miou)
-                    min_metric = min(min_metric, miou)
-
-            df_mean.loc[
-                model.pretrained_classes,
-                model.pretrained_images,
-            ] = mean
-
-            df_std.loc[
-                model.pretrained_classes,
-                model.pretrained_images,
-            ] = std
-
+        return (df_mean, df_std)
+    
+    def plot_heatmap(
+    self,
+    df_mean: pd.DataFrame,
+    df_std: pd.DataFrame,
+    title: str,
+    save_path: Path,
+    pretrain: bool = False,
+    cmap: str = "rocket",
+    ):
+        rows = list(df_mean.index)
+        cols = list(df_mean.columns)
+        
         fig, ax = plt.subplots(figsize=(8, 6))
 
         df_annot = df_mean.copy().astype(object)
-
         for i in range(len(rows)):
             for j in range(len(cols)):
                 mean = df_mean.iloc[i,j]
@@ -344,14 +319,14 @@ class Metrics():
             save_path,
         )
     
-    def save_miou_table(self, filename, save_path, dataset, protocol):
+    def save_miou_table(self, filename, save_path, version, dataset, protocol):
         '''Recupera os dados processados de mIoU, organiza em uma tabela
         e salva em um arquivo de texto alinhado na pasta root.
         '''
 
         table_rows = []
         for model in self.models:
-            mean, std = model.get_finetune_miou(dataset, protocol)
+            mean, std = model.get_finetune_miou(version, dataset, protocol)
             table_rows.append(
                 (
                     model.model_name,
@@ -366,19 +341,13 @@ class Metrics():
 
         with open(save_path, 'w', encoding='utf-8') as f:
             f.write(df_miou.to_string(index=False))
-        
 
-    def plot_taxonomic_x_default(
-    self,
-    title: str,
-    save_path: Path,
-    dataset: str | None = None,
-    protocol: str | None = None,
-    pretrain: bool = False,
-    ):
+
+    def get_tax_x_default(self, version: str, dataset: str| None, protocol: str | None, pretrain: bool):
+        '''retorna um dicionário contendo a média e desvio padrão para a configuração taxonomica, default e scratch respectiva
+        o valor no indice i se refere ao número de classes contido em labels[i]'''
 
         classes = sorted({model.pretrained_classes for model in self.models})
-
         default_mean, default_std = [], []
         tax_mean, tax_std = [], []
         labels = []
@@ -407,9 +376,9 @@ class Metrics():
                 continue
 
             mean, std = (
-                default_model.get_pretrain_top1acc()
+                default_model.get_pretrain_top1acc(version)
                 if pretrain
-                else default_model.get_finetune_miou(dataset, protocol)
+                else default_model.get_finetune_miou(version, dataset, protocol)
             )
 
             default_mean.append(mean * 100)
@@ -418,7 +387,7 @@ class Metrics():
             mean, std = (
                 tax_model.get_pretrain_top1acc()
                 if pretrain
-                else tax_model.get_finetune_miou(dataset, protocol)
+                else tax_model.get_finetune_miou(version, dataset, protocol)
             )
 
             tax_mean.append(mean * 100)
@@ -426,15 +395,33 @@ class Metrics():
 
             labels.append(str(c))
 
-        x = np.arange(len(labels))
-        width = 0.35
+            ans = {'default': {'mean': default_mean, 'std': default_std}, 'taxonomic': {'mean': tax_mean, 'std': tax_std}, 'labels': labels}
 
+            if not pretrain:
+                scratch_model= next((model for model in self.models if model.scratch), None)
+                mean_scratch, _ = scratch_model.get_finetune_miou(version, dataset, protocol)
+                ans['scratch'] = mean_scratch
+
+            return ans
+        
+
+    def plot_taxonomic_x_default(
+    self,
+    version: str,
+    title: str,
+    save_path: Path,
+    tax_x_default: dict,
+    pretrain: bool,
+    ):
+
+        x = np.arrange(len(tax_x_default['labels']))
+        width = 0.35
         fig, ax = plt.subplots(figsize=(9,5))
 
         if not pretrain:
             scratch_baseline = next((model for model in self.models if model.scratch), None)
-            mean, std = scratch_baseline.get_finetune_miou(dataset, protocol)
-            ax.axhline(mean*100, color= 'black', linestyle= '--', linewidth= 1.0, label= 'Scrath Baseline')
+            mean = tax_x_default['scratch']
+            ax.axhline(mean*100, color= 'black', linestyle= '--', linewidth= 1.0, label= 'Scratch Baseline')
 
         error_style = dict(
             lw=1,
@@ -445,9 +432,9 @@ class Metrics():
 
         bars_default = ax.bar(
             x - width/2,
-            default_mean,
+            tax_x_default['default']['mean'],
             width,
-            yerr=default_std,
+            yerr=tax_x_default['default']['std'],
             color="#4C72B0",
             label="Default",
             error_kw=error_style,
@@ -455,9 +442,9 @@ class Metrics():
 
         bars_tax = ax.bar(
             x + width/2,
-            tax_mean,
+            tax_x_default['taxonomic']['mean'],
             width,
-            yerr=tax_std,
+            yerr=tax_x_default['taxonomic']['std'],
             color="#D67137",
             label="Taxonomic",
             error_kw=error_style,
@@ -466,7 +453,7 @@ class Metrics():
         ax.set_ylim(0, 100)
 
         ax.set_xticks(x)
-        ax.set_xticklabels(labels, fontsize=12)
+        ax.set_xticklabels(tax_x_default['labels'], fontsize=12)
 
         ax.set_xlabel(
             "Number of Pretraining Classes",

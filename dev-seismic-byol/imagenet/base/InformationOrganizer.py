@@ -1,7 +1,7 @@
 import argparse
 import os
 from pathlib import Path
-from .ImagenetReader import ImagenetReader, ImagenetValReader
+from .ImagenetReader import *
 
     
 class TrainOrganizer():

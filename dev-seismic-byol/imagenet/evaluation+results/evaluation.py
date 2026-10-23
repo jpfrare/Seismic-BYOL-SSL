@@ -5,11 +5,10 @@ ROOT = Path('/petrobr/parceirosbr/spfm/joao.frare/logs+checkpoints_imagenet')
 SAVE_PRETRAIN_PATH = Path('data/pretrain')
 SAVE_FINETUNE_PATH = Path('data/finetune')
 
-def build_default_metrics(root_path: Path, version: str, datasets: list[str], protocols: list[str]):
+def build_default_metrics(root_path: Path, datasets: list[str], protocols: list[str]):
         full_dataset = ModelInfo(
         root_path= root_path,
         reduction_mode= 'full', 
-        version= version,  
         datasets= datasets,
         protocols= protocols)
 
@@ -29,7 +28,6 @@ def build_default_metrics(root_path: Path, version: str, datasets: list[str], pr
                                 reduction_mode= 'default',  
                                 num_classes= num_classes, 
                                 per_class= per_class,
-                                version= version, 
                                 datasets= datasets,
                                 protocols= protocols)
                         default_metrics += model_info
@@ -37,7 +35,7 @@ def build_default_metrics(root_path: Path, version: str, datasets: list[str], pr
         return default_metrics
 
 
-def build_taxonomic_metrics(root_path: Path, version: str, datasets: list[str], protocols: list[str]):
+def build_taxonomic_metrics(root_path: Path, datasets: list[str], protocols: list[str]):
         level_to_classes = {
                 9: 477,
                 7: 200,
@@ -51,7 +49,6 @@ def build_taxonomic_metrics(root_path: Path, version: str, datasets: list[str], 
                 taxonomic = ModelInfo(
                         root_path = root_path,
                         reduction_mode = 'taxonomic',
-                        version= version,
                         top_down = True,
                         level= level,
                         num_classes= num_classes,
@@ -61,7 +58,6 @@ def build_taxonomic_metrics(root_path: Path, version: str, datasets: list[str], 
                 default = ModelInfo(
                         root_path= root_path,
                         reduction_mode= 'default',
-                        version= version,
                         num_classes= num_classes,
                         per_class= 1300,
                         datasets= datasets,
@@ -75,16 +71,16 @@ datasets = ['seam_ai_N', 'f3_N']
 protocols = ['full_finetuning_deeplab', 'full_freeze_linear']
 
 scratch_baseline = ModelInfo(ROOT, scratch= True, datasets= datasets, protocols= protocols)
+default_metrics = build_default_metrics(root_path= ROOT, datasets= datasets, protocols= protocols)
+taxonomic_metrics = build_taxonomic_metrics(root_path= ROOT, datasets= datasets, protocols= protocols)
 
-
-for version in ['traditional', 'modern']:
+for version in ['traditional', 'default']:
 
         #pre-treino
         PRETRAIN_SAVE = SAVE_PRETRAIN_PATH / version 
         
         capitalized_version = version.capitalize()
 
-        default_metrics = build_default_metrics(root_path= ROOT, version= version, datasets= datasets, protocols= protocols)
 
         default_metrics.individual_plot(
                 title= f'{capitalized_version} Default Models Train and Val Loss x Steps',
@@ -105,7 +101,6 @@ for version in ['traditional', 'modern']:
                 cmap= 'crest'
         )
 
-        taxonomic_metrics = build_taxonomic_metrics(root_path= ROOT, version= version, datasets= datasets, protocols= protocols)
 
         taxonomic_metrics.individual_plot(
                 title= f'{capitalized_version} Taxonomic Models Train and Val Loss x Steps',

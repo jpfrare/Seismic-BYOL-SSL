@@ -3,7 +3,7 @@ import os
 from pathlib import Path
 from PIL import Image, UnidentifiedImageError
 from scipy.io import loadmat
-from .TaxonomicHandler import TaxonomicHandler
+from base.TaxonomicHandler import TaxonomicHandler
 import time
 
 
@@ -34,7 +34,7 @@ class ImagenetReader():
     mat: list                                       #.mat com as informações do desafio
     entries: list                                   #entries da partição desejada (treino / validação)
     partition_path: Path                            #caminho da partição (treino / validação)
-    taxonomic_handler = TaxonomicHandler            #handler taxonomico caso necessário
+    taxonomic_handler: TaxonomicHandler            #handler taxonomico caso necessário
     
 
     def __init__(self, mat_path, entries_path, partition_path):
@@ -52,10 +52,8 @@ class ImagenetReader():
     def __getitem__(self, idx):
         return NotImplementedError()
 
-    def to_coarse_classes(self, level) -> int:
-        id_to_label, number_of_classes = self.taxonomic_handler.top_down_cut(level= level)
+    def get_id_to_label(self, id_to_label: dict):
         self.id_to_label = id_to_label
-        return number_of_classes
 
     
 class ImagenetTrainReader(ImagenetReader):
