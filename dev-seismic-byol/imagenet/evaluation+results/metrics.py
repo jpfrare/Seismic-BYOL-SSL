@@ -8,6 +8,7 @@ import numpy as np
 import copy
 from modelInfo import ModelInfo
 import seaborn as sns
+from collections import defaultdict
 
 class Metrics():
     models: list[ModelInfo]
@@ -231,7 +232,7 @@ class Metrics():
         pretrain: bool = True, 
         dataset: str | None = None, 
         protocol: str | None = None) -> tuple[pd.DataFrame, pd.DataFrame]:
-        '''monta o heat map para os experimentos default'''
+        '''monta o heatmap para os experimentos default'''
 
         if pretrain:
             models = [model for model in self.models if not (model.scratch)]
@@ -268,7 +269,13 @@ class Metrics():
     save_path: Path,
     pretrain: bool = False,
     cmap: str = "rocket",
-    ):
+    difference: bool = False
+    ):  
+
+        if difference and not pretrain:
+            df_mean = df_mean.drop(index= 0, columns= 0)
+            df_std = df_std.drop(index= 0, columns= 0)
+
         rows = list(df_mean.index)
         cols = list(df_mean.columns)
         
@@ -281,7 +288,7 @@ class Metrics():
                 std = df_std.iloc[i,j]
 
                 if not np.isnan(mean):
-                    df_annot.iloc[i,j] = f'{mean:.2f}%\n±{std:.2f}%'
+                    df_annot.iloc[i,j] = f'{mean:.2f}%\n±{std:.2f}%' if not difference else f'{mean:.2f}%'
                 else:
                     df_annot.iloc[i,j] = ''
         
@@ -319,31 +326,30 @@ class Metrics():
             save_path,
         )
     
-    def save_miou_table(self, filename, save_path, version, dataset, protocol):
+    def get_miou_df(self, dataset: str = None, protocol: str = None, pretrain: bool = True) -> pd.DataFrame:
         '''Recupera os dados processados de mIoU, organiza em uma tabela
         e salva em um arquivo de texto alinhado na pasta root.
         '''
-
-        table_rows = []
+        df_dict = defaultdict(list)
         for model in self.models:
-            mean, std = model.get_finetune_miou(version, dataset, protocol)
-            table_rows.append(
-                (
-                    model.model_name,
-                    f"{mean:.2f} ± {std:.2f}"
-                )
-            )
-
-        df_miou = pd.DataFrame(table_rows, columns=['Model Name', 'mIoU'])
-
-        save_path.mkdir(parents=True, exist_ok=True)
-        save_path = save_path / filename
-
-        with open(save_path, 'w', encoding='utf-8') as f:
-            f.write(df_miou.to_string(index=False))
+            df_dict['model_name'].append(model.model_name)
 
 
-    def get_tax_x_default(self, version: str, dataset: str| None, protocol: str | None, pretrain: bool):
+            for version in model.versions:
+                    if pretrain:
+                        mean, std = model.get_pretrain_top1acc(version)
+                        df_dict[f'{version} mean acc1'].append(mean)
+                        df_dict[f'{version} std acc1'].append(std)
+
+                    else:
+                        mean, std = model.get_finetune_miou(version, dataset, protocol)
+                        df_dict[f'{version} mean mIoU'].append(mean)
+                        df_dict[f'{version} std mIoU'].append(std)
+
+        print(df_dict.keys())
+        return pd.DataFrame(df_dict)
+
+    def get_tax_x_default(self, version: str, dataset: str| None, protocol: str | None, pretrain: bool) -> dict:
         '''retorna um dicionário contendo a média e desvio padrão para a configuração taxonomica, default e scratch respectiva
         o valor no indice i se refere ao número de classes contido em labels[i]'''
 
@@ -385,7 +391,7 @@ class Metrics():
             default_std.append(std * 100)
 
             mean, std = (
-                tax_model.get_pretrain_top1acc()
+                tax_model.get_pretrain_top1acc(version)
                 if pretrain
                 else tax_model.get_finetune_miou(version, dataset, protocol)
             )
@@ -395,31 +401,34 @@ class Metrics():
 
             labels.append(str(c))
 
-            ans = {'default': {'mean': default_mean, 'std': default_std}, 'taxonomic': {'mean': tax_mean, 'std': tax_std}, 'labels': labels}
+            ans = {'default_mean': np.array(default_mean),
+                   'default_std': np.array(default_std),
+                   'taxonomic_mean':  np.array(tax_mean), 
+                   'taxonomic_std': np.array(tax_std), 
+                   'labels': np.array(labels)}
 
             if not pretrain:
                 scratch_model= next((model for model in self.models if model.scratch), None)
                 mean_scratch, _ = scratch_model.get_finetune_miou(version, dataset, protocol)
                 ans['scratch'] = mean_scratch
 
-            return ans
+        return ans
         
 
     def plot_taxonomic_x_default(
     self,
-    version: str,
     title: str,
     save_path: Path,
     tax_x_default: dict,
     pretrain: bool,
+    difference: bool
     ):
 
-        x = np.arrange(len(tax_x_default['labels']))
+        x = np.arange(len(tax_x_default['labels']))
         width = 0.35
         fig, ax = plt.subplots(figsize=(9,5))
 
         if not pretrain:
-            scratch_baseline = next((model for model in self.models if model.scratch), None)
             mean = tax_x_default['scratch']
             ax.axhline(mean*100, color= 'black', linestyle= '--', linewidth= 1.0, label= 'Scratch Baseline')
 
@@ -432,9 +441,9 @@ class Metrics():
 
         bars_default = ax.bar(
             x - width/2,
-            tax_x_default['default']['mean'],
+            tax_x_default['default_mean'],
             width,
-            yerr=tax_x_default['default']['std'],
+            yerr=tax_x_default['default_std'] if not difference else None,
             color="#4C72B0",
             label="Default",
             error_kw=error_style,
@@ -442,15 +451,18 @@ class Metrics():
 
         bars_tax = ax.bar(
             x + width/2,
-            tax_x_default['taxonomic']['mean'],
+            tax_x_default['taxonomic_mean'],
             width,
-            yerr=tax_x_default['taxonomic']['std'],
+            yerr=tax_x_default['taxonomic_std'] if not difference else None,
             color="#D67137",
             label="Taxonomic",
             error_kw=error_style,
         )
 
-        ax.set_ylim(0, 100)
+        if difference:
+            ax.set_ylim(-50, 50)
+        else:
+            ax.set_ylim(0, 100)
 
         ax.set_xticks(x)
         ax.set_xticklabels(tax_x_default['labels'], fontsize=12)

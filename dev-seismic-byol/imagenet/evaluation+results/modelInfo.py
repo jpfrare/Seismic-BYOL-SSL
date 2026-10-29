@@ -44,7 +44,12 @@ class ModelInfo():
         nome do modelo'''
 
         self.reduction_mode = reduction_mode
-        self.finetune_path = self._create_dataset_protocols_dictionary(datasets, protocols)
+        self.finetune_path = {}
+        for dataset in datasets:
+            self.finetune_path[dataset] = {}
+            for protocol in protocols:
+                self.finetune_path[dataset][protocol] = None
+
         self.datasets = datasets
         self.protocols = protocols
         self.versions = versions
@@ -135,9 +140,11 @@ class ModelInfo():
         self.finetune_metrics = self._create_version_dataset_protocols_dictionary(self.versions, self.datasets, self.protocols, start_value= {'mIoU': [], 'IoU': []})
         self.pretrain_dataframe = {}
         self.pretrain_acc_per_class = {}
+        self.pretrain_acc1 = {}
 
         for version in self.versions:
             self.pretrain_acc_per_class[version] = {'mean': [], 'std': [], 'raw': []}
+            self.pretrain_acc1[version] = None
             self.pretrain_dataframe[version] = []
 
         for version in self.versions:
@@ -146,9 +153,8 @@ class ModelInfo():
                 if not self.scratch:
                     #--------------------------lendo repetições do pré-treino----------------------------------------------------------
                     pretrain_csv_path = self.root_path / 'Train' / version / f'{repetition}' / self.pretrain_path / 'metrics.csv'
-                    self.pretrain_dataframe.append(self._read_csv(pretrain_csv_path, ['step', 'train_loss_epoch', 'val_acc1', 'val_acc5', 'val_loss']))
+                    self.pretrain_dataframe[version].append(self._read_csv(pretrain_csv_path, ['step', 'train_loss_epoch', 'val_acc1', 'val_acc5', 'val_loss']))
 
-                    
                     path = self.root_path / 'Train' / version / f'{repetition}' / self.pretrain_path / 'evaluation' / 'acc_per_class.npy'
                     print(f'model name: {self.model_name}, path: {path}')
                     accs = np.load(path)
@@ -161,7 +167,7 @@ class ModelInfo():
                         if self.scratch:
                             finetune_path = self.root_path / 'Finetune' / 'scratch' / f'{repetition}' / self.finetune_path[dataset][protocol]
                         else:
-                            finetune_path = self.root_path / 'Finetune' / self.version / f'{repetition}' / self.finetune_path[dataset][protocol]
+                            finetune_path = self.root_path / 'Finetune' / version / f'{repetition}' / self.finetune_path[dataset][protocol]
 
                         self.finetune_dataframes[version][dataset][protocol].append(self._read_csv(finetune_path / 'metrics.csv', ['train_loss', 'val_loss']))
 
@@ -182,13 +188,13 @@ class ModelInfo():
 
                 mean_accs_per_repetition = np.mean(self.pretrain_acc_per_class[version]['raw'], axis= 1)
 
-                self.pretrain_acc1 = {
+                self.pretrain_acc1[version] = {
                     'mean': np.mean(mean_accs_per_repetition),
                     'std': np.std(mean_accs_per_repetition)
                 }
 
-                self.pretrain_dataframe = pd.concat(self.pretrain_dataframe)
-                self.pretrain_dataframe = self.pretrain_dataframe[version].groupby('step').agg(
+                self.pretrain_dataframe[version] = pd.concat(self.pretrain_dataframe[version])
+                self.pretrain_dataframe[version] = self.pretrain_dataframe[version].groupby('step').agg(
                         mean_val_loss= ('val_loss', 'mean'),
                         std_val_loss= ('val_loss', 'std'),
                         mean_train_loss = ('train_loss_epoch', 'mean'),
@@ -229,7 +235,7 @@ class ModelInfo():
         return self.pretrain_dataframe[version]
 
     def get_pretrain_acc_per_class(self, version) -> tuple[list[float], list[float]]:
-        return (self.pretrain_acc_per_class[version]['mean'], self.pretrain_acc_per_class['std'])
+        return (self.pretrain_acc_per_class[version]['mean'], self.pretrain_acc_per_class[version]['std'])
     
     def get_pretrain_top1acc(self, version) -> tuple[float, float]:
         return (self.pretrain_acc1[version]['mean'], self.pretrain_acc1[version]['std'])
